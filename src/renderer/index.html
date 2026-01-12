@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Linear Issue</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      -webkit-app-region: drag;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      -webkit-app-region: no-drag;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #333;
+    }
+
+    .preview {
+      width: 100%;
+      max-height: 150px;
+      object-fit: contain;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      margin-bottom: 16px;
+      background: #fafafa;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #555;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+      -webkit-app-region: no-drag;
+    }
+
+    input[type="text"]:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: #5e6ad2;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .row .form-group {
+      flex: 1;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 16px;
+    }
+
+    button {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-cancel {
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      color: #666;
+    }
+
+    .btn-cancel:hover {
+      background: #eee;
+    }
+
+    .btn-submit {
+      background: #5e6ad2;
+      border: none;
+      color: white;
+    }
+
+    .btn-submit:hover {
+      background: #4c5abd;
+    }
+
+    .btn-submit:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 20px;
+      color: #666;
+    }
+
+    .error {
+      color: #e74c3c;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Create Linear Issue</h1>
+
+    <img id="preview" class="preview" src="" alt="Screenshot preview" />
+
+    <form id="issueForm">
+      <div class="form-group">
+        <label for="title">Title *</label>
+        <input type="text" id="title" name="title" required placeholder="Issue title" />
+      </div>
+
+      <div class="form-group">
+        <label for="description">Description</label>
+        <textarea id="description" name="description" placeholder="Optional description..."></textarea>
+      </div>
+
+      <div class="row">
+        <div class="form-group">
+          <label for="team">Team *</label>
+          <select id="team" name="team" required>
+            <option value="">Select team...</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="project">Project</label>
+          <select id="project" name="project">
+            <option value="">None</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="error" class="error"></div>
+
+      <div class="buttons">
+        <button type="button" class="btn-cancel" id="cancelBtn">Cancel</button>
+        <button type="submit" class="btn-submit" id="submitBtn">Create Issue</button>
+      </div>
+    </form>
+
+    <div id="loading" class="loading">Creating issue...</div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    const form = document.getElementById('issueForm');
+    const preview = document.getElementById('preview');
+    const titleInput = document.getElementById('title');
+    const descInput = document.getElementById('description');
+    const teamSelect = document.getElementById('team');
+    const projectSelect = document.getElementById('project');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    const errorDiv = document.getElementById('error');
+    const loadingDiv = document.getElementById('loading');
+
+    let imageUrl = '';
+
+    // Receive capture data from main process
+    ipcRenderer.on('capture-ready', (event, data) => {
+      console.log('Capture ready:', data);
+
+      // Show preview
+      preview.src = `file://${data.filePath}`;
+      imageUrl = data.imageUrl;
+
+      // Populate teams
+      teamSelect.innerHTML = '<option value="">Select team...</option>';
+      data.teams.forEach(team => {
+        const option = document.createElement('option');
+        option.value = team.id;
+        option.textContent = `${team.name} (${team.key})`;
+        if (team.id === data.defaultTeamId) {
+          option.selected = true;
+        }
+        teamSelect.appendChild(option);
+      });
+
+      // Populate projects
+      projectSelect.innerHTML = '<option value="">None</option>';
+      data.projects.forEach(project => {
+        const option = document.createElement('option');
+        option.value = project.id;
+        option.textContent = project.name;
+        if (project.id === data.defaultProjectId) {
+          option.selected = true;
+        }
+        projectSelect.appendChild(option);
+      });
+
+      // Reset form state
+      titleInput.value = '';
+      descInput.value = '';
+      errorDiv.textContent = '';
+      submitBtn.disabled = false;
+      form.style.display = 'block';
+      loadingDiv.style.display = 'none';
+
+      // Focus title input
+      titleInput.focus();
+    });
+
+    // Handle form submission
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const title = titleInput.value.trim();
+      const description = descInput.value.trim();
+      const teamId = teamSelect.value;
+      const projectId = projectSelect.value;
+
+      if (!title) {
+        errorDiv.textContent = 'Title is required';
+        return;
+      }
+
+      if (!teamId) {
+        errorDiv.textContent = 'Team is required';
+        return;
+      }
+
+      errorDiv.textContent = '';
+      submitBtn.disabled = true;
+      form.style.display = 'none';
+      loadingDiv.style.display = 'block';
+
+      try {
+        const result = await ipcRenderer.invoke('create-issue', {
+          title,
+          description,
+          teamId,
+          projectId: projectId || undefined,
+        });
+
+        if (!result.success) {
+          form.style.display = 'block';
+          loadingDiv.style.display = 'none';
+          submitBtn.disabled = false;
+          errorDiv.textContent = result.error || 'Failed to create issue';
+        }
+        // Success case: window will be hidden by main process
+      } catch (err) {
+        form.style.display = 'block';
+        loadingDiv.style.display = 'none';
+        submitBtn.disabled = false;
+        errorDiv.textContent = err.message || 'Unknown error';
+      }
+    });
+
+    // Handle cancel
+    cancelBtn.addEventListener('click', () => {
+      ipcRenderer.invoke('cancel');
+    });
+
+    // Handle Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        ipcRenderer.invoke('cancel');
+      }
+    });
+  </script>
+</body>
+</html>
