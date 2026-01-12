@@ -25,6 +25,9 @@ export interface TeamInfo {
   id: string;
   name: string;
   key: string;
+  issueEstimationType: string;  // 'notUsed' | 'exponential' | 'fibonacci' | 'linear' | 'tShirt'
+  issueEstimationAllowZero: boolean;
+  issueEstimationExtended: boolean;
 }
 
 export interface ProjectInfo {
@@ -107,7 +110,7 @@ export class LinearService {
   }
 
   /**
-   * Get all teams
+   * Get all teams with estimate settings
    */
   async getTeams(): Promise<TeamInfo[]> {
     try {
@@ -116,6 +119,9 @@ export class LinearService {
         id: team.id,
         name: team.name,
         key: team.key,
+        issueEstimationType: team.issueEstimationType || 'fibonacci',
+        issueEstimationAllowZero: team.issueEstimationAllowZero ?? false,
+        issueEstimationExtended: team.issueEstimationExtended ?? false,
       }));
     } catch (error) {
       console.error('Failed to fetch teams:', error);
@@ -164,7 +170,7 @@ export class LinearService {
   }
 
   /**
-   * Get workflow states for all teams
+   * Get workflow states for all teams (sorted by Linear UI order)
    */
   async getWorkflowStates(): Promise<WorkflowStateInfo[]> {
     try {
@@ -180,6 +186,23 @@ export class LinearService {
           teamId: team?.id || '',
         });
       }
+
+      // Sort by Linear UI order: backlog → unstarted → started → completed → canceled
+      const typeOrder: Record<string, number> = {
+        backlog: 0,
+        unstarted: 1,
+        started: 2,
+        completed: 3,
+        canceled: 4,
+      };
+      result.sort((a, b) => {
+        // First by team, then by type order
+        if (a.teamId !== b.teamId) {
+          return a.teamId.localeCompare(b.teamId);
+        }
+        return (typeOrder[a.type] ?? 99) - (typeOrder[b.type] ?? 99);
+      });
+
       return result;
     } catch (error) {
       console.error('Failed to fetch workflow states:', error);
@@ -188,7 +211,7 @@ export class LinearService {
   }
 
   /**
-   * Get active and upcoming cycles
+   * Get active and upcoming cycles (sorted by start date, nearest first)
    */
   async getCycles(): Promise<CycleInfo[]> {
     try {
@@ -209,6 +232,16 @@ export class LinearService {
           teamId: team?.id || '',
         });
       }
+
+      // Sort by team, then by start date (nearest first)
+      result.sort((a, b) => {
+        if (a.teamId !== b.teamId) {
+          return a.teamId.localeCompare(b.teamId);
+        }
+        // Sort by startsAt ascending (nearest/current cycle first)
+        return new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime();
+      });
+
       return result;
     } catch (error) {
       console.error('Failed to fetch cycles:', error);

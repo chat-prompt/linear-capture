@@ -36,6 +36,7 @@ function createWindow(): void {
     show: false,
     frame: true,
     resizable: false,
+    alwaysOnTop: true,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -69,6 +70,11 @@ function showCaptureWindow(filePath: string, imageUrl: string, analysis?: Analys
 
   const sendCaptureData = () => {
     console.log('Sending capture-ready event to renderer...');
+    console.log('Analysis data:', JSON.stringify({
+      title: analysis?.title,
+      description: analysis?.description?.substring(0, 100),
+      success: analysis?.success
+    }));
     mainWindow?.webContents.send('capture-ready', {
       filePath,
       imageUrl,
@@ -128,33 +134,15 @@ async function handleCapture(): Promise<void> {
     return;
   }
 
-  // Start upload and AI analysis in parallel
-  console.log('Uploading to R2 and analyzing with Gemini...');
-
+  // Start upload in background
+  console.log('Uploading to R2...');
   const uploadPromise = r2.upload(result.filePath);
 
-  // Gemini에 컨텍스트 전달 (프로젝트, 사용자 목록)
-  const analysisContext: AnalysisContext = {
-    projects: projectsCache.map(p => ({
-      id: p.id,
-      name: p.name,
-      description: p.description
-    })),
-    users: usersCache.map(u => ({ id: u.id, name: u.name })),
-    defaultTeamId: process.env.DEFAULT_TEAM_ID,
-  };
+  // Show window immediately with loading state
+  showCaptureWindow(result.filePath, '', undefined);
 
-  const analysisPromise = geminiAnalyzer
-    ? geminiAnalyzer.analyzeScreenshot(result.filePath, analysisContext)
-    : Promise.resolve({ title: '', description: '', success: false });
-
-  const [uploadResult, analysisResult] = await Promise.all([
-    uploadPromise,
-    analysisPromise.catch((error) => {
-      console.error('Gemini analysis error:', error);
-      return { title: '', description: '', success: false };
-    }),
-  ]);
+  // Wait for upload to complete
+  const uploadResult = await uploadPromise;
 
   if (!uploadResult.success || !uploadResult.url) {
     showNotification('Upload Failed', uploadResult.error || 'Unknown error');
@@ -163,14 +151,42 @@ async function handleCapture(): Promise<void> {
   }
 
   console.log('Upload successful:', uploadResult.url);
-  if (analysisResult.success) {
-    console.log('AI analysis successful:', analysisResult.title);
-  } else {
-    console.log('AI analysis skipped or failed');
-  }
+  uploadedImageUrl = uploadResult.url;
 
-  // Show window with capture and AI suggestions
-  showCaptureWindow(result.filePath, uploadResult.url, analysisResult);
+  // Start AI analysis in background
+  if (geminiAnalyzer) {
+    console.log('Starting Gemini analysis...');
+
+    // Gemini에 컨텍스트 전달 (프로젝트, 사용자 목록)
+    const analysisContext: AnalysisContext = {
+      projects: projectsCache.map(p => ({
+        id: p.id,
+        name: p.name,
+        description: p.description
+      })),
+      users: usersCache.map(u => ({ id: u.id, name: u.name })),
+      defaultTeamId: process.env.DEFAULT_TEAM_ID,
+    };
+
+    geminiAnalyzer.analyzeScreenshot(result.filePath, analysisContext)
+      .then((analysisResult) => {
+        if (analysisResult.success) {
+          console.log('AI analysis successful:', analysisResult.title);
+          // Send AI results to renderer
+          mainWindow?.webContents.send('ai-analysis-ready', analysisResult);
+        } else {
+          console.log('AI analysis failed');
+          mainWindow?.webContents.send('ai-analysis-ready', { success: false });
+        }
+      })
+      .catch((error) => {
+        console.error('Gemini analysis error:', error);
+        mainWindow?.webContents.send('ai-analysis-ready', { success: false });
+      });
+  } else {
+    // No AI analyzer, send empty result
+    mainWindow?.webContents.send('ai-analysis-ready', { success: false });
+  }
 }
 
 /**

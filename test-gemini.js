@@ -1,112 +1,101 @@
+// Test Gemini analyzer independently
+require('dotenv').config({ path: '.env' });
+
 const { GoogleGenAI } = require('@google/genai');
 const fs = require('fs');
 const path = require('path');
 
-// Load .env
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+async function testGeminiAnalyzer() {
+  console.log('=== Gemini Analyzer Test ===\n');
 
-const apiKey = process.env.GEMINI_API_KEY;
-console.log('API Key:', apiKey ? `${apiKey.substring(0, 10)}...` : 'NOT SET');
-
-const client = new GoogleGenAI({ apiKey });
-
-async function listModels() {
-  console.log('\n=== Available Models ===');
-  try {
-    const models = await client.models.list();
-    for await (const model of models) {
-      if (model.name.includes('gemini')) {
-        console.log(`- ${model.name}`);
-        console.log(`  Display: ${model.displayName}`);
-        console.log(`  Methods: ${model.supportedGenerationMethods?.join(', ')}`);
-        console.log('');
-      }
-    }
-  } catch (error) {
-    console.error('Failed to list models:', error.message);
+  // Check API key
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.log('❌ GEMINI_API_KEY not set');
+    return;
   }
-}
+  console.log('✅ GEMINI_API_KEY found:', apiKey.substring(0, 10) + '...');
 
-async function testModel(modelName) {
-  console.log(`\n=== Testing Model: ${modelName} ===`);
-  try {
-    const response = await client.models.generateContent({
-      model: modelName,
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: 'Say "Hello" in one word.' }]
-        }
-      ]
-    });
-    console.log('✅ SUCCESS:', response.text);
-    return true;
-  } catch (error) {
-    console.log('❌ FAILED:', error.message.substring(0, 100));
-    return false;
+  // Create a simple test image (1x1 pixel PNG)
+  const testImagePath = '/tmp/test-screenshot.png';
+
+  // Check if we have a real screenshot to test with
+  const screenshotsDir = '/tmp';
+  const pngFiles = fs.readdirSync(screenshotsDir).filter(f => f.endsWith('.png'));
+
+  let imagePath = testImagePath;
+  if (pngFiles.length > 0) {
+    // Use a random existing PNG
+    imagePath = path.join(screenshotsDir, pngFiles[0]);
+    console.log('📷 Using existing image:', imagePath);
+  } else {
+    console.log('⚠️ No existing screenshots found, creating test image');
+    // Create minimal PNG
+    const minimalPNG = Buffer.from([
+      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+      0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+      0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+      0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+      0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,
+      0x54, 0x08, 0xD7, 0x63, 0xF8, 0xFF, 0xFF, 0x3F,
+      0x00, 0x05, 0xFE, 0x02, 0xFE, 0xDC, 0xCC, 0x59,
+      0xE7, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+      0x44, 0xAE, 0x42, 0x60, 0x82
+    ]);
+    fs.writeFileSync(testImagePath, minimalPNG);
   }
-}
-
-async function testVisionModel(modelName) {
-  console.log(`\n=== Testing Vision: ${modelName} ===`);
-
-  // Create a simple test image (1x1 red pixel PNG)
-  const testImageBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
 
   try {
+    const client = new GoogleGenAI({ apiKey });
+
+    const imgBytes = fs.readFileSync(imagePath);
+    const base64Data = imgBytes.toString('base64');
+    const ext = path.extname(imagePath).toLowerCase();
+    const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
+
+    console.log('\n📤 Sending request to Gemini...');
+    console.log('   Image size:', imgBytes.length, 'bytes');
+    console.log('   MIME type:', mimeType);
+
     const response = await client.models.generateContent({
-      model: modelName,
+      model: 'gemini-2.5-flash-lite',
       contents: [
         {
           role: 'user',
           parts: [
-            { text: 'What color is this image? Answer in one word.' },
+            {
+              text: 'Analyze this image and respond with JSON: {"title": "test", "description": "test"}'
+            },
             {
               inlineData: {
-                mimeType: 'image/png',
-                data: testImageBase64
+                mimeType,
+                data: base64Data
               }
             }
           ]
         }
       ]
     });
-    console.log('✅ VISION SUCCESS:', response.text);
-    return true;
+
+    console.log('\n📥 Response received:');
+    const text = response.text || '';
+    console.log('   Raw text:', text.substring(0, 500));
+
+    // Parse JSON
+    const cleanedText = text.replace(/\`\`\`json\n?/g, '').replace(/\`\`\`\n?/g, '').trim();
+    try {
+      const json = JSON.parse(cleanedText);
+      console.log('\n✅ Parsed JSON successfully:');
+      console.log('   Title:', json.title);
+      console.log('   Description:', json.description);
+    } catch (parseError) {
+      console.log('\n❌ JSON parse error:', parseError.message);
+      console.log('   Cleaned text:', cleanedText.substring(0, 200));
+    }
+
   } catch (error) {
-    console.log('❌ VISION FAILED:', error.message.substring(0, 150));
-    return false;
+    console.log('\n❌ Gemini API error:', error.message);
   }
 }
 
-async function main() {
-  // List available models
-  await listModels();
-
-  // Test various model names
-  const modelsToTest = [
-    'gemini-2.5-flash',
-    'gemini-2.5-pro',
-    'gemini-3-flash-preview',
-    'gemini-3-pro-preview',
-    'gemini-2.5-flash-lite',
-  ];
-
-  console.log('\n=== Testing Text Generation ===');
-  for (const model of modelsToTest) {
-    await testModel(model);
-  }
-
-  console.log('\n=== Testing Vision Capability ===');
-  const visionModels = [
-    'gemini-2.5-flash',
-    'gemini-3-flash-preview',
-    'gemini-2.5-flash-lite',
-  ];
-
-  for (const model of visionModels) {
-    await testVisionModel(model);
-  }
-}
-
-main().catch(console.error);
+testGeminiAnalyzer();
