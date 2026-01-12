@@ -50,44 +50,59 @@ DEFAULT_TEAM_ID=e108ae14-a354-4c09-86ac-6c1186bc6132
 
 1. `⌘+Shift+L` 또는 메뉴바 아이콘 클릭
 2. 화면 영역 드래그 선택
-3. R2에 이미지 자동 업로드 + Gemini Vision OCR 분석 (병렬)
-4. 이슈 생성 폼 표시 (AI가 제목/설명 자동 채움)
+3. R2에 이미지 자동 업로드 + Gemini Vision AI 분석 (병렬)
+4. 이슈 생성 폼 표시 (AI가 제목/설명/프로젝트/담당자/우선순위/포인트 자동 채움)
 5. 필요시 수정 후 "Create Issue" 클릭 → Linear 이슈 생성
 6. 이슈 URL 클립보드 복사 + macOS 알림
 
 ## 이슈 생성 폼 필드
 
-| 필드 | 필수 | 설명 |
-|------|------|------|
-| Title | ✅ | 이슈 제목 |
-| Description | | 이슈 설명 (마크다운 지원) |
-| Team | ✅ | 팀 선택 (Status, Cycle 드롭다운 연동) |
-| Project | | 프로젝트 선택 |
-| Status | | 워크플로우 상태 (팀별 필터링) |
-| Priority | | 우선순위 (Urgent/High/Medium/Low) |
-| Assignee | | 담당자 지정 |
-| Estimate | | 포인트 추정 (1/2/3/5/8) |
-| Cycle | | 스프린트/사이클 (팀별 필터링) |
+| 필드 | 필수 | AI 자동 | 설명 |
+|------|------|--------|------|
+| Title | ✅ | ✅ | 이슈 제목 |
+| Description | | ✅ | 이슈 설명 (마크다운 지원) |
+| Team | ✅ | | 팀 선택 (Status, Cycle 드롭다운 연동) |
+| Project | | ✅ | 프로젝트 선택 (planned/started만 표시) |
+| Status | | | 워크플로우 상태 (팀별 필터링) |
+| Priority | | ✅ | 우선순위 (Urgent/High/Medium/Low) |
+| Assignee | | ✅ | 담당자 지정 |
+| Estimate | | ✅ | 포인트 추정 (1/2/3/5/8) |
+| Cycle | | | 스프린트/사이클 (팀별 필터링) |
 
 ## 주요 IPC 채널
 
 | 채널 | 방향 | 설명 |
 |------|------|------|
-| `capture-ready` | main→renderer | 캡처 완료 후 데이터 전달 (filePath, imageUrl, teams, projects, users, states, cycles, suggestedTitle, suggestedDescription) |
+| `capture-ready` | main→renderer | 캡처 완료 후 데이터 전달 (filePath, imageUrl, teams, projects, users, states, cycles, suggestedTitle, suggestedDescription, suggestedProjectId, suggestedAssigneeId, suggestedPriority, suggestedEstimate) |
 | `create-issue` | renderer→main | 이슈 생성 요청 (title, description, teamId, projectId, stateId, priority, assigneeId, estimate, cycleId) |
 | `cancel` | renderer→main | 취소 요청 |
 
-## Gemini Vision OCR 기능
+## Gemini Vision AI 분석 기능
 
 **모델**: `gemini-2.5-flash-lite` (가장 빠르고 안정적)
 
-캡처된 스크린샷을 Gemini Vision API로 분석하여 이슈 제목과 설명을 자동 생성합니다.
+캡처된 스크린샷을 Gemini Vision API로 분석하여 이슈 정보를 자동 생성합니다.
+
+### AI 자동 추천 항목
+| 항목 | 설명 | 추론 기준 |
+|------|------|----------|
+| **제목** | 이슈 제목 (접두어 포함) | 스크린샷 내용 분석 |
+| **설명** | 마크다운 형식 설명 | 스크린샷 텍스트 추출 |
+| **프로젝트** | 관련 프로젝트 자동 선택 | 프로젝트 이름/설명과 스크린샷 내용 매칭 |
+| **담당자** | 담당자 자동 선택 | 스크린샷에 언급된 이름 매칭 |
+| **우선순위** | 1(긴급)~4(낮음) | 에러/장애=1, 버그=2, 일반=3, 개선=4 |
+| **포인트** | 1/2/3/5/8 | 작업 복잡도 추정 |
 
 ### 동작 방식
 1. 캡처 완료 후 R2 업로드와 Gemini 분석 병렬 실행
 2. 이미지를 base64로 인코딩하여 Gemini API에 전송
-3. JSON 형식으로 제목/설명 응답 파싱
-4. 폼에 자동 채움 (사용자가 수정 가능)
+3. 프로젝트 목록(이름+설명), 담당자 목록을 컨텍스트로 제공
+4. JSON 형식으로 제목/설명/메타데이터 응답 파싱
+5. 폼에 자동 채움 (사용자가 수정 가능)
+
+### 프로젝트 필터링
+- `planned` 또는 `started` 상태의 프로젝트만 조회
+- 프로젝트 설명(description)도 AI에 제공하여 매칭 정확도 향상
 
 ### 이슈 설명 템플릿
 

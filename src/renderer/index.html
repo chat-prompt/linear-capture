@@ -344,6 +344,24 @@
       form.style.display = 'block';
       loadingDiv.style.display = 'none';
 
+      // AI 추천값으로 드롭다운 자동 선택
+      if (data.suggestedProjectId) {
+        projectSelect.value = data.suggestedProjectId;
+        console.log('AI suggested project:', data.suggestedProjectId);
+      }
+      if (data.suggestedAssigneeId) {
+        assigneeSelect.value = data.suggestedAssigneeId;
+        console.log('AI suggested assignee:', data.suggestedAssigneeId);
+      }
+      if (data.suggestedPriority) {
+        prioritySelect.value = data.suggestedPriority.toString();
+        console.log('AI suggested priority:', data.suggestedPriority);
+      }
+      if (data.suggestedEstimate) {
+        estimateSelect.value = data.suggestedEstimate.toString();
+        console.log('AI suggested estimate:', data.suggestedEstimate);
+      }
+
       // Focus title input (select all if AI suggested)
       titleInput.focus();
       if (data.suggestedTitle) {

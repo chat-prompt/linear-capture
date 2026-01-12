@@ -7,7 +7,7 @@ import { createTray, destroyTray } from './tray';
 import { captureSelection, cleanupCapture } from '../services/capture';
 import { createR2UploaderFromEnv } from '../services/r2-uploader';
 import { createLinearServiceFromEnv, TeamInfo, ProjectInfo, UserInfo, WorkflowStateInfo, CycleInfo } from '../services/linear-client';
-import { createGeminiAnalyzer, GeminiAnalyzer, AnalysisResult } from '../services/gemini-analyzer';
+import { createGeminiAnalyzer, GeminiAnalyzer, AnalysisResult, AnalysisContext } from '../services/gemini-analyzer';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
@@ -81,6 +81,11 @@ function showCaptureWindow(filePath: string, imageUrl: string, analysis?: Analys
       defaultProjectId: process.env.DEFAULT_PROJECT_ID || '',
       suggestedTitle: analysis?.title || '',
       suggestedDescription: analysis?.description || '',
+      // AI 추천 메타데이터
+      suggestedProjectId: analysis?.suggestedProjectId || '',
+      suggestedAssigneeId: analysis?.suggestedAssigneeId || '',
+      suggestedPriority: analysis?.suggestedPriority || 0,
+      suggestedEstimate: analysis?.suggestedEstimate || 0,
     });
   };
 
@@ -127,8 +132,20 @@ async function handleCapture(): Promise<void> {
   console.log('Uploading to R2 and analyzing with Gemini...');
 
   const uploadPromise = r2.upload(result.filePath);
+
+  // Gemini에 컨텍스트 전달 (프로젝트, 사용자 목록)
+  const analysisContext: AnalysisContext = {
+    projects: projectsCache.map(p => ({
+      id: p.id,
+      name: p.name,
+      description: p.description
+    })),
+    users: usersCache.map(u => ({ id: u.id, name: u.name })),
+    defaultTeamId: process.env.DEFAULT_TEAM_ID,
+  };
+
   const analysisPromise = geminiAnalyzer
-    ? geminiAnalyzer.analyzeScreenshot(result.filePath)
+    ? geminiAnalyzer.analyzeScreenshot(result.filePath, analysisContext)
     : Promise.resolve({ title: '', description: '', success: false });
 
   const [uploadResult, analysisResult] = await Promise.all([

@@ -30,6 +30,8 @@ export interface TeamInfo {
 export interface ProjectInfo {
   id: string;
   name: string;
+  description?: string;
+  state?: string;  // planned/started/paused/completed/canceled
 }
 
 export interface UserInfo {
@@ -122,14 +124,20 @@ export class LinearService {
   }
 
   /**
-   * Get all projects
+   * Get active projects (planned/started only)
    */
   async getProjects(): Promise<ProjectInfo[]> {
     try {
-      const projects = await this.client.projects();
+      const projects = await this.client.projects({
+        filter: {
+          state: { in: ['planned', 'started'] }
+        }
+      });
       return projects.nodes.map((project: Project) => ({
         id: project.id,
         name: project.name,
+        description: project.description || undefined,
+        state: project.state,
       }));
     } catch (error) {
       console.error('Failed to fetch projects:', error);
