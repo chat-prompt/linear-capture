@@ -49,16 +49,30 @@ DEFAULT_TEAM_ID=e108ae14-a354-4c09-86ac-6c1186bc6132
 1. `⌘+Shift+L` 또는 메뉴바 아이콘 클릭
 2. 화면 영역 드래그 선택
 3. R2에 이미지 자동 업로드
-4. 이슈 생성 폼 표시 (제목, 설명, 팀, 프로젝트)
+4. 이슈 생성 폼 표시
 5. "Create Issue" 클릭 → Linear 이슈 생성
 6. 이슈 URL 클립보드 복사 + macOS 알림
+
+## 이슈 생성 폼 필드
+
+| 필드 | 필수 | 설명 |
+|------|------|------|
+| Title | ✅ | 이슈 제목 |
+| Description | | 이슈 설명 (마크다운 지원) |
+| Team | ✅ | 팀 선택 (Status, Cycle 드롭다운 연동) |
+| Project | | 프로젝트 선택 |
+| Status | | 워크플로우 상태 (팀별 필터링) |
+| Priority | | 우선순위 (Urgent/High/Medium/Low) |
+| Assignee | | 담당자 지정 |
+| Estimate | | 포인트 추정 (1/2/3/5/8) |
+| Cycle | | 스프린트/사이클 (팀별 필터링) |
 
 ## 주요 IPC 채널
 
 | 채널 | 방향 | 설명 |
 |------|------|------|
-| `capture-ready` | main→renderer | 캡처 완료 후 데이터 전달 (filePath, imageUrl, teams, projects) |
-| `create-issue` | renderer→main | 이슈 생성 요청 |
+| `capture-ready` | main→renderer | 캡처 완료 후 데이터 전달 (filePath, imageUrl, teams, projects, users, states, cycles) |
+| `create-issue` | renderer→main | 이슈 생성 요청 (title, description, teamId, projectId, stateId, priority, assigneeId, estimate, cycleId) |
 | `cancel` | renderer→main | 취소 요청 |
 
 ## 알려진 이슈

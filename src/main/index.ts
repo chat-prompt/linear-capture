@@ -6,7 +6,7 @@ import { registerHotkey, unregisterAllHotkeys } from './hotkey';
 import { createTray, destroyTray } from './tray';
 import { captureSelection, cleanupCapture } from '../services/capture';
 import { createR2UploaderFromEnv } from '../services/r2-uploader';
-import { createLinearServiceFromEnv, TeamInfo, ProjectInfo } from '../services/linear-client';
+import { createLinearServiceFromEnv, TeamInfo, ProjectInfo, UserInfo, WorkflowStateInfo, CycleInfo } from '../services/linear-client';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
@@ -15,17 +15,20 @@ let mainWindow: BrowserWindow | null = null;
 let capturedFilePath: string | null = null;
 let uploadedImageUrl: string | null = null;
 
-// Cache for teams and projects
+// Cache for teams, projects, users, states, cycles
 let teamsCache: TeamInfo[] = [];
 let projectsCache: ProjectInfo[] = [];
+let usersCache: UserInfo[] = [];
+let statesCache: WorkflowStateInfo[] = [];
+let cyclesCache: CycleInfo[] = [];
 
 /**
  * Create the issue creation window
  */
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 500,
-    height: 520,
+    width: 520,
+    height: 680,
     show: false,
     frame: true,
     resizable: false,
@@ -67,6 +70,9 @@ function showCaptureWindow(filePath: string, imageUrl: string): void {
       imageUrl,
       teams: teamsCache,
       projects: projectsCache,
+      users: usersCache,
+      states: statesCache,
+      cycles: cyclesCache,
       defaultTeamId: process.env.DEFAULT_TEAM_ID || '',
       defaultProjectId: process.env.DEFAULT_PROJECT_ID || '',
     });
@@ -134,7 +140,7 @@ function showNotification(title: string, body: string): void {
 }
 
 /**
- * Load teams and projects cache
+ * Load teams, projects, users, states, and cycles cache
  */
 async function loadLinearData(): Promise<void> {
   const linear = createLinearServiceFromEnv();
@@ -144,9 +150,22 @@ async function loadLinearData(): Promise<void> {
   }
 
   try {
-    teamsCache = await linear.getTeams();
-    projectsCache = await linear.getProjects();
-    console.log(`Loaded ${teamsCache.length} teams, ${projectsCache.length} projects`);
+    // Load all data in parallel for faster startup
+    const [teams, projects, users, states, cycles] = await Promise.all([
+      linear.getTeams(),
+      linear.getProjects(),
+      linear.getUsers(),
+      linear.getWorkflowStates(),
+      linear.getCycles(),
+    ]);
+
+    teamsCache = teams;
+    projectsCache = projects;
+    usersCache = users;
+    statesCache = states;
+    cyclesCache = cycles;
+
+    console.log(`Loaded: ${teamsCache.length} teams, ${projectsCache.length} projects, ${usersCache.length} users, ${statesCache.length} states, ${cyclesCache.length} cycles`);
   } catch (error) {
     console.error('Failed to load Linear data:', error);
   }
@@ -155,7 +174,17 @@ async function loadLinearData(): Promise<void> {
 // App lifecycle
 app.whenReady().then(async () => {
   // Register IPC handlers
-  ipcMain.handle('create-issue', async (_event, data: { title: string; description: string; teamId: string; projectId?: string }) => {
+  ipcMain.handle('create-issue', async (_event, data: {
+    title: string;
+    description: string;
+    teamId: string;
+    projectId?: string;
+    stateId?: string;
+    priority?: number;
+    assigneeId?: string;
+    estimate?: number;
+    cycleId?: string;
+  }) => {
     const linear = createLinearServiceFromEnv();
     if (!linear) {
       return { success: false, error: 'Linear not configured' };
@@ -166,6 +195,11 @@ app.whenReady().then(async () => {
       description: data.description,
       teamId: data.teamId,
       projectId: data.projectId,
+      stateId: data.stateId,
+      priority: data.priority,
+      assigneeId: data.assigneeId,
+      estimate: data.estimate,
+      cycleId: data.cycleId,
       imageUrl: uploadedImageUrl || undefined,
     });
 

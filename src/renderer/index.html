@@ -177,6 +177,54 @@
         </div>
       </div>
 
+      <div class="row">
+        <div class="form-group">
+          <label for="status">Status</label>
+          <select id="status" name="status">
+            <option value="">Default</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="priority">Priority</label>
+          <select id="priority" name="priority">
+            <option value="">No priority</option>
+            <option value="1">🔴 Urgent</option>
+            <option value="2">🟠 High</option>
+            <option value="3">🟡 Medium</option>
+            <option value="4">🟢 Low</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="form-group">
+          <label for="assignee">Assignee</label>
+          <select id="assignee" name="assignee">
+            <option value="">Unassigned</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="estimate">Estimate</label>
+          <select id="estimate" name="estimate">
+            <option value="">None</option>
+            <option value="1">1 point</option>
+            <option value="2">2 points</option>
+            <option value="3">3 points</option>
+            <option value="5">5 points</option>
+            <option value="8">8 points</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="cycle">Cycle</label>
+        <select id="cycle" name="cycle">
+          <option value="">None</option>
+        </select>
+      </div>
+
       <div id="error" class="error"></div>
 
       <div class="buttons">
@@ -197,16 +245,52 @@
     const descInput = document.getElementById('description');
     const teamSelect = document.getElementById('team');
     const projectSelect = document.getElementById('project');
+    const statusSelect = document.getElementById('status');
+    const prioritySelect = document.getElementById('priority');
+    const assigneeSelect = document.getElementById('assignee');
+    const estimateSelect = document.getElementById('estimate');
+    const cycleSelect = document.getElementById('cycle');
     const cancelBtn = document.getElementById('cancelBtn');
     const submitBtn = document.getElementById('submitBtn');
     const errorDiv = document.getElementById('error');
     const loadingDiv = document.getElementById('loading');
 
     let imageUrl = '';
+    let allStates = [];
+    let allCycles = [];
+
+    // Update status and cycle dropdowns based on selected team
+    function updateTeamDependentDropdowns(teamId) {
+      // Update status dropdown
+      statusSelect.innerHTML = '<option value="">Default</option>';
+      allStates
+        .filter(state => state.teamId === teamId)
+        .forEach(state => {
+          const option = document.createElement('option');
+          option.value = state.id;
+          option.textContent = state.name;
+          statusSelect.appendChild(option);
+        });
+
+      // Update cycle dropdown
+      cycleSelect.innerHTML = '<option value="">None</option>';
+      allCycles
+        .filter(cycle => cycle.teamId === teamId)
+        .forEach(cycle => {
+          const option = document.createElement('option');
+          option.value = cycle.id;
+          option.textContent = cycle.name;
+          cycleSelect.appendChild(option);
+        });
+    }
 
     // Receive capture data from main process
     ipcRenderer.on('capture-ready', (event, data) => {
       console.log('Capture ready:', data);
+
+      // Store states and cycles for team filtering
+      allStates = data.states || [];
+      allCycles = data.cycles || [];
 
       // Show preview
       preview.src = `file://${data.filePath}`;
@@ -236,9 +320,25 @@
         projectSelect.appendChild(option);
       });
 
+      // Populate assignees
+      assigneeSelect.innerHTML = '<option value="">Unassigned</option>';
+      (data.users || []).forEach(user => {
+        const option = document.createElement('option');
+        option.value = user.id;
+        option.textContent = user.name;
+        assigneeSelect.appendChild(option);
+      });
+
+      // Initialize team-dependent dropdowns
+      if (data.defaultTeamId) {
+        updateTeamDependentDropdowns(data.defaultTeamId);
+      }
+
       // Reset form state
       titleInput.value = '';
       descInput.value = '';
+      prioritySelect.value = '';
+      estimateSelect.value = '';
       errorDiv.textContent = '';
       submitBtn.disabled = false;
       form.style.display = 'block';
@@ -246,6 +346,11 @@
 
       // Focus title input
       titleInput.focus();
+    });
+
+    // Update dropdowns when team changes
+    teamSelect.addEventListener('change', () => {
+      updateTeamDependentDropdowns(teamSelect.value);
     });
 
     // Handle form submission
@@ -256,6 +361,11 @@
       const description = descInput.value.trim();
       const teamId = teamSelect.value;
       const projectId = projectSelect.value;
+      const stateId = statusSelect.value;
+      const priority = prioritySelect.value;
+      const assigneeId = assigneeSelect.value;
+      const estimate = estimateSelect.value;
+      const cycleId = cycleSelect.value;
 
       if (!title) {
         errorDiv.textContent = 'Title is required';
@@ -278,6 +388,11 @@
           description,
           teamId,
           projectId: projectId || undefined,
+          stateId: stateId || undefined,
+          priority: priority ? parseInt(priority, 10) : undefined,
+          assigneeId: assigneeId || undefined,
+          estimate: estimate ? parseInt(estimate, 10) : undefined,
+          cycleId: cycleId || undefined,
         });
 
         if (!result.success) {

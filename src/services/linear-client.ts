@@ -1,4 +1,4 @@
-import { LinearClient, Team, Project } from '@linear/sdk';
+import { LinearClient, Team, Project, User, WorkflowState, Cycle } from '@linear/sdk';
 
 export interface CreateIssueParams {
   title: string;
@@ -6,6 +6,11 @@ export interface CreateIssueParams {
   teamId: string;
   projectId?: string;
   imageUrl?: string;
+  stateId?: string;
+  priority?: number;
+  assigneeId?: string;
+  estimate?: number;
+  cycleId?: string;
 }
 
 export interface CreateIssueResult {
@@ -25,6 +30,30 @@ export interface TeamInfo {
 export interface ProjectInfo {
   id: string;
   name: string;
+}
+
+export interface UserInfo {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl?: string;
+}
+
+export interface WorkflowStateInfo {
+  id: string;
+  name: string;
+  type: string;
+  color: string;
+  teamId: string;
+}
+
+export interface CycleInfo {
+  id: string;
+  name: string;
+  number: number;
+  startsAt: string;
+  endsAt: string;
+  teamId: string;
 }
 
 export class LinearService {
@@ -51,6 +80,11 @@ export class LinearService {
         description: description || undefined,
         teamId: params.teamId,
         projectId: params.projectId || undefined,
+        stateId: params.stateId || undefined,
+        priority: params.priority,
+        assigneeId: params.assigneeId || undefined,
+        estimate: params.estimate,
+        cycleId: params.cycleId || undefined,
       });
 
       const issue = await issuePayload.issue;
@@ -99,6 +133,77 @@ export class LinearService {
       }));
     } catch (error) {
       console.error('Failed to fetch projects:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get all users in the organization
+   */
+  async getUsers(): Promise<UserInfo[]> {
+    try {
+      const users = await this.client.users();
+      return users.nodes.map((user: User) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl || undefined,
+      }));
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get workflow states for all teams
+   */
+  async getWorkflowStates(): Promise<WorkflowStateInfo[]> {
+    try {
+      const states = await this.client.workflowStates();
+      const result: WorkflowStateInfo[] = [];
+      for (const state of states.nodes) {
+        const team = await state.team;
+        result.push({
+          id: state.id,
+          name: state.name,
+          type: state.type,
+          color: state.color,
+          teamId: team?.id || '',
+        });
+      }
+      return result;
+    } catch (error) {
+      console.error('Failed to fetch workflow states:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get active and upcoming cycles
+   */
+  async getCycles(): Promise<CycleInfo[]> {
+    try {
+      const cycles = await this.client.cycles({
+        filter: {
+          isPast: { eq: false },
+        },
+      });
+      const result: CycleInfo[] = [];
+      for (const cycle of cycles.nodes) {
+        const team = await cycle.team;
+        result.push({
+          id: cycle.id,
+          name: cycle.name || `Cycle ${cycle.number}`,
+          number: cycle.number,
+          startsAt: cycle.startsAt?.toISOString() || '',
+          endsAt: cycle.endsAt?.toISOString() || '',
+          teamId: team?.id || '',
+        });
+      }
+      return result;
+    } catch (error) {
+      console.error('Failed to fetch cycles:', error);
       return [];
     }
   }
