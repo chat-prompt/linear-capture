@@ -334,9 +334,9 @@
         updateTeamDependentDropdowns(data.defaultTeamId);
       }
 
-      // Reset form state
-      titleInput.value = '';
-      descInput.value = '';
+      // Reset form state and apply AI suggestions if available
+      titleInput.value = data.suggestedTitle || '';
+      descInput.value = data.suggestedDescription || '';
       prioritySelect.value = '';
       estimateSelect.value = '';
       errorDiv.textContent = '';
@@ -344,8 +344,11 @@
       form.style.display = 'block';
       loadingDiv.style.display = 'none';
 
-      // Focus title input
+      // Focus title input (select all if AI suggested)
       titleInput.focus();
+      if (data.suggestedTitle) {
+        titleInput.select();
+      }
     });
 
     // Update dropdowns when team changes

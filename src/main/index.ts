@@ -7,6 +7,7 @@ import { createTray, destroyTray } from './tray';
 import { captureSelection, cleanupCapture } from '../services/capture';
 import { createR2UploaderFromEnv } from '../services/r2-uploader';
 import { createLinearServiceFromEnv, TeamInfo, ProjectInfo, UserInfo, WorkflowStateInfo, CycleInfo } from '../services/linear-client';
+import { createGeminiAnalyzer, GeminiAnalyzer, AnalysisResult } from '../services/gemini-analyzer';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
@@ -21,6 +22,9 @@ let projectsCache: ProjectInfo[] = [];
 let usersCache: UserInfo[] = [];
 let statesCache: WorkflowStateInfo[] = [];
 let cyclesCache: CycleInfo[] = [];
+
+// Gemini analyzer instance
+let geminiAnalyzer: GeminiAnalyzer | null = null;
 
 /**
  * Create the issue creation window
@@ -55,7 +59,7 @@ function createWindow(): void {
 /**
  * Show the issue creation window with captured image
  */
-function showCaptureWindow(filePath: string, imageUrl: string): void {
+function showCaptureWindow(filePath: string, imageUrl: string, analysis?: AnalysisResult): void {
   capturedFilePath = filePath;
   uploadedImageUrl = imageUrl;
 
@@ -75,6 +79,8 @@ function showCaptureWindow(filePath: string, imageUrl: string): void {
       cycles: cyclesCache,
       defaultTeamId: process.env.DEFAULT_TEAM_ID || '',
       defaultProjectId: process.env.DEFAULT_PROJECT_ID || '',
+      suggestedTitle: analysis?.title || '',
+      suggestedDescription: analysis?.description || '',
     });
   };
 
@@ -117,8 +123,21 @@ async function handleCapture(): Promise<void> {
     return;
   }
 
-  console.log('Uploading to R2...');
-  const uploadResult = await r2.upload(result.filePath);
+  // Start upload and AI analysis in parallel
+  console.log('Uploading to R2 and analyzing with Gemini...');
+
+  const uploadPromise = r2.upload(result.filePath);
+  const analysisPromise = geminiAnalyzer
+    ? geminiAnalyzer.analyzeScreenshot(result.filePath)
+    : Promise.resolve({ title: '', description: '', success: false });
+
+  const [uploadResult, analysisResult] = await Promise.all([
+    uploadPromise,
+    analysisPromise.catch((error) => {
+      console.error('Gemini analysis error:', error);
+      return { title: '', description: '', success: false };
+    }),
+  ]);
 
   if (!uploadResult.success || !uploadResult.url) {
     showNotification('Upload Failed', uploadResult.error || 'Unknown error');
@@ -127,9 +146,14 @@ async function handleCapture(): Promise<void> {
   }
 
   console.log('Upload successful:', uploadResult.url);
+  if (analysisResult.success) {
+    console.log('AI analysis successful:', analysisResult.title);
+  } else {
+    console.log('AI analysis skipped or failed');
+  }
 
-  // Show window with capture
-  showCaptureWindow(result.filePath, uploadResult.url);
+  // Show window with capture and AI suggestions
+  showCaptureWindow(result.filePath, uploadResult.url, analysisResult);
 }
 
 /**
@@ -230,6 +254,12 @@ app.whenReady().then(async () => {
     uploadedImageUrl = null;
     mainWindow?.hide();
   });
+
+  // Initialize Gemini analyzer
+  geminiAnalyzer = createGeminiAnalyzer();
+  if (geminiAnalyzer) {
+    console.log('Gemini AI analysis enabled');
+  }
 
   // Load Linear data first
   await loadLinearData();

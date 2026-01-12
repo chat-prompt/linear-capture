@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.470.0",
+    "@google/genai": "^1.35.0",
     "@linear/sdk": "^38.0.0",
     "dotenv": "^16.3.1",
     "electron-store": "^8.1.0"
