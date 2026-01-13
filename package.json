@@ -27,13 +27,14 @@
     ],
     "mac": {
       "category": "public.app-category.productivity",
+      "icon": "assets/icon.icns",
       "target": [
         {
           "target": "dmg",
           "arch": ["universal"]
         }
       ],
-            "hardenedRuntime": false,
+      "hardenedRuntime": false,
       "gatekeeperAssess": false
     },
     "dmg": {

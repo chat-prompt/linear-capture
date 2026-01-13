@@ -1,7 +1,15 @@
 import { exec } from 'child_process';
+import { systemPreferences } from 'electron';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
+
+/**
+ * Check screen capture permission status on macOS
+ */
+export function checkScreenCapturePermission(): string {
+  return systemPreferences.getMediaAccessStatus('screen');
+}
 
 export interface CaptureResult {
   success: boolean;

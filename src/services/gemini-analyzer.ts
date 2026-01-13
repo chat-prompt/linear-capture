@@ -37,24 +37,19 @@ export class GeminiAnalyzer {
   }
 
   async analyzeScreenshot(imagePath: string, context?: AnalysisContext): Promise<AnalysisResult> {
-    let lastError: Error | null = null;
-
     for (let attempt = 0; attempt < this.maxRetries; attempt++) {
       try {
         if (attempt > 0) {
           const delay = this.baseDelay * Math.pow(2, attempt - 1);
-          console.log(`Retry attempt ${attempt + 1}/${this.maxRetries} after ${delay}ms...`);
           await this.sleep(delay);
         }
 
         return await this.doAnalysis(imagePath, context);
       } catch (error: unknown) {
-        lastError = error as Error;
         const err = error as { status?: number };
 
         // Rate limit (429) 또는 서버 에러 (5xx)면 재시도
         if (err.status === 429 || (err.status && err.status >= 500)) {
-          console.warn(`API error (status: ${err.status}), will retry...`);
           continue;
         }
 
@@ -63,7 +58,6 @@ export class GeminiAnalyzer {
       }
     }
 
-    console.error('All retry attempts failed:', lastError);
     return {
       title: '',
       description: '',

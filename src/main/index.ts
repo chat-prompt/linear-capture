@@ -1,10 +1,11 @@
-import { app, BrowserWindow, ipcMain, clipboard, Notification } from 'electron';
+import { app, BrowserWindow, ipcMain, clipboard, Notification, shell } from 'electron';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
+import Store from 'electron-store';
 
 import { registerHotkey, unregisterAllHotkeys } from './hotkey';
 import { createTray, destroyTray } from './tray';
-import { captureSelection, cleanupCapture } from '../services/capture';
+import { captureSelection, cleanupCapture, checkScreenCapturePermission } from '../services/capture';
 import { createR2UploaderFromEnv } from '../services/r2-uploader';
 import { createLinearServiceFromEnv, TeamInfo, ProjectInfo, UserInfo, WorkflowStateInfo, CycleInfo } from '../services/linear-client';
 import { createGeminiAnalyzer, GeminiAnalyzer, AnalysisResult, AnalysisContext } from '../services/gemini-analyzer';
@@ -14,8 +15,12 @@ import { createAnthropicAnalyzer, AnthropicAnalyzer } from '../services/anthropi
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 let mainWindow: BrowserWindow | null = null;
+let onboardingWindow: BrowserWindow | null = null;
 let capturedFilePath: string | null = null;
 let uploadedImageUrl: string | null = null;
+
+// App settings store
+const store = new Store();
 
 // Cache for teams, projects, users, states, cycles
 let teamsCache: TeamInfo[] = [];
@@ -27,6 +32,57 @@ let cyclesCache: CycleInfo[] = [];
 // AI analyzer instance (Anthropic or Gemini)
 let geminiAnalyzer: GeminiAnalyzer | null = null;
 let anthropicAnalyzer: AnthropicAnalyzer | null = null;
+
+/**
+ * Open screen capture permission settings
+ */
+function openScreenCaptureSettings(): void {
+  shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture');
+}
+
+/**
+ * Show permission required notification
+ */
+function showPermissionNotification(): void {
+  const notification = new Notification({
+    title: '화면 녹화 권한 필요',
+    body: '클릭하여 시스템 환경설정을 엽니다',
+  });
+
+  notification.on('click', () => {
+    openScreenCaptureSettings();
+  });
+
+  notification.show();
+}
+
+/**
+ * Create the onboarding window (shown on first launch)
+ */
+function createOnboardingWindow(): void {
+  onboardingWindow = new BrowserWindow({
+    width: 380,
+    height: 414,
+    show: false,
+    frame: false,
+    resizable: false,
+    alwaysOnTop: false,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+  });
+
+  onboardingWindow.loadFile(path.join(__dirname, '../renderer/onboarding.html'));
+
+  onboardingWindow.once('ready-to-show', () => {
+    onboardingWindow?.show();
+  });
+
+  onboardingWindow.on('closed', () => {
+    onboardingWindow = null;
+  });
+}
 
 /**
  * Create the issue creation window
@@ -121,8 +177,14 @@ function showCaptureWindow(filePath: string, imageUrl: string, analysis?: Analys
  * Handle screen capture flow
  */
 async function handleCapture(): Promise<void> {
-  const captureStartTime = Date.now();
-  console.log('Starting capture...');
+  try {
+    // Check screen capture permission first
+    const permission = checkScreenCapturePermission();
+    if (permission !== 'granted') {
+      showPermissionNotification();
+    }
+
+    const captureStartTime = Date.now();
 
   // Hide window if visible during capture
   mainWindow?.minimize();
@@ -164,20 +226,42 @@ async function handleCapture(): Promise<void> {
 
   const uploadPromise = r2.upload(result.filePath);
 
-  // Use Gemini if available, otherwise Anthropic
-  const analyzer = geminiAnalyzer || anthropicAnalyzer;
-  const analysisPromise = analyzer
-    ? analyzer.analyzeScreenshot(result.filePath, analysisContext)
-    : Promise.resolve({ title: '', description: '', success: false });
+  // Use Gemini if available, otherwise Anthropic (with fallback)
+  const capturedFilePath = result.filePath;
+  const analysisPromise = (async () => {
+    // Try Gemini first
+    if (geminiAnalyzer) {
+      try {
+        const geminiResult = await geminiAnalyzer.analyzeScreenshot(capturedFilePath, analysisContext);
+        if (geminiResult.success) return geminiResult;
+        // Gemini returned success: false, fallback to Anthropic
+        console.log('Gemini returned no result, falling back to Anthropic...');
+      } catch (error: any) {
+        console.error('Gemini analysis failed:', error?.message || error);
+      }
+      // Fallback to Anthropic (both after exception and success: false)
+      if (anthropicAnalyzer) {
+        try {
+          return await anthropicAnalyzer.analyzeScreenshot(capturedFilePath, analysisContext);
+        } catch (fallbackError: any) {
+          console.error('Anthropic fallback also failed:', fallbackError?.message);
+        }
+      }
+    } else if (anthropicAnalyzer) {
+      // Only Anthropic available
+      try {
+        return await anthropicAnalyzer.analyzeScreenshot(capturedFilePath, analysisContext);
+      } catch (error: any) {
+        console.error('Anthropic analysis failed:', error?.message || error);
+      }
+    }
+    return { title: '', description: '', success: false };
+  })();
 
   // Wait for both to complete
   const [uploadResult, analysisResult] = await Promise.all([
     uploadPromise,
-    analysisPromise.catch((error) => {
-      console.error('Gemini analysis error:', error?.message || error);
-      console.error('Full error:', JSON.stringify(error, null, 2));
-      return { title: '', description: '', success: false };
-    })
+    analysisPromise
   ]);
 
   const uploadEndTime = Date.now();
@@ -196,11 +280,12 @@ async function handleCapture(): Promise<void> {
 
   // Send AI results to renderer
   if (analysisResult.success) {
-    console.log('AI analysis successful:', analysisResult.title);
     mainWindow?.webContents.send('ai-analysis-ready', analysisResult);
   } else {
-    console.log('AI analysis failed or disabled');
     mainWindow?.webContents.send('ai-analysis-ready', { success: false });
+  }
+  } catch (error) {
+    console.error('handleCapture error:', error);
   }
 }
 
@@ -247,6 +332,27 @@ async function loadLinearData(): Promise<void> {
 app.whenReady().then(async () => {
   // Dock에 아이콘 표시 (Alt+Tab에 보이게)
   app.dock?.show();
+
+  // Check if first launch and show onboarding
+  const hasLaunched = store.get('hasLaunched', false);
+  if (!hasLaunched) {
+    store.set('hasLaunched', true);
+    createOnboardingWindow();
+  }
+
+  // IPC handlers for onboarding window
+  ipcMain.on('open-screen-capture-settings', async () => {
+    // 먼저 캡처를 한 번 시도해야 macOS 권한 목록에 앱이 나타남
+    console.log('Triggering capture to register in permission list...');
+    await captureSelection();
+    // 그 다음 시스템 환경설정 열기
+    openScreenCaptureSettings();
+  });
+
+  ipcMain.on('close-onboarding', () => {
+    onboardingWindow?.close();
+  });
+
   // Register IPC handlers
   ipcMain.handle('create-issue', async (_event, data: {
     title: string;
@@ -359,11 +465,12 @@ app.whenReady().then(async () => {
   geminiAnalyzer = createGeminiAnalyzer();
   if (geminiAnalyzer) {
     console.log('Gemini AI analysis enabled (default)');
-  } else {
-    anthropicAnalyzer = createAnthropicAnalyzer();
-    if (anthropicAnalyzer) {
-      console.log('Anthropic AI analysis enabled (Haiku)');
-    }
+  }
+
+  // Also initialize Anthropic as fallback
+  anthropicAnalyzer = createAnthropicAnalyzer();
+  if (anthropicAnalyzer) {
+    console.log('Anthropic AI analysis enabled (fallback)');
   }
 
   // Load Linear data first
