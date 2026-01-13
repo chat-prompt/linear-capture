@@ -33,12 +33,12 @@ let anthropicAnalyzer: AnthropicAnalyzer | null = null;
  */
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 520,
-    height: 680,
+    width: 728,
+    height: 720,
     show: false,
     frame: true,
     resizable: false,
-    alwaysOnTop: true,
+    alwaysOnTop: false,  // 기본값은 false, 단축키로 열 때만 일시적으로 최상위
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -106,8 +106,15 @@ function showCaptureWindow(filePath: string, imageUrl: string, analysis?: Analys
     sendCaptureData();
   }
 
+  // 창을 열 때 일시적으로 최상위로 올린 후, 포커스 후 해제
+  mainWindow?.setAlwaysOnTop(true);
   mainWindow?.show();
   mainWindow?.focus();
+
+  // 잠시 후 alwaysOnTop 해제 → 일반 창처럼 동작
+  setTimeout(() => {
+    mainWindow?.setAlwaysOnTop(false);
+  }, 100);
 }
 
 /**
@@ -118,7 +125,7 @@ async function handleCapture(): Promise<void> {
   console.log('Starting capture...');
 
   // Hide window if visible during capture
-  mainWindow?.hide();
+  mainWindow?.minimize();
 
   const result = await captureSelection();
 
@@ -157,8 +164,8 @@ async function handleCapture(): Promise<void> {
 
   const uploadPromise = r2.upload(result.filePath);
 
-  // Use Anthropic if available, otherwise Gemini
-  const analyzer = anthropicAnalyzer || geminiAnalyzer;
+  // Use Gemini if available, otherwise Anthropic
+  const analyzer = geminiAnalyzer || anthropicAnalyzer;
   const analysisPromise = analyzer
     ? analyzer.analyzeScreenshot(result.filePath, analysisContext)
     : Promise.resolve({ title: '', description: '', success: false });
@@ -238,6 +245,8 @@ async function loadLinearData(): Promise<void> {
 
 // App lifecycle
 app.whenReady().then(async () => {
+  // Dock에 아이콘 표시 (Alt+Tab에 보이게)
+  app.dock?.show();
   // Register IPC handlers
   ipcMain.handle('create-issue', async (_event, data: {
     title: string;
@@ -281,7 +290,7 @@ app.whenReady().then(async () => {
       uploadedImageUrl = null;
 
       // Close window
-      mainWindow?.hide();
+      mainWindow?.minimize();
     }
 
     return result;
@@ -293,7 +302,7 @@ app.whenReady().then(async () => {
       capturedFilePath = null;
     }
     uploadedImageUrl = null;
-    mainWindow?.hide();
+    mainWindow?.minimize();
   });
 
   // Handle re-analyze request with specific model
@@ -346,14 +355,14 @@ app.whenReady().then(async () => {
     }
   });
 
-  // Initialize AI analyzer (prefer Anthropic, fallback to Gemini)
-  anthropicAnalyzer = createAnthropicAnalyzer();
-  if (anthropicAnalyzer) {
-    console.log('Anthropic AI analysis enabled (Haiku)');
+  // Initialize AI analyzer (prefer Gemini, fallback to Anthropic)
+  geminiAnalyzer = createGeminiAnalyzer();
+  if (geminiAnalyzer) {
+    console.log('Gemini AI analysis enabled (default)');
   } else {
-    geminiAnalyzer = createGeminiAnalyzer();
-    if (geminiAnalyzer) {
-      console.log('Gemini AI analysis enabled');
+    anthropicAnalyzer = createAnthropicAnalyzer();
+    if (anthropicAnalyzer) {
+      console.log('Anthropic AI analysis enabled (Haiku)');
     }
   }
 
