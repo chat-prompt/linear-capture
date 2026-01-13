@@ -271,9 +271,22 @@
 
     <img id="preview" class="preview" src="" alt="Screenshot preview" />
 
+    <div class="row" style="margin-bottom: 14px;">
+      <div class="form-group" style="flex: 2;">
+        <label for="aiModel">AI Model</label>
+        <select id="aiModel" name="aiModel">
+          <option value="haiku">Claude Haiku 4.5 (빠름)</option>
+          <option value="gemini">Gemini 3 Flash (고품질)</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex: 1; display: flex; align-items: flex-end;">
+        <button type="button" id="reanalyzeBtn" class="btn-submit" style="width: 100%; padding: 10px;">재분석</button>
+      </div>
+    </div>
+
     <div id="aiLoading" class="ai-loading">
       <div class="spinner"></div>
-      <span>AI가 스크린샷을 분석 중...</span>
+      <span id="aiLoadingText">AI가 스크린샷을 분석 중...</span>
     </div>
 
     <form id="issueForm">
@@ -390,6 +403,11 @@
     const errorDiv = document.getElementById('error');
     const loadingDiv = document.getElementById('loading');
     const aiLoadingDiv = document.getElementById('aiLoading');
+    const aiLoadingText = document.getElementById('aiLoadingText');
+    const aiModelSelect = document.getElementById('aiModel');
+    const reanalyzeBtn = document.getElementById('reanalyzeBtn');
+
+    let currentFilePath = '';
 
     // Searchable select elements
     const projectTrigger = document.getElementById('projectTrigger');
@@ -626,6 +644,7 @@
       // Show preview
       preview.src = `file://${data.filePath}`;
       imageUrl = data.imageUrl;
+      currentFilePath = data.filePath;
 
       // Populate teams
       teamSelect.innerHTML = '<option value="">Select team...</option>';
@@ -706,6 +725,7 @@
 
       // Hide AI loading spinner
       aiLoadingDiv.classList.add('hidden');
+      reanalyzeBtn.disabled = false;
 
       if (!data.success) {
         console.log('AI analysis failed or skipped');
@@ -811,6 +831,30 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         ipcRenderer.invoke('cancel');
+      }
+    });
+
+    // Handle re-analyze button
+    reanalyzeBtn.addEventListener('click', async () => {
+      if (!currentFilePath) return;
+
+      const model = aiModelSelect.value;
+      const modelName = model === 'haiku' ? 'Claude Haiku 4.5' : 'Gemini 3 Flash';
+
+      // Show loading
+      aiLoadingText.textContent = `${modelName}로 재분석 중...`;
+      aiLoadingDiv.classList.remove('hidden');
+      reanalyzeBtn.disabled = true;
+
+      try {
+        await ipcRenderer.invoke('reanalyze', {
+          filePath: currentFilePath,
+          model: model
+        });
+      } catch (err) {
+        console.error('Reanalyze error:', err);
+        aiLoadingDiv.classList.add('hidden');
+        reanalyzeBtn.disabled = false;
       }
     });
   </script>
