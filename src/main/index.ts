@@ -607,8 +607,32 @@ app.whenReady().then(async () => {
   // Register global hotkey
   registerHotkey(handleCapture);
 
-  // Create window (hidden)
+  // Create and show main window immediately
   createWindow();
+
+  // Show main window when ready (with Linear data or settings prompt)
+  if (mainWindow) {
+    mainWindow.once('ready-to-show', () => {
+      mainWindow?.show();
+
+      // Send initial data to renderer
+      mainWindow?.webContents.send('app-ready', {
+        teams: teamsCache,
+        projects: projectsCache,
+        users: usersCache,
+        states: statesCache,
+        cycles: cyclesCache,
+        defaultTeamId: process.env.DEFAULT_TEAM_ID || '',
+        defaultProjectId: process.env.DEFAULT_PROJECT_ID || '',
+        hasToken: hasToken(),
+      });
+
+      // If no token, open settings
+      if (!hasToken()) {
+        createSettingsWindow();
+      }
+    });
+  }
 
   console.log('Linear Capture ready! Press ⌘+Shift+L to capture.');
 });

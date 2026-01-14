@@ -650,6 +650,87 @@
       updateEstimateDropdown(teamId);
     }
 
+    // Receive app ready event (when app starts without capture)
+    ipcRenderer.on('app-ready', (event, data) => {
+      console.log('App ready:', data);
+
+      // Store teams, states, cycles, projects, users for filtering
+      allTeams = data.teams || [];
+      allStates = data.states || [];
+      allCycles = data.cycles || [];
+      allProjects = data.projects || [];
+      allUsers = data.users || [];
+
+      // Hide preview since no capture yet
+      preview.style.display = 'none';
+
+      // Hide AI model selector and reanalyze button (no image to analyze)
+      aiModelSelect.parentElement.style.display = 'none';
+      reanalyzeBtn.style.display = 'none';
+      aiLoadingDiv.classList.add('hidden');
+
+      // Populate teams
+      teamSelect.innerHTML = '<option value="">Select team...</option>';
+      data.teams.forEach(team => {
+        const option = document.createElement('option');
+        option.value = team.id;
+        option.textContent = `${team.name} (${team.key})`;
+        if (team.id === data.defaultTeamId) {
+          option.selected = true;
+        }
+        teamSelect.appendChild(option);
+      });
+
+      // Initialize searchable project dropdown
+      projectSearchable = createSearchableSelect({
+        trigger: projectTrigger,
+        dropdown: projectDropdown,
+        searchInput: projectSearch,
+        optionsContainer: projectOptions,
+        hiddenInput: projectInput,
+        items: allProjects,
+        defaultLabel: 'None',
+        getValue: (p) => p.id,
+        getLabel: (p) => p.name
+      });
+      projectSearchable.render(allProjects);
+
+      // Initialize searchable assignee dropdown
+      assigneeSearchable = createSearchableSelect({
+        trigger: assigneeTrigger,
+        dropdown: assigneeDropdown,
+        searchInput: assigneeSearch,
+        optionsContainer: assigneeOptions,
+        hiddenInput: assigneeInput,
+        items: allUsers,
+        defaultLabel: 'Unassigned',
+        getValue: (u) => u.id,
+        getLabel: (u) => u.name
+      });
+      assigneeSearchable.render(allUsers);
+
+      // Initialize team-dependent dropdowns
+      if (data.defaultTeamId) {
+        updateTeamDependentDropdowns(data.defaultTeamId);
+      }
+
+      // Set default project if available
+      if (data.defaultProjectId) {
+        const project = allProjects.find(p => p.id === data.defaultProjectId);
+        if (project) {
+          projectSearchable.selectOption(project.id, project.name);
+        }
+      }
+
+      // Show placeholder message
+      if (!data.hasToken) {
+        errorDiv.textContent = 'Linear API 토큰을 먼저 설정해주세요.';
+      }
+
+      // Focus title input
+      titleInput.focus();
+    });
+
     // Receive capture data from main process
     ipcRenderer.on('capture-ready', (event, data) => {
       console.log('Capture ready:', data);
@@ -664,8 +745,11 @@
 
       console.log('AI analysis result:', { title: data.suggestedTitle, desc: data.suggestedDescription });
 
-      // Show preview
+      // Show preview and AI controls (they may be hidden from app-ready)
+      preview.style.display = 'block';
       preview.src = `file://${data.filePath}`;
+      aiModelSelect.parentElement.style.display = '';
+      reanalyzeBtn.style.display = '';
       imageUrl = data.imageUrl;
       currentFilePath = data.filePath;
 
