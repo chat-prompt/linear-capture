@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import Anthropic from '@anthropic-ai/sdk';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -8,8 +8,8 @@ export interface AnalysisResult {
   success: boolean;
   suggestedProjectId?: string;
   suggestedAssigneeId?: string;
-  suggestedPriority?: number;  // 1=긴급, 2=높음, 3=중간, 4=낮음
-  suggestedEstimate?: number;  // 1/2/3/5/8
+  suggestedPriority?: number;
+  suggestedEstimate?: number;
 }
 
 export interface AnalysisContext {
@@ -18,64 +18,37 @@ export interface AnalysisContext {
   defaultTeamId?: string;
 }
 
-export class GeminiAnalyzer {
-  private client: GoogleGenAI;
+export class AnthropicAnalyzer {
+  private client: Anthropic;
   private model: string;
-  private maxRetries = 3;
-  private baseDelay = 2000; // 2초
 
   constructor(apiKey: string, model?: string) {
-    this.client = new GoogleGenAI({ apiKey });
-    // 환경변수 또는 파라미터로 모델 지정 가능
-    // 옵션: gemini-3-flash-preview (기본, 고품질), gemini-2.0-flash (빠름), gemini-2.0-flash-lite (가장 빠름)
-    this.model = model || process.env.GEMINI_MODEL || 'gemini-3-flash-preview';
-    console.log(`🤖 Gemini model: ${this.model}`);
-  }
-
-  private async sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    this.client = new Anthropic({ apiKey });
+    this.model = model || 'claude-haiku-4-5-20251001';
+    console.log(`🤖 Anthropic model: ${this.model}`);
   }
 
   async analyzeScreenshot(imagePath: string, context?: AnalysisContext): Promise<AnalysisResult> {
-    for (let attempt = 0; attempt < this.maxRetries; attempt++) {
-      try {
-        if (attempt > 0) {
-          const delay = this.baseDelay * Math.pow(2, attempt - 1);
-          await this.sleep(delay);
-        }
-
-        return await this.doAnalysis(imagePath, context);
-      } catch (error: unknown) {
-        const err = error as { status?: number };
-
-        // Rate limit (429) 또는 서버 에러 (5xx)면 재시도
-        if (err.status === 429 || (err.status && err.status >= 500)) {
-          continue;
-        }
-
-        // 다른 에러는 즉시 실패
-        throw error;
-      }
+    try {
+      return await this.doAnalysis(imagePath, context);
+    } catch (error: unknown) {
+      console.error('Anthropic analysis error:', error);
+      return {
+        title: '',
+        description: '',
+        success: false
+      };
     }
-
-    return {
-      title: '',
-      description: '',
-      success: false
-    };
   }
 
   private async doAnalysis(imagePath: string, context?: AnalysisContext): Promise<AnalysisResult> {
-    // 이미지를 bytes로 읽기
-      const imgBytes = fs.readFileSync(imagePath);
-      const base64Data = imgBytes.toString('base64');
+    const imgBytes = fs.readFileSync(imagePath);
+    const base64Data = imgBytes.toString('base64');
 
-      // MIME 타입 결정
-      const ext = path.extname(imagePath).toLowerCase();
-      const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
+    const ext = path.extname(imagePath).toLowerCase();
+    const mediaType = ext === '.png' ? 'image/png' : 'image/jpeg';
 
-      // 컨텍스트 기반 프롬프트 생성
-      const contextSection = context ? `
+    const contextSection = context ? `
 
 ## 추가 분석
 스크린샷 내용을 기반으로 가장 적합한 값을 선택하세요.
@@ -99,8 +72,8 @@ ${context.users.map(u => `- "${u.name}" (ID: ${u.id})`).join('\n')}
 - 5: 큼 (새 기능 개발)
 - 8: 매우 큼 (대규모 작업)` : '';
 
-      const jsonFormat = context
-        ? `{
+    const jsonFormat = context
+      ? `{
   "title": "제목",
   "description": "설명 (마크다운)",
   "projectId": "매칭되는 프로젝트 ID 또는 null",
@@ -108,17 +81,9 @@ ${context.users.map(u => `- "${u.name}" (ID: ${u.id})`).join('\n')}
   "priority": 3,
   "estimate": 2
 }`
-        : `{"title": "...", "description": "..."}`;
+      : `{"title": "...", "description": "..."}`;
 
-      const analysisStartTime = Date.now();
-      const response = await this.client.models.generateContent({
-        model: this.model,
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              {
-                text: `이 스크린샷을 분석하여 Linear 이슈 정보를 생성하세요.
+    const prompt = `이 스크린샷을 분석하여 Linear 이슈 정보를 생성하세요.
 
 ## 제목 규칙 (매우 중요!)
 형식: "[상대방회사] 구체적인 요청 내용"
@@ -162,27 +127,42 @@ ${context.users.map(u => `- "${u.name}" (ID: ${u.id})`).join('\n')}
 ${contextSection}
 
 ## JSON 응답 형식 (마크다운 코드블록 없이):
-${jsonFormat}`
+${jsonFormat}`;
+
+    const analysisStartTime = Date.now();
+
+    const response = await this.client.messages.create({
+      model: this.model,
+      max_tokens: 1024,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: mediaType,
+                data: base64Data,
               },
-              {
-                inlineData: {
-                  mimeType,
-                  data: base64Data
-                }
-              }
-            ]
-          }
-        ]
-      });
+            },
+            {
+              type: 'text',
+              text: prompt,
+            },
+          ],
+        },
+      ],
+    });
 
-      const analysisEndTime = Date.now();
-      console.log(`⏱️ Gemini API call took ${analysisEndTime - analysisStartTime}ms`);
+    const analysisEndTime = Date.now();
+    console.log(`⏱️ Anthropic API call took ${analysisEndTime - analysisStartTime}ms`);
 
-      const text = response.text || '';
+    const text = response.content[0].type === 'text' ? response.content[0].text : '';
 
-      // JSON 파싱 (마크다운 코드블록 제거)
-      const cleanedText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      const json = JSON.parse(cleanedText);
+    // JSON 파싱 (마크다운 코드블록 제거)
+    const cleanedText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const json = JSON.parse(cleanedText);
 
     return {
       title: json.title || '',
@@ -196,11 +176,11 @@ ${jsonFormat}`
   }
 }
 
-export function createGeminiAnalyzer(): GeminiAnalyzer | null {
-  const apiKey = process.env.GEMINI_API_KEY;
+export function createAnthropicAnalyzer(): AnthropicAnalyzer | null {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    console.warn('GEMINI_API_KEY not set, AI analysis disabled');
+    console.warn('ANTHROPIC_API_KEY not set');
     return null;
   }
-  return new GeminiAnalyzer(apiKey);
+  return new AnthropicAnalyzer(apiKey);
 }
