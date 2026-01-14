@@ -15,8 +15,42 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #f5f5f5;
       padding: 20px;
-      padding-top: 40px; /* 상단 윈도우 컨트롤 버튼 영역 확보 */
+      padding-top: 40px; /* 상단 타이틀바 영역 확보 */
+    }
+
+    /* 타이틀바 영역 (상단 고정) */
+    .titlebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: #f5f5f5;
       -webkit-app-region: drag;
+      z-index: 999;
+    }
+
+    /* 타이틀바 영역 설정 버튼 (우측 상단, 신호등과 같은 높이) */
+    .titlebar-settings-btn {
+      position: fixed;
+      top: 6px;
+      right: 16px;
+      background: none;
+      border: none;
+      font-size: 27px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 6px;
+      opacity: 0.5;
+      transition: opacity 0.2s, background 0.2s;
+      -webkit-app-region: no-drag;
+      z-index: 1000;
+    }
+
+    .titlebar-settings-btn:hover {
+      opacity: 1;
+      background: rgba(0, 0, 0, 0.08);
     }
 
     .container {
@@ -30,8 +64,14 @@
     h1 {
       font-size: 18px;
       font-weight: 600;
-      margin-bottom: 16px;
+      margin-bottom: 8px;
       color: #333;
+    }
+
+    .capture-guide {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 16px;
     }
 
     .preview {
@@ -267,8 +307,13 @@
   </style>
 </head>
 <body>
+  <!-- 타이틀바 영역 (상단 고정) -->
+  <div class="titlebar"></div>
+  <button type="button" class="titlebar-settings-btn" id="settingsBtn" title="Settings">⚙</button>
+
   <div class="container">
     <h1>Create Linear Issue</h1>
+    <p id="captureGuide" class="capture-guide">⌘ + Shift + L 로 이슈로 만들 화면을 캡처하세요</p>
 
     <img id="preview" class="preview" src="" alt="Screenshot preview" />
 
@@ -628,6 +673,87 @@
       updateEstimateDropdown(teamId);
     }
 
+    // Receive app ready event (when app starts without capture)
+    ipcRenderer.on('app-ready', (event, data) => {
+      console.log('App ready:', data);
+
+      // Store teams, states, cycles, projects, users for filtering
+      allTeams = data.teams || [];
+      allStates = data.states || [];
+      allCycles = data.cycles || [];
+      allProjects = data.projects || [];
+      allUsers = data.users || [];
+
+      // Hide preview since no capture yet
+      preview.style.display = 'none';
+
+      // Hide AI model selector and reanalyze button (no image to analyze)
+      aiModelSelect.parentElement.style.display = 'none';
+      reanalyzeBtn.style.display = 'none';
+      aiLoadingDiv.classList.add('hidden');
+
+      // Populate teams
+      teamSelect.innerHTML = '<option value="">Select team...</option>';
+      data.teams.forEach(team => {
+        const option = document.createElement('option');
+        option.value = team.id;
+        option.textContent = `${team.name} (${team.key})`;
+        if (team.id === data.defaultTeamId) {
+          option.selected = true;
+        }
+        teamSelect.appendChild(option);
+      });
+
+      // Initialize searchable project dropdown
+      projectSearchable = createSearchableSelect({
+        trigger: projectTrigger,
+        dropdown: projectDropdown,
+        searchInput: projectSearch,
+        optionsContainer: projectOptions,
+        hiddenInput: projectInput,
+        items: allProjects,
+        defaultLabel: 'None',
+        getValue: (p) => p.id,
+        getLabel: (p) => p.name
+      });
+      projectSearchable.render(allProjects);
+
+      // Initialize searchable assignee dropdown
+      assigneeSearchable = createSearchableSelect({
+        trigger: assigneeTrigger,
+        dropdown: assigneeDropdown,
+        searchInput: assigneeSearch,
+        optionsContainer: assigneeOptions,
+        hiddenInput: assigneeInput,
+        items: allUsers,
+        defaultLabel: 'Unassigned',
+        getValue: (u) => u.id,
+        getLabel: (u) => u.name
+      });
+      assigneeSearchable.render(allUsers);
+
+      // Initialize team-dependent dropdowns
+      if (data.defaultTeamId) {
+        updateTeamDependentDropdowns(data.defaultTeamId);
+      }
+
+      // Set default project if available
+      if (data.defaultProjectId) {
+        const project = allProjects.find(p => p.id === data.defaultProjectId);
+        if (project) {
+          projectSearchable.selectOption(project.id, project.name);
+        }
+      }
+
+      // Show placeholder message
+      if (!data.hasToken) {
+        errorDiv.textContent = 'Linear API 토큰을 먼저 설정해주세요.';
+      }
+
+      // Focus title input
+      titleInput.focus();
+    });
+
     // Receive capture data from main process
     ipcRenderer.on('capture-ready', (event, data) => {
       console.log('Capture ready:', data);
@@ -642,8 +768,13 @@
 
       console.log('AI analysis result:', { title: data.suggestedTitle, desc: data.suggestedDescription });
 
-      // Show preview
+      // Show preview and AI controls (they may be hidden from app-ready)
+      preview.style.display = 'block';
       preview.src = `file://${data.filePath}`;
+      aiModelSelect.parentElement.style.display = '';
+      reanalyzeBtn.style.display = '';
+      // Hide capture guide when image is captured
+      document.getElementById('captureGuide').style.display = 'none';
       imageUrl = data.imageUrl;
       currentFilePath = data.filePath;
 
@@ -826,6 +957,11 @@
     // Handle cancel
     cancelBtn.addEventListener('click', () => {
       ipcRenderer.invoke('cancel');
+    });
+
+    // Handle settings button
+    document.getElementById('settingsBtn').addEventListener('click', () => {
+      ipcRenderer.invoke('open-settings');
     });
 
     // Handle Escape key
