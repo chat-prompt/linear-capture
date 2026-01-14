@@ -31,11 +31,15 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["universal"]
+          "arch": [
+            "universal"
+          ]
         }
       ],
-      "hardenedRuntime": false,
-      "gatekeeperAssess": false
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "./entitlements.mac.plist",
+      "entitlementsInherit": "./entitlements.mac.plist"
     },
     "dmg": {
       "title": "Linear Capture",
@@ -72,6 +76,7 @@
     "@google/genai": "^1.35.0",
     "@linear/sdk": "^38.0.0",
     "dotenv": "^16.3.1",
-    "electron-store": "^8.1.0"
+    "electron-store": "^8.1.0",
+    "mac-screen-capture-permissions": "^2.1.0"
   }
 }

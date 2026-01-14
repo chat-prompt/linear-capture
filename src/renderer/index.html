@@ -15,8 +15,42 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #f5f5f5;
       padding: 20px;
-      padding-top: 40px; /* 상단 윈도우 컨트롤 버튼 영역 확보 */
+      padding-top: 40px; /* 상단 타이틀바 영역 확보 */
+    }
+
+    /* 타이틀바 영역 (상단 고정) */
+    .titlebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: #f5f5f5;
       -webkit-app-region: drag;
+      z-index: 999;
+    }
+
+    /* 타이틀바 영역 설정 버튼 (우측 상단, 신호등과 같은 높이) */
+    .titlebar-settings-btn {
+      position: fixed;
+      top: 6px;
+      right: 16px;
+      background: none;
+      border: none;
+      font-size: 27px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 6px;
+      opacity: 0.5;
+      transition: opacity 0.2s, background 0.2s;
+      -webkit-app-region: no-drag;
+      z-index: 1000;
+    }
+
+    .titlebar-settings-btn:hover {
+      opacity: 1;
+      background: rgba(0, 0, 0, 0.08);
     }
 
     .container {
@@ -30,27 +64,14 @@
     h1 {
       font-size: 18px;
       font-weight: 600;
-      margin-bottom: 16px;
+      margin-bottom: 8px;
       color: #333;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
     }
 
-    .settings-btn {
-      background: none;
-      border: none;
-      font-size: 18px;
-      cursor: pointer;
-      padding: 4px 8px;
-      border-radius: 6px;
-      opacity: 0.6;
-      transition: opacity 0.2s, background 0.2s;
-    }
-
-    .settings-btn:hover {
-      opacity: 1;
-      background: #f0f0f0;
+    .capture-guide {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 16px;
     }
 
     .preview {
@@ -286,11 +307,13 @@
   </style>
 </head>
 <body>
+  <!-- 타이틀바 영역 (상단 고정) -->
+  <div class="titlebar"></div>
+  <button type="button" class="titlebar-settings-btn" id="settingsBtn" title="Settings">⚙</button>
+
   <div class="container">
-    <h1>
-      <span>Create Linear Issue</span>
-      <button type="button" class="settings-btn" id="settingsBtn" title="Settings">&#9881;</button>
-    </h1>
+    <h1>Create Linear Issue</h1>
+    <p id="captureGuide" class="capture-guide">⌘ + Shift + L 로 이슈로 만들 화면을 캡처하세요</p>
 
     <img id="preview" class="preview" src="" alt="Screenshot preview" />
 
@@ -750,6 +773,8 @@
       preview.src = `file://${data.filePath}`;
       aiModelSelect.parentElement.style.display = '';
       reanalyzeBtn.style.display = '';
+      // Hide capture guide when image is captured
+      document.getElementById('captureGuide').style.display = 'none';
       imageUrl = data.imageUrl;
       currentFilePath = data.filePath;
 

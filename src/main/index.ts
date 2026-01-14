@@ -1,11 +1,50 @@
-import { app, BrowserWindow, ipcMain, clipboard, Notification, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, clipboard, Notification, systemPreferences } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 import * as dotenv from 'dotenv';
 import Store from 'electron-store';
 
+// Debug logging to file for packaged app
+let logFile: string | null = null;
+const originalConsoleLog = console.log;
+const originalConsoleError = console.error;
+
+function setupFileLogging() {
+  try {
+    logFile = path.join(app.getPath('userData'), 'debug.log');
+    // Clear old log
+    fs.writeFileSync(logFile, `=== Linear Capture Debug Log ===\nStarted: ${new Date().toISOString()}\n\n`);
+  } catch (e) {
+    originalConsoleError('Failed to setup file logging:', e);
+  }
+}
+
+console.log = (...args: unknown[]) => {
+  originalConsoleLog(...args);
+  if (logFile) {
+    try {
+      fs.appendFileSync(logFile, `[LOG] ${new Date().toISOString()} ${args.join(' ')}\n`);
+    } catch {}
+  }
+};
+console.error = (...args: unknown[]) => {
+  originalConsoleError(...args);
+  if (logFile) {
+    try {
+      fs.appendFileSync(logFile, `[ERR] ${new Date().toISOString()} ${args.join(' ')}\n`);
+    } catch {}
+  }
+};
+
 import { registerHotkey, unregisterAllHotkeys } from './hotkey';
 import { createTray, destroyTray } from './tray';
-import { captureSelection, cleanupCapture, checkScreenCapturePermission } from '../services/capture';
+import { captureSelection, cleanupCapture } from '../services/capture';
+import {
+  getPermissionStatus,
+  recoverPermission,
+  openScreenCaptureSettings,
+  resetScreenCapturePermission,
+} from '../services/permission';
 import { createR2UploaderFromEnv } from '../services/r2-uploader';
 import { createLinearService, TeamInfo, ProjectInfo, UserInfo, WorkflowStateInfo, CycleInfo } from '../services/linear-client';
 import { createGeminiAnalyzer, GeminiAnalyzer, AnalysisResult, AnalysisContext } from '../services/gemini-analyzer';
@@ -21,8 +60,25 @@ import {
   UserInfo as SettingsUserInfo,
 } from '../services/settings-store';
 
-// Load environment variables
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+// Load environment variables - handle both dev and packaged paths
+const envPaths = [
+  path.join(__dirname, '../../.env'),  // Dev: dist/main -> .env
+  path.join(process.resourcesPath || '', '.env'),  // Packaged: Resources/.env
+  path.join(app.getAppPath(), '.env'),  // Packaged: inside asar
+];
+
+let envLoaded = false;
+for (const envPath of envPaths) {
+  const result = dotenv.config({ path: envPath });
+  if (!result.error) {
+    console.log(`Loaded .env from: ${envPath}`);
+    envLoaded = true;
+    break;
+  }
+}
+if (!envLoaded) {
+  console.error('Failed to load .env from any path:', envPaths);
+}
 
 let mainWindow: BrowserWindow | null = null;
 let onboardingWindow: BrowserWindow | null = null;
@@ -45,23 +101,22 @@ let geminiAnalyzer: GeminiAnalyzer | null = null;
 let anthropicAnalyzer: AnthropicAnalyzer | null = null;
 
 /**
- * Open screen capture permission settings
+ * Show permission required notification with recovery option
  */
-function openScreenCaptureSettings(): void {
-  shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture');
-}
-
-/**
- * Show permission required notification
- */
-function showPermissionNotification(): void {
+function showPermissionNotification(needsReset: boolean = false): void {
   const notification = new Notification({
     title: '화면 녹화 권한 필요',
-    body: '클릭하여 시스템 환경설정을 엽니다',
+    body: needsReset
+      ? '권한 문제가 감지되었습니다. 클릭하여 복구를 시작합니다.'
+      : '클릭하여 시스템 환경설정을 엽니다',
   });
 
-  notification.on('click', () => {
-    openScreenCaptureSettings();
+  notification.on('click', async () => {
+    if (needsReset) {
+      await recoverPermission();
+    } else {
+      await openScreenCaptureSettings();
+    }
   });
 
   notification.show();
@@ -232,9 +287,10 @@ async function handleCapture(): Promise<void> {
     }
 
     // Check screen capture permission first
-    const permission = checkScreenCapturePermission();
-    if (permission !== 'granted') {
-      showPermissionNotification();
+    const permissionStatus = getPermissionStatus();
+    if (!permissionStatus.hasPermission) {
+      showPermissionNotification(permissionStatus.needsReset);
+      return; // Block capture if no permission
     }
 
     const captureStartTime = Date.now();
@@ -391,6 +447,12 @@ async function loadLinearData(): Promise<boolean> {
 
 // App lifecycle
 app.whenReady().then(async () => {
+  // Setup file logging first
+  setupFileLogging();
+  console.log('App ready, isPackaged:', app.isPackaged);
+  console.log('App path:', app.getAppPath());
+  console.log('Resource path:', process.resourcesPath);
+
   // Dock에 아이콘 표시 (Alt+Tab에 보이게)
   app.dock?.show();
 
@@ -403,11 +465,30 @@ app.whenReady().then(async () => {
 
   // IPC handlers for onboarding window
   ipcMain.on('open-screen-capture-settings', async () => {
-    // 먼저 캡처를 한 번 시도해야 macOS 권한 목록에 앱이 나타남
-    console.log('Triggering capture to register in permission list...');
-    await captureSelection();
-    // 그 다음 시스템 환경설정 열기
-    openScreenCaptureSettings();
+    // Request permission (triggers dialog on first call)
+    const status = getPermissionStatus();
+    console.log('Permission status:', status);
+
+    if (!status.hasPrompted) {
+      // First time - trigger permission dialog
+      console.log('Triggering permission request...');
+      await captureSelection(); // This registers app in TCC
+    }
+
+    // Open system preferences
+    await openScreenCaptureSettings();
+  });
+
+  ipcMain.on('reset-permission', async () => {
+    console.log('Resetting screen capture permission...');
+    await resetScreenCapturePermission();
+    console.log('Permission reset complete. User should re-grant permission.');
+    // Open settings after reset
+    await openScreenCaptureSettings();
+  });
+
+  ipcMain.handle('get-permission-status', () => {
+    return getPermissionStatus();
   });
 
   ipcMain.on('close-onboarding', () => {
@@ -604,8 +685,17 @@ app.whenReady().then(async () => {
     onQuit: () => app.quit(),
   });
 
+  // Check Accessibility permission for global hotkey (macOS)
+  if (process.platform === 'darwin') {
+    const isTrusted = systemPreferences.isTrustedAccessibilityClient(true);
+    console.log(`Accessibility permission: ${isTrusted ? 'granted' : 'not granted (prompt shown)'}`);
+  }
+
   // Register global hotkey
-  registerHotkey(handleCapture);
+  const hotkeyRegistered = registerHotkey(handleCapture);
+  if (!hotkeyRegistered) {
+    console.error('Failed to register hotkey - Accessibility permission may be required');
+  }
 
   // Create and show main window immediately
   createWindow();

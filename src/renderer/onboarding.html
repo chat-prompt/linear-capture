@@ -65,23 +65,47 @@
       line-height: 1.5;
     }
 
-    .warning {
+    .permission-status {
       display: flex;
       align-items: center;
       gap: 8px;
-      background: #fff8e6;
-      border: 1px solid #f0d78c;
       border-radius: 8px;
       padding: 12px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       font-size: 13px;
+    }
+
+    .permission-status.granted {
+      background: #e6f7e6;
+      border: 1px solid #8cd98c;
+      color: #2d6a2d;
+    }
+
+    .permission-status.denied {
+      background: #fff8e6;
+      border: 1px solid #f0d78c;
       color: #8a6d00;
+    }
+
+    .permission-status.error {
+      background: #ffe6e6;
+      border: 1px solid #f0a0a0;
+      color: #8a2d2d;
+    }
+
+    .permission-status .icon {
+      font-size: 16px;
+    }
+
+    .permission-status .text {
+      flex: 1;
     }
 
     .buttons {
       display: flex;
       gap: 10px;
       justify-content: flex-end;
+      flex-wrap: wrap;
     }
 
     button {
@@ -103,6 +127,16 @@
       background: #eee;
     }
 
+    .btn-danger {
+      background: #fff0f0;
+      border: 1px solid #ffcccc;
+      color: #cc4444;
+    }
+
+    .btn-danger:hover {
+      background: #ffe0e0;
+    }
+
     .btn-primary {
       background: #5e6ad2;
       border: none;
@@ -111,6 +145,18 @@
 
     .btn-primary:hover {
       background: #4c5abd;
+    }
+
+    .btn-primary:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .help-text {
+      font-size: 12px;
+      color: #888;
+      margin-top: 12px;
+      line-height: 1.5;
     }
   </style>
 </head>
@@ -127,22 +173,79 @@
       </p>
     </div>
 
-    <div class="warning">
-      <span>⚠️</span>
-      <span>화면 녹화 권한이 필요합니다</span>
+    <div id="permissionStatus" class="permission-status denied">
+      <span class="icon">⚠️</span>
+      <span class="text">권한 상태를 확인하는 중...</span>
     </div>
 
     <div class="buttons">
+      <button class="btn-danger" id="resetPermission" style="display: none;">권한 초기화</button>
       <button class="btn-secondary" id="openSettings">권한 설정</button>
       <button class="btn-primary" id="start">시작</button>
     </div>
+
+    <p class="help-text" id="helpText" style="display: none;">
+      권한이 부여되었는데도 캡처가 안 되면 "권한 초기화" 버튼을 눌러주세요.
+    </p>
   </div>
 
   <script>
     const { ipcRenderer } = require('electron');
 
+    const statusEl = document.getElementById('permissionStatus');
+    const resetBtn = document.getElementById('resetPermission');
+    const startBtn = document.getElementById('start');
+    const helpText = document.getElementById('helpText');
+
+    function updatePermissionUI(status) {
+      const { hasPermission, hasPrompted, needsReset } = status;
+
+      if (hasPermission) {
+        statusEl.className = 'permission-status granted';
+        statusEl.innerHTML = '<span class="icon">✅</span><span class="text">화면 녹화 권한이 부여되었습니다</span>';
+        resetBtn.style.display = 'none';
+        startBtn.disabled = false;
+        helpText.style.display = 'none';
+      } else if (needsReset) {
+        statusEl.className = 'permission-status error';
+        statusEl.innerHTML = '<span class="icon">🔄</span><span class="text">권한 문제가 감지되었습니다. 권한을 초기화해주세요.</span>';
+        resetBtn.style.display = 'block';
+        startBtn.disabled = true;
+        helpText.style.display = 'block';
+      } else {
+        statusEl.className = 'permission-status denied';
+        statusEl.innerHTML = '<span class="icon">⚠️</span><span class="text">화면 녹화 권한이 필요합니다</span>';
+        resetBtn.style.display = 'none';
+        startBtn.disabled = false;
+        helpText.style.display = 'block';
+      }
+    }
+
+    async function checkPermission() {
+      try {
+        const status = await ipcRenderer.invoke('get-permission-status');
+        updatePermissionUI(status);
+      } catch (error) {
+        console.error('Failed to check permission:', error);
+      }
+    }
+
+    // Check permission on load
+    checkPermission();
+
+    // Re-check when window gains focus (user might have changed settings)
+    window.addEventListener('focus', checkPermission);
+
     document.getElementById('openSettings').addEventListener('click', () => {
       ipcRenderer.send('open-screen-capture-settings');
+      // Re-check after a delay
+      setTimeout(checkPermission, 1000);
+    });
+
+    document.getElementById('resetPermission').addEventListener('click', () => {
+      ipcRenderer.send('reset-permission');
+      // Re-check after a delay
+      setTimeout(checkPermission, 1500);
     });
 
     document.getElementById('start').addEventListener('click', () => {
