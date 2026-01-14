@@ -3,3 +3,9 @@ dist/
 .env
 *.log
 .DS_Store
+.claude/
+release/
+assets/icon.iconset/
+icon/
+test-*.ts
+test-*.js
