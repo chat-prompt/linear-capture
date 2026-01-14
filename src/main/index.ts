@@ -468,6 +468,10 @@ app.whenReady().then(async () => {
     return result;
   });
 
+  ipcMain.handle('open-settings', () => {
+    createSettingsWindow();
+  });
+
   ipcMain.handle('cancel', () => {
     if (capturedFilePath) {
       cleanupCapture(capturedFilePath);

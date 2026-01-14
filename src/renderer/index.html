@@ -32,6 +32,25 @@
       font-weight: 600;
       margin-bottom: 16px;
       color: #333;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .settings-btn {
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      opacity: 0.6;
+      transition: opacity 0.2s, background 0.2s;
+    }
+
+    .settings-btn:hover {
+      opacity: 1;
+      background: #f0f0f0;
     }
 
     .preview {
@@ -268,7 +287,10 @@
 </head>
 <body>
   <div class="container">
-    <h1>Create Linear Issue</h1>
+    <h1>
+      <span>Create Linear Issue</span>
+      <button type="button" class="settings-btn" id="settingsBtn" title="Settings">&#9881;</button>
+    </h1>
 
     <img id="preview" class="preview" src="" alt="Screenshot preview" />
 
@@ -826,6 +848,11 @@
     // Handle cancel
     cancelBtn.addEventListener('click', () => {
       ipcRenderer.invoke('cancel');
+    });
+
+    // Handle settings button
+    document.getElementById('settingsBtn').addEventListener('click', () => {
+      ipcRenderer.invoke('open-settings');
     });
 
     // Handle Escape key
