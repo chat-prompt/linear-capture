@@ -7,15 +7,26 @@ import { registerHotkey, unregisterAllHotkeys } from './hotkey';
 import { createTray, destroyTray } from './tray';
 import { captureSelection, cleanupCapture, checkScreenCapturePermission } from '../services/capture';
 import { createR2UploaderFromEnv } from '../services/r2-uploader';
-import { createLinearServiceFromEnv, TeamInfo, ProjectInfo, UserInfo, WorkflowStateInfo, CycleInfo } from '../services/linear-client';
+import { createLinearService, TeamInfo, ProjectInfo, UserInfo, WorkflowStateInfo, CycleInfo } from '../services/linear-client';
 import { createGeminiAnalyzer, GeminiAnalyzer, AnalysisResult, AnalysisContext } from '../services/gemini-analyzer';
 import { createAnthropicAnalyzer, AnthropicAnalyzer } from '../services/anthropic-analyzer';
+import {
+  getLinearToken,
+  setLinearToken,
+  clearLinearToken,
+  hasToken,
+  getUserInfo,
+  setUserInfo,
+  validateToken,
+  UserInfo as SettingsUserInfo,
+} from '../services/settings-store';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 let mainWindow: BrowserWindow | null = null;
 let onboardingWindow: BrowserWindow | null = null;
+let settingsWindow: BrowserWindow | null = null;
 let capturedFilePath: string | null = null;
 let uploadedImageUrl: string | null = null;
 
@@ -81,6 +92,41 @@ function createOnboardingWindow(): void {
 
   onboardingWindow.on('closed', () => {
     onboardingWindow = null;
+  });
+}
+
+/**
+ * Create the settings window
+ */
+function createSettingsWindow(): void {
+  // If settings window already exists, focus it
+  if (settingsWindow) {
+    settingsWindow.focus();
+    return;
+  }
+
+  settingsWindow = new BrowserWindow({
+    width: 420,
+    height: 380,
+    show: false,
+    frame: true,
+    resizable: false,
+    alwaysOnTop: false,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+    titleBarStyle: 'hiddenInset',
+  });
+
+  settingsWindow.loadFile(path.join(__dirname, '../renderer/settings.html'));
+
+  settingsWindow.once('ready-to-show', () => {
+    settingsWindow?.show();
+  });
+
+  settingsWindow.on('closed', () => {
+    settingsWindow = null;
   });
 }
 
@@ -178,6 +224,13 @@ function showCaptureWindow(filePath: string, imageUrl: string, analysis?: Analys
  */
 async function handleCapture(): Promise<void> {
   try {
+    // Check if Linear token is configured
+    if (!hasToken()) {
+      showNotification('토큰 설정 필요', 'Linear API 토큰을 먼저 설정해주세요');
+      createSettingsWindow();
+      return;
+    }
+
     // Check screen capture permission first
     const permission = checkScreenCapturePermission();
     if (permission !== 'granted') {
@@ -299,11 +352,17 @@ function showNotification(title: string, body: string): void {
 /**
  * Load teams, projects, users, states, and cycles cache
  */
-async function loadLinearData(): Promise<void> {
-  const linear = createLinearServiceFromEnv();
+async function loadLinearData(): Promise<boolean> {
+  const token = getLinearToken();
+  if (!token) {
+    console.log('No Linear token configured');
+    return false;
+  }
+
+  const linear = createLinearService(token);
   if (!linear) {
-    console.error('Linear not configured');
-    return;
+    console.error('Failed to create Linear service');
+    return false;
   }
 
   try {
@@ -323,8 +382,10 @@ async function loadLinearData(): Promise<void> {
     cyclesCache = cycles;
 
     console.log(`Loaded: ${teamsCache.length} teams, ${projectsCache.length} projects, ${usersCache.length} users, ${statesCache.length} states, ${cyclesCache.length} cycles`);
+    return true;
   } catch (error) {
     console.error('Failed to load Linear data:', error);
+    return false;
   }
 }
 
@@ -365,9 +426,14 @@ app.whenReady().then(async () => {
     estimate?: number;
     cycleId?: string;
   }) => {
-    const linear = createLinearServiceFromEnv();
+    const token = getLinearToken();
+    if (!token) {
+      return { success: false, error: 'No Linear token configured' };
+    }
+
+    const linear = createLinearService(token);
     if (!linear) {
-      return { success: false, error: 'Linear not configured' };
+      return { success: false, error: 'Failed to create Linear service' };
     }
 
     const result = await linear.createIssue({
@@ -409,6 +475,57 @@ app.whenReady().then(async () => {
     }
     uploadedImageUrl = null;
     mainWindow?.minimize();
+  });
+
+  // Settings IPC handlers
+  ipcMain.handle('get-settings', () => {
+    return {
+      linearApiToken: getLinearToken() || '',
+      userInfo: getUserInfo(),
+    };
+  });
+
+  ipcMain.handle('save-settings', async (_event, data: { linearApiToken: string }) => {
+    try {
+      // Validate token first
+      const validationResult = await validateToken(data.linearApiToken);
+      if (!validationResult.valid) {
+        return { success: false, error: validationResult.error || 'Invalid token' };
+      }
+
+      // Save token and user info
+      setLinearToken(data.linearApiToken);
+      if (validationResult.user) {
+        setUserInfo(validationResult.user);
+      }
+
+      // Reload Linear data with new token
+      await loadLinearData();
+
+      return { success: true, user: validationResult.user };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save settings';
+      return { success: false, error: message };
+    }
+  });
+
+  ipcMain.handle('validate-token', async (_event, token: string) => {
+    return validateToken(token);
+  });
+
+  ipcMain.handle('clear-token', async () => {
+    clearLinearToken();
+    // Clear cache
+    teamsCache = [];
+    projectsCache = [];
+    usersCache = [];
+    statesCache = [];
+    cyclesCache = [];
+    return { success: true };
+  });
+
+  ipcMain.handle('close-settings', () => {
+    settingsWindow?.close();
   });
 
   // Handle re-analyze request with specific model
@@ -479,6 +596,7 @@ app.whenReady().then(async () => {
   // Create tray
   createTray({
     onCapture: handleCapture,
+    onSettings: createSettingsWindow,
     onQuit: () => app.quit(),
   });
 

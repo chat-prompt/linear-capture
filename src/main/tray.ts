@@ -5,6 +5,7 @@ let tray: Tray | null = null;
 
 interface TrayCallbacks {
   onCapture: () => void;
+  onSettings: () => void;
   onQuit: () => void;
 }
 
@@ -39,6 +40,11 @@ export function createTray(callbacks: TrayCallbacks): Tray {
     {
       label: 'Capture Screen (⌘+Shift+L)',
       click: callbacks.onCapture,
+    },
+    { type: 'separator' },
+    {
+      label: 'Settings...',
+      click: callbacks.onSettings,
     },
     { type: 'separator' },
     {

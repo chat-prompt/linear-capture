@@ -251,15 +251,13 @@ export class LinearService {
 }
 
 /**
- * Create LinearService from environment variables
+ * Create LinearService from stored token
  */
-export function createLinearServiceFromEnv(): LinearService | null {
-  const apiToken = process.env.LINEAR_API_TOKEN;
-
-  if (!apiToken) {
-    console.error('Missing LINEAR_API_TOKEN. Please check .env file.');
+export function createLinearService(token?: string): LinearService | null {
+  if (!token) {
+    console.error('No Linear API token provided');
     return null;
   }
 
-  return new LinearService(apiToken);
+  return new LinearService(token);
 }
