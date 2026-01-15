@@ -568,6 +568,7 @@ app.whenReady().then(async () => {
   // Create tray
   createTray({
     onCapture: handleCapture,
+    onSettings: createSettingsWindow,
     onQuit: () => app.quit(),
   });
 
