@@ -90,8 +90,13 @@ function createOnboardingWindow(): void {
 
   onboardingWindow.loadFile(path.join(__dirname, '../renderer/onboarding.html'));
 
-  onboardingWindow.once('ready-to-show', () => {
+  onboardingWindow.once('ready-to-show', async () => {
     onboardingWindow?.show();
+
+    // 온보딩 표시 후 바로 캡처 시도하여 권한 목록에 앱 등록
+    // 사용자가 ESC 누르거나 취소하면 파일은 생성되지 않음
+    console.log('Triggering capture to register in permission list...');
+    await captureSelection();
   });
 
   onboardingWindow.on('closed', () => {
