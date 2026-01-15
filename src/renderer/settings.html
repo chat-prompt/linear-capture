@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings - Linear Capture</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      padding-top: 40px;
+      -webkit-app-region: drag;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      -webkit-app-region: no-drag;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #666;
+      margin-bottom: 6px;
+    }
+
+    input[type="password"],
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+      -webkit-app-region: no-drag;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #5e6ad2;
+    }
+
+    .status-box {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .status-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .status-icon {
+      font-size: 16px;
+    }
+
+    .status-label {
+      font-size: 13px;
+      color: #666;
+    }
+
+    .status-value {
+      font-size: 13px;
+      color: #333;
+      font-weight: 500;
+    }
+
+    .status-pending {
+      color: #888;
+    }
+
+    .status-success {
+      color: #22c55e;
+    }
+
+    .status-error {
+      color: #ef4444;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    button {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      -webkit-app-region: no-drag;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      color: #666;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #eee;
+    }
+
+    .btn-danger {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: #fee2e2;
+    }
+
+    .btn-primary {
+      background: #5e6ad2;
+      border: none;
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #4c5abd;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #ddd;
+      border-top-color: #5e6ad2;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error-message {
+      color: #ef4444;
+      font-size: 12px;
+      margin-top: 6px;
+    }
+
+    .info-text {
+      font-size: 12px;
+      color: #888;
+      margin-top: 8px;
+    }
+
+    .info-text a {
+      color: #5e6ad2;
+      text-decoration: none;
+    }
+
+    .info-text a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Settings</h1>
+
+    <div class="form-group">
+      <label for="token">Linear API Token</label>
+      <input type="password" id="token" placeholder="lin_api_xxxxxxxxxxxxx">
+      <div id="errorMessage" class="error-message" style="display: none;"></div>
+      <p class="info-text">
+        Linear Settings &gt; API &gt; Personal API keys에서 발급
+      </p>
+    </div>
+
+    <div class="status-box">
+      <div class="status-row">
+        <span class="status-icon" id="statusIcon">⏳</span>
+        <span class="status-label">Status:</span>
+        <span class="status-value" id="statusText">토큰을 입력하세요</span>
+      </div>
+      <div class="status-row" id="userInfoRow" style="display: none;">
+        <span class="status-icon">👤</span>
+        <span class="status-label">User:</span>
+        <span class="status-value" id="userInfo"></span>
+      </div>
+    </div>
+
+    <div class="buttons">
+      <button class="btn-danger" id="clearBtn" style="display: none;">Clear</button>
+      <button class="btn-secondary" id="validateBtn">Validate</button>
+      <button class="btn-primary" id="saveBtn" disabled>Save</button>
+    </div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    const tokenInput = document.getElementById('token');
+    const statusIcon = document.getElementById('statusIcon');
+    const statusText = document.getElementById('statusText');
+    const userInfoRow = document.getElementById('userInfoRow');
+    const userInfo = document.getElementById('userInfo');
+    const errorMessage = document.getElementById('errorMessage');
+    const clearBtn = document.getElementById('clearBtn');
+    const validateBtn = document.getElementById('validateBtn');
+    const saveBtn = document.getElementById('saveBtn');
+
+    let isValidated = false;
+    let validatedUser = null;
+
+    // 기존 설정 로드
+    async function loadSettings() {
+      try {
+        const settings = await ipcRenderer.invoke('get-settings');
+
+        if (settings && settings.linearApiToken) {
+          tokenInput.value = settings.linearApiToken;
+          clearBtn.style.display = 'block';
+
+          if (settings.userInfo) {
+            showSuccess(settings.userInfo);
+            isValidated = true;
+            saveBtn.disabled = true; // 이미 저장된 상태
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      }
+    }
+
+    function showPending() {
+      statusIcon.textContent = '⏳';
+      statusText.textContent = '토큰을 입력하세요';
+      statusText.className = 'status-value status-pending';
+      userInfoRow.style.display = 'none';
+      errorMessage.style.display = 'none';
+      isValidated = false;
+      validatedUser = null;
+      saveBtn.disabled = true;
+    }
+
+    function showValidating() {
+      statusIcon.innerHTML = '<span class="loading"></span>';
+      statusText.textContent = '검증 중...';
+      statusText.className = 'status-value status-pending';
+      userInfoRow.style.display = 'none';
+      errorMessage.style.display = 'none';
+      validateBtn.disabled = true;
+      saveBtn.disabled = true;
+    }
+
+    function showSuccess(user) {
+      statusIcon.textContent = '✅';
+      statusText.textContent = '연결됨';
+      statusText.className = 'status-value status-success';
+      userInfoRow.style.display = 'flex';
+      userInfo.textContent = user.name + ' (' + user.email + ')';
+      errorMessage.style.display = 'none';
+      validateBtn.disabled = false;
+      validatedUser = user;
+      isValidated = true;
+      saveBtn.disabled = false;
+    }
+
+    function showError(message) {
+      statusIcon.textContent = '❌';
+      statusText.textContent = '연결 실패';
+      statusText.className = 'status-value status-error';
+      userInfoRow.style.display = 'none';
+      errorMessage.textContent = message;
+      errorMessage.style.display = 'block';
+      validateBtn.disabled = false;
+      isValidated = false;
+      validatedUser = null;
+      saveBtn.disabled = true;
+    }
+
+    // 토큰 입력 변경 핸들러
+    tokenInput.addEventListener('input', () => {
+      showPending();
+      if (tokenInput.value.trim()) {
+        clearBtn.style.display = 'block';
+      } else {
+        clearBtn.style.display = 'none';
+      }
+    });
+
+    // Validate 버튼
+    validateBtn.addEventListener('click', async () => {
+      const token = tokenInput.value.trim();
+      if (!token) {
+        showError('토큰을 입력하세요');
+        return;
+      }
+
+      showValidating();
+
+      try {
+        const result = await ipcRenderer.invoke('validate-token', token);
+
+        if (result.valid && result.user) {
+          showSuccess(result.user);
+        } else {
+          showError(result.error || '유효하지 않은 토큰입니다');
+        }
+      } catch (error) {
+        showError('검증 중 오류가 발생했습니다');
+      }
+    });
+
+    // Save 버튼
+    saveBtn.addEventListener('click', async () => {
+      const token = tokenInput.value.trim();
+      if (!token || !isValidated) {
+        return;
+      }
+
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<span class="loading"></span>저장 중...';
+
+      try {
+        const result = await ipcRenderer.invoke('save-settings', {
+          linearApiToken: token,
+          userInfo: validatedUser
+        });
+
+        if (result.success) {
+          saveBtn.textContent = 'Saved!';
+          setTimeout(() => {
+            saveBtn.textContent = 'Save';
+            saveBtn.disabled = true; // 저장 완료 후 비활성화
+          }, 1500);
+        } else {
+          showError(result.error || '저장에 실패했습니다');
+          saveBtn.textContent = 'Save';
+          saveBtn.disabled = false;
+        }
+      } catch (error) {
+        showError('저장 중 오류가 발생했습니다');
+        saveBtn.textContent = 'Save';
+        saveBtn.disabled = false;
+      }
+    });
+
+    // Clear 버튼
+    clearBtn.addEventListener('click', async () => {
+      if (confirm('토큰을 삭제하시겠습니까?')) {
+        try {
+          await ipcRenderer.invoke('clear-settings');
+          tokenInput.value = '';
+          clearBtn.style.display = 'none';
+          showPending();
+        } catch (error) {
+          showError('삭제 중 오류가 발생했습니다');
+        }
+      }
+    });
+
+    // ESC로 닫기
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        ipcRenderer.invoke('close-settings');
+      }
+    });
+
+    // Enter로 검증/저장
+    tokenInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        if (isValidated && !saveBtn.disabled) {
+          saveBtn.click();
+        } else {
+          validateBtn.click();
+        }
+      }
+    });
+
+    // 설정 로드
+    loadSettings();
+  </script>
+</body>
+</html>
