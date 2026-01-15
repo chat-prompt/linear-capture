@@ -595,30 +595,59 @@ icon.setTemplateImage(true);
 
 ---
 
-#### Phase 5: 메인 UI Settings 버튼 (`index.html`)
+#### Phase 5: 메인 UI Settings 버튼 (`index.html`) ✅ 완료
 
 **목적**: 이슈 생성 폼에서 Settings로 빠르게 이동
 
 **파일**: `src/renderer/index.html` (수정)
 
-**추가**:
+**최종 UI 디자인**:
+1. **톱니바퀴 위치**: 우측 상단 고정 바 (신호등과 같은 레벨)
+2. **스타일**: 테두리 없음, 1.5배 크기 (21px), 불투명도 호버 효과
+3. **고정 헤더**: 스크롤해도 상단 회색 영역과 톱니바퀴 고정
+
+**구조**:
 ```html
-<!-- 헤더에 Settings 버튼 추가 -->
-<div class="header" style="display: flex; justify-content: space-between; align-items: center;">
-  <h1>New Issue</h1>
-  <button id="settingsBtn" class="icon-btn" title="Settings">⚙</button>
+<!-- Top bar with Settings button -->
+<div class="top-bar">
+  <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
+</div>
+
+<div class="container">
+  <div class="header">
+    <h1>Create Linear Issue</h1>
+  </div>
+  <!-- 폼 내용 -->
 </div>
 ```
 
-```javascript
-document.getElementById('settingsBtn').addEventListener('click', () => {
-  ipcRenderer.invoke('open-settings');
-});
+**CSS**:
+```css
+.top-bar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 40px;
+  background: #f5f5f5;
+  justify-content: flex-end; /* 우측 정렬 */
+}
+
+.icon-btn {
+  border: none;
+  font-size: 21px; /* 1.5배 */
+  opacity: 0.7;
+}
+
+.icon-btn:hover {
+  opacity: 1;
+}
 ```
 
-**검증**:
-- 이슈 생성 폼에서 ⚙ 버튼 클릭
-- Settings 윈도우 열림
+**검증 완료**:
+- ✅ 톱니바퀴 우측 상단 배치
+- ✅ 스크롤 시 상단 고정
+- ✅ Settings 윈도우 열림
+- ✅ 깔끔한 UI (박스 없음)
 
 ---
 
