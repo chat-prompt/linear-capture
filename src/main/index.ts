@@ -7,15 +7,25 @@ import { registerHotkey, unregisterAllHotkeys } from './hotkey';
 import { createTray, destroyTray } from './tray';
 import { captureSelection, cleanupCapture, checkScreenCapturePermission } from '../services/capture';
 import { createR2UploaderFromEnv } from '../services/r2-uploader';
-import { createLinearServiceFromEnv, TeamInfo, ProjectInfo, UserInfo, WorkflowStateInfo, CycleInfo } from '../services/linear-client';
+import { createLinearServiceFromEnv, validateLinearToken, TeamInfo, ProjectInfo, UserInfo, WorkflowStateInfo, CycleInfo } from '../services/linear-client';
 import { createGeminiAnalyzer, GeminiAnalyzer, AnalysisResult, AnalysisContext } from '../services/gemini-analyzer';
 import { createAnthropicAnalyzer, AnthropicAnalyzer } from '../services/anthropic-analyzer';
+import {
+  getLinearToken,
+  setLinearToken,
+  clearLinearToken,
+  getUserInfo,
+  setUserInfo,
+  getAllSettings,
+  UserInfo as SettingsUserInfo,
+} from '../services/settings-store';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 let mainWindow: BrowserWindow | null = null;
 let onboardingWindow: BrowserWindow | null = null;
+let settingsWindow: BrowserWindow | null = null;
 let capturedFilePath: string | null = null;
 let uploadedImageUrl: string | null = null;
 
@@ -81,6 +91,39 @@ function createOnboardingWindow(): void {
 
   onboardingWindow.on('closed', () => {
     onboardingWindow = null;
+  });
+}
+
+/**
+ * Create the settings window
+ */
+function createSettingsWindow(): void {
+  if (settingsWindow) {
+    settingsWindow.focus();
+    return;
+  }
+
+  settingsWindow = new BrowserWindow({
+    width: 400,
+    height: 380,
+    show: false,
+    frame: false,
+    resizable: false,
+    alwaysOnTop: false,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+  });
+
+  settingsWindow.loadFile(path.join(__dirname, '../renderer/settings.html'));
+
+  settingsWindow.once('ready-to-show', () => {
+    settingsWindow?.show();
+  });
+
+  settingsWindow.on('closed', () => {
+    settingsWindow = null;
   });
 }
 
@@ -459,6 +502,52 @@ app.whenReady().then(async () => {
       mainWindow?.webContents.send('ai-analysis-ready', { success: false });
       return { success: false, error: String(error) };
     }
+  });
+
+  // Settings IPC handlers
+  ipcMain.handle('get-settings', async () => {
+    return getAllSettings();
+  });
+
+  ipcMain.handle('validate-token', async (_event, token: string) => {
+    try {
+      const result = await validateLinearToken(token);
+      return result;
+    } catch (error) {
+      console.error('Token validation error:', error);
+      return { valid: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('save-settings', async (_event, data: { linearApiToken: string; userInfo: SettingsUserInfo }) => {
+    try {
+      setLinearToken(data.linearApiToken);
+      setUserInfo(data.userInfo);
+      // Reload Linear data with new token
+      await loadLinearData();
+      return { success: true };
+    } catch (error) {
+      console.error('Save settings error:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('clear-settings', async () => {
+    try {
+      clearLinearToken();
+      return { success: true };
+    } catch (error) {
+      console.error('Clear settings error:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('open-settings', () => {
+    createSettingsWindow();
+  });
+
+  ipcMain.handle('close-settings', () => {
+    settingsWindow?.close();
   });
 
   // Initialize AI analyzer (prefer Gemini, fallback to Anthropic)

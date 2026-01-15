@@ -1,4 +1,5 @@
 import { LinearClient, Team, Project, User, WorkflowState, Cycle } from '@linear/sdk';
+import { getLinearToken } from './settings-store';
 
 export interface CreateIssueParams {
   title: string;
@@ -251,15 +252,42 @@ export class LinearService {
 }
 
 /**
- * Create LinearService from environment variables
+ * Create LinearService from settings store or environment variables
  */
 export function createLinearServiceFromEnv(): LinearService | null {
-  const apiToken = process.env.LINEAR_API_TOKEN;
+  // First try settings store, then fallback to env
+  const apiToken = getLinearToken();
 
   if (!apiToken) {
-    console.error('Missing LINEAR_API_TOKEN. Please check .env file.');
+    console.error('Missing LINEAR_API_TOKEN. Please check Settings or .env file.');
     return null;
   }
 
   return new LinearService(apiToken);
+}
+
+/**
+ * Validate a Linear API token by fetching the viewer info
+ */
+export async function validateLinearToken(token: string): Promise<{
+  valid: boolean;
+  user?: { id: string; name: string; email: string };
+  error?: string;
+}> {
+  try {
+    const client = new LinearClient({ apiKey: token });
+    const viewer = await client.viewer;
+
+    return {
+      valid: true,
+      user: {
+        id: viewer.id,
+        name: viewer.name,
+        email: viewer.email,
+      },
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Invalid token';
+    return { valid: false, error: message };
+  }
 }
