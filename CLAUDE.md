@@ -390,3 +390,267 @@ defaults read /Applications/Linear\ Capture.app/Contents/Info.plist CFBundleIden
 # 코드 서명 상태 확인
 codesign -dv /Applications/Linear\ Capture.app
 ```
+
+---
+
+## 🚧 Settings 기능 구현 계획 (feature/settings 브랜치)
+
+### 목표
+
+1. **멤버별 Linear API 토큰 설정**: 공용 토큰 대신 개인 토큰으로 이슈 생성
+2. **메인 UI Settings 버튼**: 이슈 생성 폼에서 Settings로 빠르게 이동
+
+### 현재 상태 (2025-01-15)
+
+| 항목 | 현재 | 목표 |
+|------|------|------|
+| 토큰 관리 | `.env` 파일에서만 로드 | electron-store로 저장, 런타임 변경 가능 |
+| electron-store | `hasLaunched` 저장만 사용 | 토큰 + 설정 저장 |
+| Tray 메뉴 | Capture + Quit | + Settings 메뉴 추가 |
+| UI | 이슈 생성 폼만 | + Settings 버튼 + Settings 윈도우 |
+
+### 설계 결정사항
+
+- **Settings UI**: 별도 윈도우로 구현 (독립적 관리 용이)
+- **토큰 저장**: 평문 저장 (DMG 패키징 안정성 우선, 로컬 파일이라 보안 위험 낮음)
+- **네이티브 모듈**: 사용 금지 (DMG 실패 원인)
+
+### Phase별 구현 계획
+
+각 Phase 완료 후 반드시 DMG 빌드 테스트를 수행합니다.
+
+#### Phase 1: Settings 저장소 (`settings-store.ts`)
+
+**목적**: 토큰 저장/조회 기능
+
+**파일**: `src/services/settings-store.ts` (새로 생성)
+
+```typescript
+import Store from 'electron-store';
+
+interface Settings {
+  linearApiToken?: string;
+  defaultTeamId?: string;
+}
+
+// ⚠️ encryptionKey 사용 안 함 (DMG 패키징 문제 방지)
+const store = new Store<Settings>({ name: 'settings' });
+
+export function getLinearToken(): string | undefined {
+  // 저장된 토큰 우선, 없으면 .env fallback
+  return store.get('linearApiToken') || process.env.LINEAR_API_TOKEN;
+}
+
+export function setLinearToken(token: string): void {
+  store.set('linearApiToken', token);
+}
+
+export function clearLinearToken(): void {
+  store.delete('linearApiToken');
+}
+```
+
+**검증**:
+- `npm run start` → 콘솔에 에러 없음
+- `npm run dist:mac` → DMG 설치 후 핫키 작동
+
+---
+
+#### Phase 2: Settings UI (`settings.html`)
+
+**목적**: 토큰 입력/검증/저장 UI
+
+**파일**: `src/renderer/settings.html` (새로 생성)
+
+**기능**:
+- Linear API Token 입력 필드 (password type)
+- Validate 버튼 → Linear viewer API로 토큰 검증
+- 검증 성공 시 사용자 이름/이메일 표시
+- Save 버튼 → electron-store에 저장
+- Clear 버튼 → 토큰 삭제
+
+**디자인**: 기존 `index.html` 스타일 유지
+
+**검증**:
+- Settings 윈도우 열기/닫기
+- 토큰 입력 → 검증 → 저장 플로우
+
+---
+
+#### Phase 3: IPC 핸들러 (`index.ts`)
+
+**목적**: Settings 윈도우 관리 + 토큰 관련 IPC
+
+**파일**: `src/main/index.ts` (수정)
+
+**추가할 코드**:
+```typescript
+// Settings 윈도우 관리
+let settingsWindow: BrowserWindow | null = null;
+
+function createSettingsWindow() {
+  if (settingsWindow) {
+    settingsWindow.focus();
+    return;
+  }
+  settingsWindow = new BrowserWindow({
+    width: 400,
+    height: 350,
+    resizable: false,
+    // ... 기존 윈도우 패턴 따름
+  });
+  settingsWindow.loadFile('dist/renderer/settings.html');
+  settingsWindow.on('closed', () => { settingsWindow = null; });
+}
+
+// IPC 핸들러
+ipcMain.handle('validate-token', async (_, token: string) => {
+  // LinearClient로 viewer API 호출하여 검증
+});
+
+ipcMain.handle('save-settings', async (_, data) => {
+  // settings-store에 저장
+});
+
+ipcMain.handle('get-settings', async () => {
+  // 현재 설정 반환
+});
+
+ipcMain.handle('open-settings', () => {
+  createSettingsWindow();
+});
+
+ipcMain.handle('close-settings', () => {
+  settingsWindow?.close();
+});
+```
+
+**검증**:
+- 트레이 메뉴에서 Settings 열기
+- 토큰 저장 후 앱 재시작 → 토큰 유지 확인
+
+---
+
+#### Phase 4: Tray 메뉴 수정 (`tray.ts`)
+
+**목적**: Settings 메뉴 항목 추가
+
+**파일**: `src/main/tray.ts` (수정)
+
+**변경**:
+```typescript
+export interface TrayCallbacks {
+  onCapture: () => void;
+  onSettings: () => void;  // 추가
+  onQuit: () => void;
+}
+
+const contextMenu = Menu.buildFromTemplate([
+  { label: 'Capture Screen (⌘+Shift+L)', click: callbacks.onCapture },
+  { type: 'separator' },
+  { label: 'Settings...', click: callbacks.onSettings },  // 추가
+  { type: 'separator' },
+  { label: 'Quit', click: callbacks.onQuit },
+]);
+```
+
+**검증**:
+- 메뉴바 아이콘 클릭 → Settings 메뉴 표시
+- Settings 클릭 → Settings 윈도우 열림
+
+---
+
+#### Phase 5: 메인 UI Settings 버튼 (`index.html`)
+
+**목적**: 이슈 생성 폼에서 Settings로 빠르게 이동
+
+**파일**: `src/renderer/index.html` (수정)
+
+**추가**:
+```html
+<!-- 헤더에 Settings 버튼 추가 -->
+<div class="header" style="display: flex; justify-content: space-between; align-items: center;">
+  <h1>New Issue</h1>
+  <button id="settingsBtn" class="icon-btn" title="Settings">⚙</button>
+</div>
+```
+
+```javascript
+document.getElementById('settingsBtn').addEventListener('click', () => {
+  ipcRenderer.invoke('open-settings');
+});
+```
+
+**검증**:
+- 이슈 생성 폼에서 ⚙ 버튼 클릭
+- Settings 윈도우 열림
+
+---
+
+#### Phase 6: Linear Client 수정 (`linear-client.ts`)
+
+**목적**: 저장된 토큰 사용
+
+**파일**: `src/services/linear-client.ts` (수정)
+
+**변경**:
+```typescript
+// 기존
+const apiToken = process.env.LINEAR_API_TOKEN;
+
+// 변경
+import { getLinearToken } from './settings-store';
+const apiToken = getLinearToken();
+```
+
+**검증**:
+- Settings에서 개인 토큰 저장
+- 이슈 생성 → Linear에서 작성자 확인 (개인 계정으로 생성되었는지)
+
+---
+
+### DMG 테스트 체크리스트
+
+각 Phase 완료 후:
+
+```bash
+# 1. DMG 빌드
+npm run dist:mac
+
+# 2. 기존 앱 삭제 (캐시 포함)
+rm -rf /Applications/Linear\ Capture.app
+rm -rf ~/Library/Application\ Support/linear-capture
+
+# 3. DMG 마운트 및 설치
+hdiutil attach release/Linear\ Capture-1.0.0-universal.dmg
+cp -R /Volumes/Linear\ Capture*/Linear\ Capture.app /Applications/
+hdiutil detach /Volumes/Linear\ Capture*
+
+# 4. Finder에서 우클릭 → 열기
+# 5. 테스트
+#    - ⌘+Shift+L 핫키 작동
+#    - 캡처 → 이슈 생성 정상
+#    - (해당 Phase의 기능 테스트)
+```
+
+### 파일 변경 요약
+
+| 파일 | 작업 | Phase |
+|------|------|-------|
+| `src/services/settings-store.ts` | 새로 생성 | 1 |
+| `src/renderer/settings.html` | 새로 생성 | 2 |
+| `src/main/index.ts` | IPC 핸들러 추가 | 3 |
+| `src/main/tray.ts` | Settings 메뉴 추가 | 4 |
+| `src/renderer/index.html` | Settings 버튼 추가 | 5 |
+| `src/services/linear-client.ts` | 토큰 로직 수정 | 6 |
+
+### 롤백 전략
+
+문제 발생 시:
+```bash
+# 해당 Phase 커밋만 revert
+git revert HEAD
+
+# 또는 전체 롤백
+git checkout master
+```
