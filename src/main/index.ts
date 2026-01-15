@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, clipboard, Notification, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, clipboard, Notification, shell, dialog } from 'electron';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 import Store from 'electron-store';
@@ -51,19 +51,24 @@ function openScreenCaptureSettings(): void {
 }
 
 /**
- * Show permission required notification
+ * Show permission required dialog (instead of notification)
  */
 function showPermissionNotification(): void {
-  const notification = new Notification({
-    title: '화면 녹화 권한 필요',
-    body: '클릭하여 시스템 환경설정을 엽니다',
+  dialog.showMessageBox({
+    type: 'warning',
+    title: 'Linear Capture',
+    message: '화면 녹화 권한이 필요합니다',
+    detail: '단축키로 화면을 캡처하고 바로 Linear 이슈를 생성하세요',
+    buttons: ['권한 설정', '시작'],
+    defaultId: 0,
+    cancelId: 1,
+  }).then((result: { response: number }) => {
+    if (result.response === 0) {
+      // "권한 설정" 버튼 클릭
+      openScreenCaptureSettings();
+    }
+    // "시작" 버튼은 그냥 닫기
   });
-
-  notification.on('click', () => {
-    openScreenCaptureSettings();
-  });
-
-  notification.show();
 }
 
 /**
@@ -105,11 +110,12 @@ function createSettingsWindow(): void {
 
   settingsWindow = new BrowserWindow({
     width: 400,
-    height: 380,
+    height: 420,
     show: false,
-    frame: false,
+    frame: true, // 신호등 버튼 표시
     resizable: false,
     alwaysOnTop: false,
+    title: 'Settings - Linear Capture',
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -225,6 +231,7 @@ async function handleCapture(): Promise<void> {
     const permission = checkScreenCapturePermission();
     if (permission !== 'granted') {
       showPermissionNotification();
+      return; // 권한이 없으면 캡처 중단
     }
 
     const captureStartTime = Date.now();
