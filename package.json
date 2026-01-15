@@ -12,7 +12,9 @@
     "clean": "rm -rf dist",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
-    "dist:mac": "npm run build && electron-builder --mac"
+    "dist:mac": "npm run build && electron-builder --mac",
+    "reinstall": "./scripts/clean-reinstall.sh",
+    "reinstall:quick": "./scripts/quick-reinstall.sh"
   },
   "build": {
     "appId": "com.gpters.linear-capture",
