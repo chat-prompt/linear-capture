@@ -531,11 +531,15 @@ ipcMain.handle('close-settings', () => {
 
 ---
 
-#### Phase 4: Tray 메뉴 수정 (`tray.ts`)
+#### Phase 4: Tray 메뉴 수정 (`tray.ts`) ✅ 완료
 
-**목적**: Settings 메뉴 항목 추가
+**목적**: Settings 메뉴 항목 추가 및 트레이 아이콘 수정
 
-**파일**: `src/main/tray.ts` (수정)
+**파일**:
+- `src/main/tray.ts` (수정)
+- `assets/tray-icon.png` (새로 생성)
+- `assets/tray-icon@2x.png` (새로 생성)
+- `package.json` (수정)
 
 **변경**:
 ```typescript
@@ -554,9 +558,40 @@ const contextMenu = Menu.buildFromTemplate([
 ]);
 ```
 
-**검증**:
-- 메뉴바 아이콘 클릭 → Settings 메뉴 표시
-- Settings 클릭 → Settings 윈도우 열림
+**트레이 아이콘 문제 및 해결**:
+
+1. **문제**: 트레이 영역은 차지하지만 아이콘이 보이지 않음
+   - **원인 1**: 기존 `tray-icon.png` (192바이트)가 손상됨
+   - **원인 2**: `package.json` files에 `assets/**/*` 미포함 → DMG에 assets 없음
+   - **원인 3**: `__dirname` 경로로는 asar 내부 파일 접근 불가
+
+2. **해결**:
+   - 유효한 PNG 아이콘 생성 (16x16, 32x32 픽셀 L 모양)
+   - `package.json`에 `"assets/**/*"` 추가
+   - `app.getAppPath()`로 asar 내부 경로 접근
+   - Template Image 설정으로 light/dark 모드 자동 대응
+
+3. **최종 코드** (`tray.ts`):
+```typescript
+const appPath = app.getAppPath();
+const iconPath = path.join(appPath, 'assets/tray-icon.png');
+const iconPath2x = path.join(appPath, 'assets/tray-icon@2x.png');
+
+let icon = nativeImage.createFromPath(iconPath);
+const icon2x = nativeImage.createFromPath(iconPath2x);
+if (!icon2x.isEmpty()) {
+  icon.addRepresentation({ scaleFactor: 2.0, buffer: icon2x.toPNG() });
+}
+icon.setTemplateImage(true);
+```
+
+**검증 완료**:
+- ✅ 개발 모드: 트레이 아이콘 정상 표시
+- ✅ DMG 설치 버전: 트레이 아이콘 정상 표시
+- ✅ Settings 메뉴 클릭 → Settings 윈도우 열림
+- ✅ 핫키 (⌘+Shift+L) 정상 작동
+
+**커밋**: `27261d4` - feat(settings): Complete Phase 4
 
 ---
 
