@@ -5,6 +5,7 @@ let tray: Tray | null = null;
 
 interface TrayCallbacks {
   onCapture: () => void;
+  onSettings: () => void;
   onQuit: () => void;
 }
 
@@ -12,25 +13,25 @@ interface TrayCallbacks {
  * Create menu bar tray icon
  */
 export function createTray(callbacks: TrayCallbacks): Tray {
-  // Create a simple icon (you can replace with a custom icon later)
-  const iconPath = path.join(__dirname, '../../assets/tray-icon.png');
+  // Load tray icon from PNG files
+  // In production (asar), use app.getAppPath(), in dev use __dirname
+  const appPath = app.getAppPath();
+  const iconPath = path.join(appPath, 'assets/tray-icon.png');
+  const iconPath2x = path.join(appPath, 'assets/tray-icon@2x.png');
 
-  // Try to load custom icon, fallback to creating a simple one
-  let icon: Electron.NativeImage;
-  try {
-    icon = nativeImage.createFromPath(iconPath);
-    if (icon.isEmpty()) {
-      throw new Error('Icon not found');
-    }
-  } catch {
-    // Create a simple 16x16 icon as fallback
-    icon = nativeImage.createEmpty();
+  let icon = nativeImage.createFromPath(iconPath);
+
+  // Add @2x image for Retina displays
+  const icon2x = nativeImage.createFromPath(iconPath2x);
+  if (!icon2x.isEmpty()) {
+    icon.addRepresentation({
+      scaleFactor: 2.0,
+      buffer: icon2x.toPNG(),
+    });
   }
 
-  // Resize for menu bar (16x16 on macOS)
-  if (!icon.isEmpty()) {
-    icon = icon.resize({ width: 16, height: 16 });
-  }
+  // Set as template image for proper light/dark mode support
+  icon.setTemplateImage(true);
 
   tray = new Tray(icon);
   tray.setToolTip('Linear Capture');
@@ -39,6 +40,11 @@ export function createTray(callbacks: TrayCallbacks): Tray {
     {
       label: 'Capture Screen (⌘+Shift+L)',
       click: callbacks.onCapture,
+    },
+    { type: 'separator' },
+    {
+      label: 'Settings...',
+      click: callbacks.onSettings,
     },
     { type: 'separator' },
     {

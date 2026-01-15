@@ -1,6 +1,6 @@
 {
   "name": "linear-capture",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Capture screen and create Linear issues instantly",
   "main": "dist/main/index.js",
   "author": "GPTers",
@@ -23,6 +23,7 @@
     "files": [
       "dist/**/*",
       "node_modules/**/*",
+      "assets/**/*",
       ".env"
     ],
     "mac": {
@@ -31,7 +32,9 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["universal"]
+          "arch": [
+            "universal"
+          ]
         }
       ],
       "hardenedRuntime": false,

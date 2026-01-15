@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, clipboard, Notification, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, clipboard, Notification, shell, dialog } from 'electron';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 import Store from 'electron-store';
@@ -7,15 +7,25 @@ import { registerHotkey, unregisterAllHotkeys } from './hotkey';
 import { createTray, destroyTray } from './tray';
 import { captureSelection, cleanupCapture, checkScreenCapturePermission } from '../services/capture';
 import { createR2UploaderFromEnv } from '../services/r2-uploader';
-import { createLinearServiceFromEnv, TeamInfo, ProjectInfo, UserInfo, WorkflowStateInfo, CycleInfo } from '../services/linear-client';
+import { createLinearServiceFromEnv, validateLinearToken, TeamInfo, ProjectInfo, UserInfo, WorkflowStateInfo, CycleInfo } from '../services/linear-client';
 import { createGeminiAnalyzer, GeminiAnalyzer, AnalysisResult, AnalysisContext } from '../services/gemini-analyzer';
 import { createAnthropicAnalyzer, AnthropicAnalyzer } from '../services/anthropic-analyzer';
+import {
+  getLinearToken,
+  setLinearToken,
+  clearLinearToken,
+  getUserInfo,
+  setUserInfo,
+  getAllSettings,
+  UserInfo as SettingsUserInfo,
+} from '../services/settings-store';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 let mainWindow: BrowserWindow | null = null;
 let onboardingWindow: BrowserWindow | null = null;
+let settingsWindow: BrowserWindow | null = null;
 let capturedFilePath: string | null = null;
 let uploadedImageUrl: string | null = null;
 
@@ -41,19 +51,24 @@ function openScreenCaptureSettings(): void {
 }
 
 /**
- * Show permission required notification
+ * Show permission required dialog (instead of notification)
  */
 function showPermissionNotification(): void {
-  const notification = new Notification({
-    title: '화면 녹화 권한 필요',
-    body: '클릭하여 시스템 환경설정을 엽니다',
+  dialog.showMessageBox({
+    type: 'warning',
+    title: 'Linear Capture',
+    message: '화면 녹화 권한이 필요합니다',
+    detail: '단축키로 화면을 캡처하고 바로 Linear 이슈를 생성하세요',
+    buttons: ['권한 설정', '시작'],
+    defaultId: 0,
+    cancelId: 1,
+  }).then((result: { response: number }) => {
+    if (result.response === 0) {
+      // "권한 설정" 버튼 클릭
+      openScreenCaptureSettings();
+    }
+    // "시작" 버튼은 그냥 닫기
   });
-
-  notification.on('click', () => {
-    openScreenCaptureSettings();
-  });
-
-  notification.show();
 }
 
 /**
@@ -75,12 +90,51 @@ function createOnboardingWindow(): void {
 
   onboardingWindow.loadFile(path.join(__dirname, '../renderer/onboarding.html'));
 
-  onboardingWindow.once('ready-to-show', () => {
+  onboardingWindow.once('ready-to-show', async () => {
     onboardingWindow?.show();
+
+    // 온보딩 표시 후 바로 캡처 시도하여 권한 목록에 앱 등록
+    // 사용자가 ESC 누르거나 취소하면 파일은 생성되지 않음
+    console.log('Triggering capture to register in permission list...');
+    await captureSelection();
   });
 
   onboardingWindow.on('closed', () => {
     onboardingWindow = null;
+  });
+}
+
+/**
+ * Create the settings window
+ */
+function createSettingsWindow(): void {
+  if (settingsWindow) {
+    settingsWindow.focus();
+    return;
+  }
+
+  settingsWindow = new BrowserWindow({
+    width: 400,
+    height: 420,
+    show: false,
+    frame: true, // 신호등 버튼 표시
+    resizable: false,
+    alwaysOnTop: false,
+    title: 'Settings - Linear Capture',
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+  });
+
+  settingsWindow.loadFile(path.join(__dirname, '../renderer/settings.html'));
+
+  settingsWindow.once('ready-to-show', () => {
+    settingsWindow?.show();
+  });
+
+  settingsWindow.on('closed', () => {
+    settingsWindow = null;
   });
 }
 
@@ -182,6 +236,7 @@ async function handleCapture(): Promise<void> {
     const permission = checkScreenCapturePermission();
     if (permission !== 'granted') {
       showPermissionNotification();
+      return; // 권한이 없으면 캡처 중단
     }
 
     const captureStartTime = Date.now();
@@ -461,6 +516,52 @@ app.whenReady().then(async () => {
     }
   });
 
+  // Settings IPC handlers
+  ipcMain.handle('get-settings', async () => {
+    return getAllSettings();
+  });
+
+  ipcMain.handle('validate-token', async (_event, token: string) => {
+    try {
+      const result = await validateLinearToken(token);
+      return result;
+    } catch (error) {
+      console.error('Token validation error:', error);
+      return { valid: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('save-settings', async (_event, data: { linearApiToken: string; userInfo: SettingsUserInfo }) => {
+    try {
+      setLinearToken(data.linearApiToken);
+      setUserInfo(data.userInfo);
+      // Reload Linear data with new token
+      await loadLinearData();
+      return { success: true };
+    } catch (error) {
+      console.error('Save settings error:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('clear-settings', async () => {
+    try {
+      clearLinearToken();
+      return { success: true };
+    } catch (error) {
+      console.error('Clear settings error:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('open-settings', () => {
+    createSettingsWindow();
+  });
+
+  ipcMain.handle('close-settings', () => {
+    settingsWindow?.close();
+  });
+
   // Initialize AI analyzer (prefer Gemini, fallback to Anthropic)
   geminiAnalyzer = createGeminiAnalyzer();
   if (geminiAnalyzer) {
@@ -479,6 +580,7 @@ app.whenReady().then(async () => {
   // Create tray
   createTray({
     onCapture: handleCapture,
+    onSettings: createSettingsWindow,
     onQuit: () => app.quit(),
   });
 
