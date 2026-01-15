@@ -144,10 +144,249 @@ node test-gemini-vision.js # 실제 이미지 분석 테스트
 - CoreText 폰트 경고 (무시 가능)
 - Electron에서 `-webkit-app-region: drag` 사용 시 입력 요소에 명시적으로 `no-drag` 필요
 
+---
+
+## ⚠️ DMG 패키징 핫키 문제 해결 기록 (2025-01-15)
+
+### 문제 현상
+
+| 실행 방식 | 전역 핫키 (⌘+Shift+L) | 캡처 |
+|----------|----------------------|------|
+| `npm run start` (개발 모드) | ✅ 작동 | ✅ 작동 |
+| DMG 설치 후 실행 (8f15f98) | ❌ 앱 실행 안 됨 | ❌ |
+| DMG 설치 후 실행 (96275bc) | ✅ 작동 | ✅ 작동 |
+
+### 작동하는 버전
+
+**커밋**: `96275bc` (2025-01-14 첫 머지 버전)
+
+**핵심 설정** (`package.json`):
+```json
+"mac": {
+  "category": "public.app-category.productivity",
+  "icon": "assets/icon.icns",
+  "target": [{ "target": "dmg", "arch": ["universal"] }],
+  "hardenedRuntime": false,
+  "gatekeeperAssess": false
+}
+```
+
+### 실패한 버전에서 추가하려던 기능들 (8f15f98)
+
+#### 1. 화면 녹화 권한 서비스 (`src/services/permission.ts`)
+```typescript
+// 목적: 화면 녹화 권한 상태 확인 및 안내
+import { systemPreferences, shell } from 'electron';
+
+export function checkScreenCapturePermission(): 'granted' | 'denied' | 'not-determined' {
+  const status = systemPreferences.getMediaAccessStatus('screen');
+  return status;
+}
+
+export function openScreenCaptureSettings(): void {
+  shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture');
+}
+```
+
+#### 2. 사용자 설정 저장소 (`src/services/settings-store.ts`)
+```typescript
+// 목적: 사용자 설정 (기본 팀, 기본 프로젝트 등) 영구 저장
+import Store from 'electron-store';
+
+interface Settings {
+  defaultTeamId: string;
+  defaultProjectId: string;
+  aiModel: 'haiku' | 'gemini';
+}
+
+const store = new Store<Settings>({
+  defaults: {
+    defaultTeamId: '',
+    defaultProjectId: '',
+    aiModel: 'haiku'
+  }
+});
+```
+
+#### 3. 설정 UI (`src/renderer/settings.html`)
+- 기본 팀/프로젝트 선택
+- AI 모델 선택 (Haiku vs Gemini)
+- 단축키 커스터마이징
+
+#### 4. 네이티브 모듈 (`mac-screen-capture-permissions`)
+```json
+// package.json에 추가됨
+"dependencies": {
+  "mac-screen-capture-permissions": "^2.0.0"
+}
+```
+
+#### 5. 복잡한 로깅 시스템
+```typescript
+// crash 로그 파일 저장
+import * as fs from 'fs';
+import * as path from 'path';
+
+const crashLogPath = path.join(app.getPath('userData'), 'crash.log');
+fs.writeFileSync(crashLogPath, `Crash at ${new Date().toISOString()}\n`);
+```
+
+### 실패 원인 분석
+
+#### 원인 1: 네이티브 모듈 패키징 실패
+`mac-screen-capture-permissions`는 C++ 네이티브 바인딩을 사용하는 모듈로, electron-builder가 올바르게 번들링하지 못함.
+
+**증상**: 앱 실행 시 `MODULE_NOT_FOUND` 에러 (하지만 에러 표시 없이 silent crash)
+
+**해결**: Electron 내장 API 사용
+```typescript
+// ❌ 네이티브 모듈
+import { hasScreenCapturePermission } from 'mac-screen-capture-permissions';
+
+// ✅ Electron 내장 API
+import { systemPreferences } from 'electron';
+const status = systemPreferences.getMediaAccessStatus('screen');
+```
+
+#### 원인 2: 파일 시스템 접근 문제
+패키징된 앱에서 `fs.writeFileSync`로 crash 로그를 쓰려 할 때, 앱 번들 내부에 쓰기 권한이 없음.
+
+**증상**: 앱 시작 시점에 crash (JavaScript 실행 전)
+
+**해결**: `app.getPath('userData')` 사용 또는 로깅 제거
+
+#### 원인 3: Hardened Runtime + Ad-hoc 서명 충돌
+```json
+// ❌ 문제가 되는 설정
+"mac": {
+  "hardenedRuntime": true,
+  "entitlements": "entitlements.mac.plist"
+}
+```
+
+Ad-hoc 서명(Apple Developer 인증서 없이 빌드)과 `hardenedRuntime: true`가 함께 사용되면:
+- macOS TCC(Transparency, Consent, and Control)가 권한을 엄격하게 검증
+- 새 번들 ID(`com.gpters.linear-capture`)에 대한 Accessibility 권한이 없음
+- 권한 프롬프트가 뜨기 전에 핫키 등록 시도 → 실패
+
+**해결**: `hardenedRuntime: false` 유지 (Apple Developer 인증서 없이는)
+
+#### 원인 4: Gatekeeper 차단
+macOS Gatekeeper가 서명되지 않은 앱을 silent하게 차단.
+
+**증상**: 앱 아이콘 클릭 → 아무 반응 없음 (에러 없음)
+
+**해결**: Finder에서 앱 우클릭 → "Open" 선택 (최초 1회)
+
+### 재현 방지 체크리스트
+
+DMG 패키징 전 반드시 확인:
+
+- [ ] **네이티브 모듈 사용 금지**: `package.json`에 네이티브 바인딩 모듈이 없는지 확인
+- [ ] **Electron 내장 API 사용**: `systemPreferences`, `shell`, `dialog` 등 활용
+- [ ] **hardenedRuntime: false 유지**: Apple Developer 인증서 획득 전까지
+- [ ] **entitlements 설정 제거**: Ad-hoc 서명에서는 불필요
+- [ ] **파일 쓰기 경로 검증**: `app.getPath('userData')` 사용
+- [ ] **DMG 빌드 후 즉시 테스트**: 개발 모드에서 작동해도 DMG에서 실패할 수 있음
+- [ ] **Finder 우클릭 열기**: 새 DMG 테스트 시 Gatekeeper 우회
+
+### 안전한 기능 추가 순서
+
+1. **단일 기능 추가**: 한 번에 하나의 기능만 추가
+2. **DMG 빌드 테스트**: 각 기능 추가 후 `npm run dist:mac` 실행
+3. **Finder에서 테스트**: 우클릭 → Open으로 실행
+4. **핫키 + 캡처 확인**: 전역 단축키와 화면 캡처 모두 테스트
+5. **문제 발생 시 롤백**: `git revert` 또는 해당 기능 코드 제거
+
+### 권장 아키텍처
+
+```
+src/
+├── main/
+│   ├── index.ts      # 최소한의 메인 프로세스 코드
+│   ├── hotkey.ts     # globalShortcut만 사용
+│   └── tray.ts       # 메뉴바 아이콘
+├── services/
+│   ├── capture.ts    # screencapture CLI 호출 (네이티브 모듈 X)
+│   └── ...           # 나머지 서비스들
+└── renderer/
+    └── index.html    # 단일 HTML 파일
+```
+
+**핵심 원칙**:
+- 네이티브 모듈 대신 Electron API 또는 CLI 도구 사용
+- 복잡한 로깅/설정 시스템은 DMG 안정화 후 점진적 추가
+- 매 기능 추가마다 DMG 테스트 필수
+
 ## 개발 명령어
 
 ```bash
 npm run build    # TypeScript 컴파일 + assets 복사
 npm run dev      # 빌드 후 즉시 실행
 npm run clean    # dist 폴더 삭제
+npm run dist:mac # DMG 패키징
+```
+
+---
+
+## 🔧 화면 녹화 권한 문제 해결 (TCC 리셋)
+
+### 문제 현상
+- 시스템 환경설정에서 화면 녹화 권한이 **켜져 있는데도**
+- 캡처하면 **데스크탑 기본 배경만** 캡처됨
+- 앱 삭제 후 재설치 시 자주 발생
+
+### 원인
+macOS TCC(Transparency, Consent, and Control) 데이터베이스에 이전 앱 권한 정보가 꼬여있음.
+Ad-hoc 서명된 앱은 재설치 시 macOS가 동일 앱으로 인식하지 못할 수 있음.
+
+### 해결 방법
+
+**1단계: 권한 리셋 (터미널에서 실행)**
+```bash
+tccutil reset ScreenCapture com.gpters.linear-capture
+```
+
+**2단계: 앱 재시작**
+1. Linear Capture 완전 종료 (메뉴바 아이콘도 종료)
+2. 앱 다시 실행
+3. `⌘+Shift+L` 눌러서 캡처 시도
+4. 화면 녹화 권한 팝업이 새로 뜨면 허용
+
+### 전체 화면 녹화 권한 리셋 (모든 앱)
+```bash
+tccutil reset ScreenCapture
+```
+
+### 완전 초기화 스크립트 (앱 삭제 + 재설치 시)
+```bash
+# 1. 앱 종료
+pkill -f "Linear Capture"
+
+# 2. 관련 파일 모두 삭제
+rm -rf /Applications/Linear\ Capture.app
+rm -rf ~/Library/Application\ Support/linear-capture
+rm -rf ~/Library/Caches/com.gpters.linear-capture
+rm -f ~/Library/Preferences/com.gpters.linear-capture.plist
+
+# 3. TCC 권한 리셋
+tccutil reset ScreenCapture com.gpters.linear-capture
+
+# 4. DMG 재빌드 및 설치
+cd /Users/wine_ny/side-project/linear_project/linear-capture
+npm run dist:mac
+hdiutil attach release/Linear\ Capture-1.0.0-universal.dmg
+cp -R /Volumes/Linear\ Capture*/Linear\ Capture.app /Applications/
+hdiutil detach /Volumes/Linear\ Capture*
+
+# 5. Finder에서 우클릭 → 열기로 실행
+```
+
+### 권한 상태 확인 명령어
+```bash
+# 앱 번들 ID 확인
+defaults read /Applications/Linear\ Capture.app/Contents/Info.plist CFBundleIdentifier
+
+# 코드 서명 상태 확인
+codesign -dv /Applications/Linear\ Capture.app
 ```
