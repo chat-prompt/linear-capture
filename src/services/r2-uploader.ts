@@ -1,14 +1,8 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import * as fs from 'fs';
 import * as path from 'path';
 
-export interface R2Config {
-  accountId: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-  bucketName: string;
-  publicUrl: string;
-}
+// Cloudflare Worker URL
+const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
 
 export interface UploadResult {
   success: boolean;
@@ -16,71 +10,80 @@ export interface UploadResult {
   error?: string;
 }
 
-export class R2Uploader {
-  private client: S3Client;
-  private bucketName: string;
-  private publicUrl: string;
+export interface MultiUploadResult {
+  success: boolean;
+  urls?: string[];
+  error?: string;
+}
 
-  constructor(config: R2Config) {
-    this.client = new S3Client({
-      region: 'auto',
-      endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
-      credentials: {
-        accessKeyId: config.accessKeyId,
-        secretAccessKey: config.secretAccessKey,
-      },
-    });
-    this.bucketName = config.bucketName;
-    this.publicUrl = config.publicUrl.replace(/\/$/, ''); // Remove trailing slash
+export class R2Uploader {
+  constructor() {
+    console.log('📤 R2 Uploader (via Cloudflare Worker)');
   }
 
   /**
-   * Upload an image file to R2 and return the public URL
+   * Upload an image file to R2 via Worker and return the public URL
    */
   async upload(filePath: string): Promise<UploadResult> {
+    const result = await this.uploadMultiple([filePath]);
+    if (result.success && result.urls && result.urls.length > 0) {
+      return { success: true, url: result.urls[0] };
+    }
+    return { success: false, error: result.error || 'Upload failed' };
+  }
+
+  /**
+   * Upload multiple image files to R2 via Worker
+   */
+  async uploadMultiple(filePaths: string[]): Promise<MultiUploadResult> {
     try {
-      const fileName = path.basename(filePath);
-      const key = `captures/${Date.now()}-${fileName}`;
-      const body = fs.readFileSync(filePath);
+      const images = filePaths.map(filePath => {
+        const body = fs.readFileSync(filePath);
+        const base64Data = body.toString('base64');
+        const ext = path.extname(filePath).toLowerCase();
+        const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
+        const fileName = path.basename(filePath);
 
-      await this.client.send(
-        new PutObjectCommand({
-          Bucket: this.bucketName,
-          Key: key,
-          Body: body,
-          ContentType: 'image/png',
-        })
-      );
+        return { data: base64Data, mimeType, fileName };
+      });
 
-      const url = `${this.publicUrl}/${key}`;
-      return { success: true, url };
+      console.log(`📤 Uploading ${images.length} image(s) to Worker...`);
+      const startTime = Date.now();
+
+      const response = await fetch(`${WORKER_URL}/upload`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ images }),
+      });
+
+      const elapsed = Date.now() - startTime;
+      console.log(`⏱️ Upload response in ${elapsed}ms`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Worker error: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json() as { success: boolean; urls?: string[]; error?: string };
+
+      if (!result.success) {
+        throw new Error(result.error || 'Upload failed');
+      }
+
+      return { success: true, urls: result.urls };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('❌ R2 upload error:', message);
       return { success: false, error: message };
     }
   }
 }
 
 /**
- * Create R2Uploader from environment variables
+ * Create R2Uploader (Worker 방식은 항상 사용 가능)
  */
-export function createR2UploaderFromEnv(): R2Uploader | null {
-  const accountId = process.env.R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-  const bucketName = process.env.R2_BUCKET_NAME;
-  const publicUrl = process.env.R2_PUBLIC_URL;
-
-  if (!accountId || !accessKeyId || !secretAccessKey || !bucketName || !publicUrl) {
-    console.error('Missing R2 configuration. Please check .env file.');
-    return null;
-  }
-
-  return new R2Uploader({
-    accountId,
-    accessKeyId,
-    secretAccessKey,
-    bucketName,
-    publicUrl,
-  });
+export function createR2UploaderFromEnv(): R2Uploader {
+  return new R2Uploader();
 }

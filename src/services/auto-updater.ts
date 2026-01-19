@@ -32,12 +32,15 @@ export function initAutoUpdater(window: BrowserWindow): void {
   // 이벤트: 업데이트 발견
   autoUpdater.on('update-available', (info: UpdateInfo) => {
     console.log('[AutoUpdater] Update available:', info.version);
+    updateCheckInProgress = false;
+    manualCheckMode = false;
     showUpdateAvailableDialog(info);
   });
 
   // 이벤트: 업데이트 없음 (최신 버전)
   autoUpdater.on('update-not-available', (info: UpdateInfo) => {
     console.log('[AutoUpdater] Already up to date:', info.version);
+    updateCheckInProgress = false;
     if (manualCheckMode) {
       manualCheckMode = false;
       showUpToDateDialog();
@@ -104,13 +107,14 @@ export async function checkForUpdates(silent = true): Promise<void> {
     updateCheckInProgress = true;
     manualCheckMode = !silent; // 수동 확인 시 결과 항상 표시
     await autoUpdater.checkForUpdates();
+    // 플래그 리셋은 이벤트 핸들러에서 처리
   } catch (error) {
     console.error('[AutoUpdater] Failed to check for updates:', error);
+    updateCheckInProgress = false;
     if (!silent) {
+      manualCheckMode = false;
       dialog.showErrorBox('Update Check Failed', 'Could not check for updates. Please try again later.');
     }
-  } finally {
-    updateCheckInProgress = false;
   }
 }
 
