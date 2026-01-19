@@ -209,6 +209,168 @@ ${jsonFormat}`
       suggestedEstimate: json.estimate || undefined,
     };
   }
+
+  /**
+   * Analyze multiple screenshots and return a unified result
+   */
+  async analyzeMultipleScreenshots(imagePaths: string[], context?: AnalysisContext): Promise<AnalysisResult> {
+    if (imagePaths.length === 0) {
+      return { title: '', description: '', success: false };
+    }
+
+    // Single image: use original method
+    if (imagePaths.length === 1) {
+      return this.analyzeScreenshot(imagePaths[0], context);
+    }
+
+    for (let attempt = 0; attempt < this.maxRetries; attempt++) {
+      try {
+        if (attempt > 0) {
+          const delay = this.baseDelay * Math.pow(2, attempt - 1);
+          await this.sleep(delay);
+        }
+
+        return await this.doMultiImageAnalysis(imagePaths, context);
+      } catch (error: unknown) {
+        const err = error as { status?: number };
+
+        if (err.status === 429 || (err.status && err.status >= 500)) {
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    return { title: '', description: '', success: false };
+  }
+
+  private async doMultiImageAnalysis(imagePaths: string[], context?: AnalysisContext): Promise<AnalysisResult> {
+    // Prepare image parts
+    const imageParts = imagePaths.map((imagePath, idx) => {
+      const imgBytes = fs.readFileSync(imagePath);
+      const base64Data = imgBytes.toString('base64');
+      const ext = path.extname(imagePath).toLowerCase();
+      const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
+
+      return {
+        inlineData: {
+          mimeType,
+          data: base64Data
+        }
+      };
+    });
+
+    // Context section
+    const contextSection = context ? `
+
+## 추가 분석
+스크린샷들의 내용을 종합하여 가장 적합한 값을 선택하세요.
+
+### 사용 가능한 프로젝트
+${context.projects.map(p => `- "${p.name}" (ID: ${p.id})${p.description ? ` - ${p.description}` : ''}`).join('\n')}
+
+### 사용 가능한 담당자
+${context.users.map(u => `- "${u.name}" (ID: ${u.id})`).join('\n')}
+
+### 우선순위 기준
+- 1 (긴급): 에러, 장애, 긴급 요청
+- 2 (높음): 중요한 버그, 빠른 처리 필요
+- 3 (중간): 일반 요청, 개선사항 (기본값)
+- 4 (낮음): 사소한 개선, 나중에 해도 됨
+
+### 포인트 기준 (작업량 추정)
+- 1: 아주 작음 (설정 변경, 텍스트 수정)
+- 2: 작음 (간단한 버그 수정)
+- 3: 중간 (기능 수정)
+- 5: 큼 (새 기능 개발)
+- 8: 매우 큼 (대규모 작업)` : '';
+
+    const jsonFormat = context
+      ? `{
+  "title": "제목",
+  "description": "설명 (마크다운)",
+  "projectId": "매칭되는 프로젝트 ID 또는 null",
+  "assigneeId": "매칭되는 담당자 ID 또는 null",
+  "priority": 3,
+  "estimate": 2
+}`
+      : `{"title": "...", "description": "..."}`;
+
+    const analysisStartTime = Date.now();
+
+    // Build parts array: text prompt first, then all images
+    const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
+      {
+        text: `아래 ${imagePaths.length}개의 스크린샷을 종합하여 하나의 Linear 이슈 정보를 생성하세요.
+모든 이미지의 내용을 고려하여 통합된 제목과 설명을 작성합니다.
+
+## 제목 규칙 (매우 중요!)
+
+**사내 협업 vs 외부 문의 구분 규칙**:
+
+1. **사내 협업으로 판단되는 경우** (접두어 없이 내용만):
+   - 슬랙, Teams 등 사내 메신저 UI가 보이는 경우
+   - "팀", "프로젝트", "회의", "공유", "검토" 등 사내 업무 용어
+   - 지피터스 팀 멤버 이름이 확인되는 경우
+
+   형식: 구체적인 요청 내용 (40자 이내, 접두어 없음)
+
+2. **외부 클라이언트 문의인 경우** (회사명 포함):
+   - 외부 회사명이 명확히 보이는 경우
+   형식: [상대방회사] 구체적인 요청 내용 (40자 이내)
+
+## 설명 규칙 (불릿 포인트 필수!)
+모든 내용을 불릿(-) 형식으로 작성하세요.
+${imagePaths.length}개의 이미지에서 파악한 모든 중요 정보를 포함하세요.
+
+### 템플릿
+## 요약
+- (핵심 요청/문제를 한 줄로)
+
+## 상세 내용
+- (이미지 1에서 파악한 주요 내용)
+- (이미지 2에서 파악한 주요 내용)
+- (공통적으로 파악되는 내용)
+
+## To Do
+- [ ] (필요한 조치 사항 1)
+- [ ] (필요한 조치 사항 2)
+${contextSection}
+
+## JSON 응답 형식 (마크다운 코드블록 없이):
+${jsonFormat}`
+      },
+      ...imageParts
+    ];
+
+    const response = await this.client.models.generateContent({
+      model: this.model,
+      contents: [
+        {
+          role: 'user',
+          parts
+        }
+      ]
+    });
+
+    const analysisEndTime = Date.now();
+    console.log(`⏱️ Gemini multi-image API call took ${analysisEndTime - analysisStartTime}ms for ${imagePaths.length} images`);
+
+    const text = response.text || '';
+    const cleanedText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const json = JSON.parse(cleanedText);
+
+    return {
+      title: json.title || '',
+      description: json.description || '',
+      success: true,
+      suggestedProjectId: json.projectId || undefined,
+      suggestedAssigneeId: json.assigneeId || undefined,
+      suggestedPriority: json.priority || undefined,
+      suggestedEstimate: json.estimate || undefined,
+    };
+  }
 }
 
 export function createGeminiAnalyzer(): GeminiAnalyzer | null {

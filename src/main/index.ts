@@ -26,8 +26,20 @@ dotenv.config({ path: path.join(__dirname, '../../.env') });
 let mainWindow: BrowserWindow | null = null;
 let onboardingWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
-let capturedFilePath: string | null = null;
-let uploadedImageUrl: string | null = null;
+
+// Multi-image capture session
+interface CapturedImage {
+  filePath: string;
+  uploadedUrl?: string;
+}
+
+interface CaptureSession {
+  images: CapturedImage[];
+  analysisResult?: AnalysisResult;
+}
+
+const MAX_IMAGES = 10;
+let captureSession: CaptureSession | null = null;
 
 // App settings store
 const store = new Store();
@@ -160,36 +172,30 @@ function createWindow(): void {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
-    // Cleanup temp file if window closed without submission
-    if (capturedFilePath) {
-      cleanupCapture(capturedFilePath);
-      capturedFilePath = null;
-      uploadedImageUrl = null;
-    }
+    // Cleanup all temp files if window closed without submission
+    cleanupSession();
   });
 }
 
 /**
- * Show the issue creation window with captured image
+ * Show the issue creation window with captured images
  */
-function showCaptureWindow(filePath: string, imageUrl: string, analysis?: AnalysisResult): void {
-  capturedFilePath = filePath;
-  uploadedImageUrl = imageUrl;
-
+function showCaptureWindow(analysis?: AnalysisResult): void {
   if (!mainWindow) {
     createWindow();
   }
 
   const sendCaptureData = () => {
     console.log('Sending capture-ready event to renderer...');
+    console.log('Images count:', captureSession?.images.length || 0);
     console.log('Analysis data:', JSON.stringify({
       title: analysis?.title,
       description: analysis?.description?.substring(0, 100),
       success: analysis?.success
     }));
     mainWindow?.webContents.send('capture-ready', {
-      filePath,
-      imageUrl,
+      images: captureSession?.images || [],
+      maxImages: MAX_IMAGES,
       teams: teamsCache,
       projects: projectsCache,
       users: usersCache,
@@ -229,6 +235,8 @@ function showCaptureWindow(filePath: string, imageUrl: string, analysis?: Analys
 
 /**
  * Handle screen capture flow
+ * If session exists and window is open, add to existing session
+ * Otherwise, create new session
  */
 async function handleCapture(): Promise<void> {
   try {
@@ -236,111 +244,68 @@ async function handleCapture(): Promise<void> {
     const permission = checkScreenCapturePermission();
     if (permission !== 'granted') {
       showPermissionNotification();
-      return; // 권한이 없으면 캡처 중단
+      return;
     }
 
-    const captureStartTime = Date.now();
+    // Check if we should add to existing session
+    const isAddingToSession = captureSession !== null && mainWindow?.isVisible();
 
-  // Hide window if visible during capture
-  mainWindow?.minimize();
-
-  const result = await captureSelection();
-
-  if (!result.success || !result.filePath) {
-    console.log('Capture cancelled or failed:', result.error);
-    return;
-  }
-
-  console.log('Capture successful:', result.filePath);
-
-  // Upload to R2
-  const r2 = createR2UploaderFromEnv();
-  if (!r2) {
-    showNotification('Error', 'R2 not configured. Please check .env file.');
-    cleanupCapture(result.filePath);
-    return;
-  }
-
-  // Show window immediately with loading state
-  showCaptureWindow(result.filePath, '', undefined);
-
-  // Prepare analysis context
-  const analysisContext: AnalysisContext = {
-    projects: projectsCache.map(p => ({
-      id: p.id,
-      name: p.name,
-      description: p.description
-    })),
-    users: usersCache.map(u => ({ id: u.id, name: u.name })),
-    defaultTeamId: process.env.DEFAULT_TEAM_ID,
-  };
-
-  // Start upload and AI analysis in parallel
-  const uploadStartTime = Date.now();
-  console.log('Starting R2 upload and AI analysis in parallel...');
-
-  const uploadPromise = r2.upload(result.filePath);
-
-  // Use Gemini if available, otherwise Anthropic (with fallback)
-  const capturedFilePath = result.filePath;
-  const analysisPromise = (async () => {
-    // Try Gemini first
-    if (geminiAnalyzer) {
-      try {
-        const geminiResult = await geminiAnalyzer.analyzeScreenshot(capturedFilePath, analysisContext);
-        if (geminiResult.success) return geminiResult;
-        // Gemini returned success: false, fallback to Anthropic
-        console.log('Gemini returned no result, falling back to Anthropic...');
-      } catch (error: any) {
-        console.error('Gemini analysis failed:', error?.message || error);
-      }
-      // Fallback to Anthropic (both after exception and success: false)
-      if (anthropicAnalyzer) {
-        try {
-          return await anthropicAnalyzer.analyzeScreenshot(capturedFilePath, analysisContext);
-        } catch (fallbackError: any) {
-          console.error('Anthropic fallback also failed:', fallbackError?.message);
-        }
-      }
-    } else if (anthropicAnalyzer) {
-      // Only Anthropic available
-      try {
-        return await anthropicAnalyzer.analyzeScreenshot(capturedFilePath, analysisContext);
-      } catch (error: any) {
-        console.error('Anthropic analysis failed:', error?.message || error);
-      }
+    if (isAddingToSession && captureSession!.images.length >= MAX_IMAGES) {
+      showNotification('Maximum Images', `You can only attach up to ${MAX_IMAGES} images.`);
+      return;
     }
-    return { title: '', description: '', success: false };
-  })();
 
-  // Wait for both to complete
-  const [uploadResult, analysisResult] = await Promise.all([
-    uploadPromise,
-    analysisPromise
-  ]);
+    // Hide window if visible during capture
+    mainWindow?.hide();
 
-  const uploadEndTime = Date.now();
-  console.log(`⏱️ Upload completed in ${uploadEndTime - uploadStartTime}ms`);
-  console.log(`⏱️ AI analysis completed in ${uploadEndTime - uploadStartTime}ms (parallel)`);
-  console.log(`⏱️ Total time from capture: ${uploadEndTime - captureStartTime}ms`);
+    const result = await captureSelection();
 
-  if (!uploadResult.success || !uploadResult.url) {
-    showNotification('Upload Failed', uploadResult.error || 'Unknown error');
-    cleanupCapture(result.filePath);
-    return;
-  }
+    if (!result.success || !result.filePath) {
+      console.log('Capture cancelled or failed:', result.error);
+      // Show window again if we were adding to session
+      if (isAddingToSession) {
+        mainWindow?.show();
+      }
+      return;
+    }
 
-  console.log('Upload successful:', uploadResult.url);
-  uploadedImageUrl = uploadResult.url;
+    console.log('Capture successful:', result.filePath);
 
-  // Send AI results to renderer
-  if (analysisResult.success) {
-    mainWindow?.webContents.send('ai-analysis-ready', analysisResult);
-  } else {
-    mainWindow?.webContents.send('ai-analysis-ready', { success: false });
-  }
+    // Create new session or add to existing
+    if (!captureSession) {
+      captureSession = { images: [] };
+    }
+
+    captureSession.images.push({ filePath: result.filePath });
+    console.log(`Added image ${captureSession.images.length}/${MAX_IMAGES}`);
+
+    if (isAddingToSession) {
+      // 기존 세션에 추가: capture-added 이벤트만 전송
+      mainWindow?.show();
+      mainWindow?.focus();
+      mainWindow?.webContents.send('capture-added', {
+        index: captureSession.images.length - 1,
+        filePath: result.filePath,
+        canAddMore: captureSession.images.length < MAX_IMAGES,
+      });
+    } else {
+      // 새 세션 시작: 전체 데이터 전송
+      showCaptureWindow(captureSession.analysisResult);
+    }
   } catch (error) {
     console.error('handleCapture error:', error);
+  }
+}
+
+/**
+ * Cleanup all images in current session
+ */
+function cleanupSession(): void {
+  if (captureSession) {
+    for (const img of captureSession.images) {
+      cleanupCapture(img.filePath);
+    }
+    captureSession = null;
   }
 }
 
@@ -425,6 +390,42 @@ app.whenReady().then(async () => {
       return { success: false, error: 'Linear not configured' };
     }
 
+    // Upload all images to R2 in parallel
+    const r2 = createR2UploaderFromEnv();
+    if (!r2) {
+      return { success: false, error: 'R2 not configured' };
+    }
+
+    const imageUrls: string[] = [];
+    const totalImages = captureSession?.images.length || 0;
+    if (totalImages > 0) {
+      console.log(`Uploading ${totalImages} images to R2...`);
+      const uploadResults = await Promise.all(
+        captureSession!.images.map(img => r2.upload(img.filePath))
+      );
+
+      for (const uploadResult of uploadResults) {
+        if (uploadResult.success && uploadResult.url) {
+          imageUrls.push(uploadResult.url);
+        }
+      }
+      console.log(`Successfully uploaded ${imageUrls.length}/${totalImages} images`);
+
+      // Warn if some uploads failed but continue with successful ones
+      if (imageUrls.length < totalImages && imageUrls.length > 0) {
+        console.warn(`${totalImages - imageUrls.length} image(s) failed to upload`);
+      }
+
+      // If all uploads failed, return error with count
+      if (imageUrls.length === 0 && totalImages > 0) {
+        return {
+          success: false,
+          error: 'All image uploads failed',
+          uploadedCount: 0
+        };
+      }
+    }
+
     const result = await linear.createIssue({
       title: data.title,
       description: data.description,
@@ -435,7 +436,7 @@ app.whenReady().then(async () => {
       assigneeId: data.assigneeId,
       estimate: data.estimate,
       cycleId: data.cycleId,
-      imageUrl: uploadedImageUrl || undefined,
+      imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
     });
 
     if (result.success && result.issueUrl) {
@@ -443,12 +444,8 @@ app.whenReady().then(async () => {
       clipboard.writeText(result.issueUrl);
       showNotification('Issue Created!', `${result.issueIdentifier} - URL copied to clipboard`);
 
-      // Cleanup
-      if (capturedFilePath) {
-        cleanupCapture(capturedFilePath);
-        capturedFilePath = null;
-      }
-      uploadedImageUrl = null;
+      // Cleanup all images
+      cleanupSession();
 
       // Close window
       mainWindow?.minimize();
@@ -458,17 +455,46 @@ app.whenReady().then(async () => {
   });
 
   ipcMain.handle('cancel', () => {
-    if (capturedFilePath) {
-      cleanupCapture(capturedFilePath);
-      capturedFilePath = null;
-    }
-    uploadedImageUrl = null;
+    cleanupSession();
     mainWindow?.minimize();
   });
 
-  // Handle re-analyze request with specific model
+  // Remove a specific image from the session
+  ipcMain.handle('remove-capture', async (_event, data: { index: number }) => {
+    if (!captureSession || data.index < 0 || data.index >= captureSession.images.length) {
+      return { success: false, error: 'Invalid index' };
+    }
+
+    // Remove and cleanup the specific image
+    const [removed] = captureSession.images.splice(data.index, 1);
+    cleanupCapture(removed.filePath);
+
+    console.log(`Removed image at index ${data.index}, ${captureSession.images.length} remaining`);
+
+    // Notify renderer
+    mainWindow?.webContents.send('capture-removed', {
+      index: data.index,
+      remainingCount: captureSession.images.length,
+      canAddMore: captureSession.images.length < MAX_IMAGES,
+    });
+
+    return { success: true };
+  });
+
+  // Add another capture (alternative to using hotkey)
+  ipcMain.handle('add-capture', async () => {
+    if (captureSession && captureSession.images.length >= MAX_IMAGES) {
+      return { success: false, error: 'Maximum images reached' };
+    }
+    await handleCapture();
+    return { success: true };
+  });
+
+  // Handle re-analyze request with specific model (supports multiple images)
   ipcMain.handle('reanalyze', async (_event, data: { filePath: string; model: string }) => {
-    console.log(`Re-analyzing with model: ${data.model}`);
+    // Get all image paths from session
+    const imagePaths = captureSession?.images.map(img => img.filePath) || [data.filePath];
+    console.log(`Re-analyzing ${imagePaths.length} image(s) with model: ${data.model}`);
 
     const analysisContext: AnalysisContext = {
       projects: projectsCache.map(p => ({
@@ -484,21 +510,23 @@ app.whenReady().then(async () => {
       let analysisResult: AnalysisResult;
 
       if (data.model === 'haiku') {
-        // Use Anthropic Haiku
+        // Use Anthropic Haiku (first image only for now)
         const analyzer = createAnthropicAnalyzer();
         if (!analyzer) {
           mainWindow?.webContents.send('ai-analysis-ready', { success: false });
           return { success: false, error: 'Anthropic API key not set' };
         }
-        analysisResult = await analyzer.analyzeScreenshot(data.filePath, analysisContext);
+        // Anthropic doesn't support multi-image yet, use first image
+        analysisResult = await analyzer.analyzeScreenshot(imagePaths[0], analysisContext);
       } else {
-        // Use Gemini
+        // Use Gemini (supports multiple images)
         const analyzer = createGeminiAnalyzer();
         if (!analyzer) {
           mainWindow?.webContents.send('ai-analysis-ready', { success: false });
           return { success: false, error: 'Gemini API key not set' };
         }
-        analysisResult = await analyzer.analyzeScreenshot(data.filePath, analysisContext);
+        // Use multi-image analysis for all images in session
+        analysisResult = await analyzer.analyzeMultipleScreenshots(imagePaths, analysisContext);
       }
 
       if (analysisResult.success) {

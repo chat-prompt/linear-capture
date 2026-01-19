@@ -54,6 +54,115 @@
       color: #333;
     }
 
+    /* Image Gallery */
+    .image-gallery {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding: 12px 0;
+      margin-bottom: 16px;
+      min-height: 100px;
+      scrollbar-width: thin;
+    }
+
+    .image-gallery::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    .image-gallery::-webkit-scrollbar-track {
+      background: #f0f0f0;
+      border-radius: 3px;
+    }
+
+    .image-gallery::-webkit-scrollbar-thumb {
+      background: #ccc;
+      border-radius: 3px;
+    }
+
+    .gallery-item {
+      position: relative;
+      flex-shrink: 0;
+      width: 120px;
+      height: 90px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #e0e0e0;
+      background: #fafafa;
+    }
+
+    .gallery-thumb {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .gallery-remove {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      padding: 0;
+      transition: background 0.2s;
+    }
+
+    .gallery-remove:hover {
+      background: rgba(220,53,69,0.9);
+    }
+
+    .gallery-index {
+      position: absolute;
+      bottom: 4px;
+      left: 4px;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .gallery-add {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #f8f8f8;
+      border: 2px dashed #ccc;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .gallery-add:hover {
+      background: #e8e9f3;
+      border-color: #5e6ad2;
+    }
+
+    .gallery-add.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .gallery-add-icon {
+      font-size: 24px;
+      color: #666;
+    }
+
+    .gallery-add-text {
+      font-size: 11px;
+      color: #666;
+      margin-top: 4px;
+    }
+
     .preview {
       width: 100%;
       max-height: 150px;
@@ -62,6 +171,7 @@
       border: 1px solid #e0e0e0;
       margin-bottom: 16px;
       background: #fafafa;
+      display: none; /* Hidden, replaced by gallery */
     }
 
     .form-group {
@@ -310,6 +420,73 @@
     .icon-btn:hover {
       opacity: 1;
     }
+
+    /* Image Preview Modal */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.hidden {
+      display: none;
+    }
+
+    .modal-backdrop {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+    }
+
+    .modal-content {
+      position: relative;
+      max-width: 90vw;
+      max-height: 90vh;
+    }
+
+    .modal-content img {
+      max-width: 100%;
+      max-height: 85vh;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-close {
+      position: absolute;
+      top: -12px;
+      right: -12px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #fff;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      padding: 0;
+      line-height: 1;
+    }
+
+    .modal-close:hover {
+      background: #f0f0f0;
+    }
+
+    .gallery-thumb {
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -323,6 +500,10 @@
       <h1>Create Linear Issue</h1>
     </div>
 
+    <!-- Image Gallery (multiple images) -->
+    <div id="imageGallery" class="image-gallery"></div>
+
+    <!-- Legacy single preview (hidden) -->
     <img id="preview" class="preview" src="" alt="Screenshot preview" />
 
     <div class="row" style="margin-bottom: 14px;">
@@ -334,7 +515,7 @@
         </select>
       </div>
       <div class="form-group" style="flex: 1; display: flex; align-items: flex-end;">
-        <button type="button" id="reanalyzeBtn" class="btn-submit" style="width: 100%; padding: 10px;">재분석</button>
+        <button type="button" id="reanalyzeBtn" class="btn-submit" style="width: 100%; padding: 10px;">분석 시작</button>
       </div>
     </div>
 
@@ -435,7 +616,19 @@
       </div>
     </form>
 
-    <div id="loading" class="loading">Creating issue...</div>
+    <div id="loading" class="loading">
+      <div class="spinner" style="margin: 0 auto 10px;"></div>
+      <span id="loadingText">Creating issue...</span>
+    </div>
+  </div>
+
+  <!-- Image Preview Modal -->
+  <div id="imageModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <img id="modalImage" src="" alt="Preview" />
+      <button class="modal-close" title="Close">×</button>
+    </div>
   </div>
 
   <script>
@@ -466,8 +659,106 @@
     const aiLoadingText = document.getElementById('aiLoadingText');
     const aiModelSelect = document.getElementById('aiModel');
     const reanalyzeBtn = document.getElementById('reanalyzeBtn');
+    const loadingText = document.getElementById('loadingText');
 
     let currentFilePath = '';
+    let isSubmitting = false; // Track form submission state
+
+    // Multi-image gallery state
+    const imageGallery = document.getElementById('imageGallery');
+    let images = []; // Array of { filePath }
+    let maxImages = 10;
+
+    // Image Preview Modal
+    const imageModal = document.getElementById('imageModal');
+    const modalImage = document.getElementById('modalImage');
+    const modalClose = imageModal.querySelector('.modal-close');
+    const modalBackdrop = imageModal.querySelector('.modal-backdrop');
+
+    function showImageModal(src) {
+      modalImage.src = src;
+      imageModal.classList.remove('hidden');
+    }
+
+    function hideImageModal() {
+      imageModal.classList.add('hidden');
+      modalImage.src = '';
+    }
+
+    modalClose.addEventListener('click', hideImageModal);
+    modalBackdrop.addEventListener('click', hideImageModal);
+
+    // Render image gallery
+    function renderGallery() {
+      imageGallery.innerHTML = '';
+
+      // Render existing images
+      images.forEach((img, idx) => {
+        const item = document.createElement('div');
+        item.className = 'gallery-item';
+        // Disable remove button during submission
+        const removeDisabled = isSubmitting ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : '';
+        item.innerHTML = `
+          <img class="gallery-thumb" src="file://${img.filePath}" alt="Screenshot ${idx + 1}" />
+          <span class="gallery-index">${idx + 1}</span>
+          <button class="gallery-remove" data-index="${idx}" title="Remove image" ${removeDisabled}>×</button>
+        `;
+        // 썸네일 클릭 시 모달로 확대 보기
+        const thumb = item.querySelector('.gallery-thumb');
+        thumb.addEventListener('click', () => {
+          if (!isSubmitting) {
+            showImageModal(`file://${img.filePath}`);
+          }
+        });
+        imageGallery.appendChild(item);
+      });
+
+      // Add "+" button if under limit and not submitting
+      if (images.length < maxImages && !isSubmitting) {
+        const addBtn = document.createElement('div');
+        addBtn.className = 'gallery-item gallery-add';
+        addBtn.innerHTML = `
+          <span class="gallery-add-icon">+</span>
+          <span class="gallery-add-text">Add (${images.length}/${maxImages})</span>
+        `;
+        addBtn.addEventListener('click', requestAddCapture);
+        imageGallery.appendChild(addBtn);
+      }
+
+      // Update first image as currentFilePath for re-analysis
+      if (images.length > 0) {
+        currentFilePath = images[0].filePath;
+      }
+    }
+
+    // Request additional capture via IPC
+    function requestAddCapture() {
+      if (isSubmitting) return;
+      ipcRenderer.invoke('add-capture');
+    }
+
+    // Handle remove button clicks via event delegation
+    imageGallery.addEventListener('click', (e) => {
+      if (e.target.classList.contains('gallery-remove') && !isSubmitting) {
+        const index = parseInt(e.target.dataset.index);
+        ipcRenderer.invoke('remove-capture', { index });
+      }
+    });
+
+    // Handle new image added
+    ipcRenderer.on('capture-added', (event, data) => {
+      console.log('Capture added:', data);
+      images.push({ filePath: data.filePath });
+      maxImages = data.canAddMore ? maxImages : images.length;
+      renderGallery();
+    });
+
+    // Handle image removed
+    ipcRenderer.on('capture-removed', (event, data) => {
+      console.log('Capture removed:', data);
+      images.splice(data.index, 1);
+      renderGallery();
+    });
 
     // Searchable select elements
     const projectTrigger = document.getElementById('projectTrigger');
@@ -701,10 +992,21 @@
 
       console.log('AI analysis result:', { title: data.suggestedTitle, desc: data.suggestedDescription });
 
-      // Show preview
-      preview.src = `file://${data.filePath}`;
-      imageUrl = data.imageUrl;
-      currentFilePath = data.filePath;
+      // Handle multi-image data
+      if (data.images && data.images.length > 0) {
+        images = data.images.map(img => ({ filePath: img.filePath }));
+        maxImages = data.maxImages || 10;
+        currentFilePath = images[0].filePath;
+        renderGallery();
+      } else if (data.filePath) {
+        // Backwards compatibility for single image
+        images = [{ filePath: data.filePath }];
+        currentFilePath = data.filePath;
+        renderGallery();
+      }
+
+      // Legacy (hidden)
+      imageUrl = data.imageUrl || '';
 
       // Populate teams
       teamSelect.innerHTML = '<option value="">Select team...</option>';
@@ -751,8 +1053,10 @@
         updateTeamDependentDropdowns(data.defaultTeamId);
       }
 
-      // Show AI loading spinner (AI analysis is in progress)
-      aiLoadingDiv.classList.remove('hidden');
+      // AI 로딩 스피너 숨김 유지 (분석 시작 버튼 클릭 시 표시)
+      aiLoadingDiv.classList.add('hidden');
+      reanalyzeBtn.textContent = '분석 시작';
+      reanalyzeBtn.disabled = false;
 
       // Reset form state
       titleInput.value = '';
@@ -791,6 +1095,9 @@
         console.log('AI analysis failed or skipped');
         return;
       }
+
+      // 분석 성공 시 버튼 텍스트 변경
+      reanalyzeBtn.textContent = '재분석';
 
       // Apply AI suggestions
       if (data.title) {
@@ -849,10 +1156,18 @@
         return;
       }
 
+      // Set submitting state
+      isSubmitting = true;
       errorDiv.textContent = '';
       submitBtn.disabled = true;
+      cancelBtn.disabled = true;
+      reanalyzeBtn.disabled = true;
       form.style.display = 'none';
       loadingDiv.style.display = 'block';
+      loadingText.textContent = images.length > 1
+        ? `Uploading ${images.length} images...`
+        : 'Creating issue...';
+      renderGallery(); // Re-render to hide add button
 
       try {
         const result = await ipcRenderer.invoke('create-issue', {
@@ -868,17 +1183,29 @@
         });
 
         if (!result.success) {
+          isSubmitting = false;
           form.style.display = 'block';
           loadingDiv.style.display = 'none';
           submitBtn.disabled = false;
+          cancelBtn.disabled = false;
+          reanalyzeBtn.disabled = false;
           errorDiv.textContent = result.error || 'Failed to create issue';
+          // Show partial upload warning if applicable
+          if (result.uploadedCount !== undefined && result.uploadedCount < images.length) {
+            errorDiv.textContent += ` (${result.uploadedCount}/${images.length} images uploaded)`;
+          }
+          renderGallery();
         }
         // Success case: window will be hidden by main process
       } catch (err) {
+        isSubmitting = false;
         form.style.display = 'block';
         loadingDiv.style.display = 'none';
         submitBtn.disabled = false;
+        cancelBtn.disabled = false;
+        reanalyzeBtn.disabled = false;
         errorDiv.textContent = err.message || 'Unknown error';
+        renderGallery();
       }
     });
 
@@ -890,6 +1217,11 @@
     // Handle Escape key
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
+        // 모달이 열려 있으면 모달만 닫기
+        if (!imageModal.classList.contains('hidden')) {
+          hideImageModal();
+          return;
+        }
         ipcRenderer.invoke('cancel');
       }
     });

@@ -6,7 +6,8 @@ export interface CreateIssueParams {
   description?: string;
   teamId: string;
   projectId?: string;
-  imageUrl?: string;
+  imageUrl?: string;      // Single image (backwards compatible)
+  imageUrls?: string[];   // Multiple images
   stateId?: string;
   priority?: number;
   assigneeId?: string;
@@ -70,15 +71,20 @@ export class LinearService {
   }
 
   /**
-   * Create a new Linear issue with optional image attachment
+   * Create a new Linear issue with optional image attachment(s)
    */
   async createIssue(params: CreateIssueParams): Promise<CreateIssueResult> {
     try {
-      // Build description with image if provided
+      // Build description with images if provided
       let description = params.description || '';
-      if (params.imageUrl) {
-        const imageMarkdown = `\n\n![Screenshot](${params.imageUrl})`;
-        description = description + imageMarkdown;
+
+      // Support both single imageUrl (backwards compatible) and multiple imageUrls
+      const urls = params.imageUrls || (params.imageUrl ? [params.imageUrl] : []);
+      if (urls.length > 0) {
+        const imageMarkdown = urls
+          .map((url, idx) => `![Screenshot ${idx + 1}](${url})`)
+          .join('\n\n');
+        description = description + '\n\n' + imageMarkdown;
       }
 
       const issuePayload = await this.client.createIssue({
