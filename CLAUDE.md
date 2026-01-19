@@ -50,10 +50,12 @@ DEFAULT_TEAM_ID=e108ae14-a354-4c09-86ac-6c1186bc6132
 
 1. `⌘+Shift+L` 또는 메뉴바 아이콘 클릭
 2. 화면 영역 드래그 선택
-3. R2에 이미지 자동 업로드 + Gemini Vision AI 분석 (병렬)
-4. 이슈 생성 폼 표시 (AI가 제목/설명/프로젝트/담당자/우선순위/포인트 자동 채움)
-5. 필요시 수정 후 "Create Issue" 클릭 → Linear 이슈 생성
-6. 이슈 URL 클립보드 복사 + macOS 알림
+3. 갤러리에 이미지 추가 (최대 10장, "+" 버튼으로 추가 캡처 가능)
+4. 썸네일 클릭 → 모달로 이미지 확대 보기
+5. "분석 시작" 버튼으로 Gemini AI 분석 (수동)
+6. 필요시 수정 후 "Create Issue" 클릭 → Linear 이슈 생성
+7. 성공 화면에서 "Linear에서 보기" 또는 "닫기" 선택
+8. 이슈 URL 클립보드 자동 복사
 
 ## 이슈 생성 폼 필드
 
@@ -73,9 +75,68 @@ DEFAULT_TEAM_ID=e108ae14-a354-4c09-86ac-6c1186bc6132
 
 | 채널 | 방향 | 설명 |
 |------|------|------|
-| `capture-ready` | main→renderer | 캡처 완료 후 데이터 전달 (filePath, imageUrl, teams, projects, users, states, cycles, suggestedTitle, suggestedDescription, suggestedProjectId, suggestedAssigneeId, suggestedPriority, suggestedEstimate) |
-| `create-issue` | renderer→main | 이슈 생성 요청 (title, description, teamId, projectId, stateId, priority, assigneeId, estimate, cycleId) |
+| `capture-ready` | main→renderer | 새 세션 시작, 전체 데이터 전달 (images, teams, projects, users, states, cycles) |
+| `capture-added` | main→renderer | 기존 세션에 이미지 추가됨 (index, filePath, canAddMore) |
+| `add-capture` | renderer→main | 추가 캡처 요청 |
+| `remove-capture` | renderer→main | 이미지 삭제 요청 (index) |
+| `create-issue` | renderer→main | 이슈 생성 요청 |
+| `close-window` | renderer→main | 성공 화면에서 창 닫기 요청 |
 | `cancel` | renderer→main | 취소 요청 |
+| `reanalyze` | renderer→main | AI 재분석 요청 (filePath, model) |
+| `set-traffic-lights-visible` | renderer→main | 모달 열릴 때 신호등 숨김/표시 |
+| `open-settings` | renderer→main | Settings 윈도우 열기 |
+
+## 다중 이미지 캡처 기능 (v1.1.1)
+
+### 개요
+단일 이슈에 최대 10장의 스크린샷을 첨부할 수 있습니다.
+
+### UI 구성
+
+**갤러리 UI**:
+```
+┌─────────────────────────────────────────────────┐
+│ [📷1 ×] [📷2 ×] [📷3 ×] [+ Add (3/10)]         │
+└─────────────────────────────────────────────────┘
+```
+
+- **썸네일**: 120×90px, 클릭 시 모달로 확대 보기
+- **삭제 버튼**: 우상단 ×, 개별 이미지 삭제
+- **추가 버튼**: + 버튼으로 추가 캡처 (10장 미만일 때만 표시)
+- **인덱스**: 좌하단에 이미지 번호 표시
+
+**이미지 확대 모달**:
+- 썸네일 클릭 시 전체 화면 모달로 이미지 확대
+- 모달 열리면 macOS 신호등(창 버튼) 숨김 → 실수 클릭 방지
+- ESC 키, 배경 클릭, × 버튼으로 모달 닫기
+- 모달 닫히면 신호등 다시 표시
+
+**성공 화면**:
+- 이슈 생성 완료 후 자동 닫기 대신 성공 화면 표시
+- "Linear에서 보기" 버튼 → 브라우저에서 이슈 열기
+- "닫기" 버튼 → 창 최소화
+- URL 클립보드 복사 완료 안내
+
+### AI 분석
+
+- **수동 분석**: 캡처 후 자동 분석 없음, "분석 시작" 버튼 클릭 필요
+- **멀티 이미지 분석**: 모든 이미지를 Gemini에 한 번에 전송하여 통합 분석
+- **버튼 텍스트**: 분석 전 "분석 시작", 분석 후 "재분석"
+
+### 세션 관리
+
+```typescript
+interface CaptureSession {
+  images: CapturedImage[];  // 최대 10장
+  analysisResult?: AnalysisResult;
+}
+```
+
+- 첫 캡처 시 새 세션 생성
+- 추가 캡처 시 기존 세션에 이미지 추가
+- 이슈 생성 완료 또는 취소 시 세션 정리 (임시 파일 삭제)
+
+---
 
 ## Gemini Vision AI 분석 기능
 
