@@ -179,10 +179,13 @@ function showRestartDialog(info: UpdateInfo): void {
   dialog
     .showMessageBox({
       type: 'info',
-      title: 'Update Ready',
-      message: `Version ${info.version} has been downloaded`,
-      detail: 'The update will be installed when you restart the app.\n\nWould you like to restart now?',
-      buttons: ['Restart Now', 'Later'],
+      title: '업데이트 준비 완료',
+      message: `버전 ${info.version} 다운로드 완료`,
+      detail: '앱을 재시작하면 업데이트가 설치됩니다.\n\n' +
+              '⚠️ 재시작 후 핫키(⌘+Shift+L)가 작동하지 않으면:\n' +
+              '시스템 환경설정 → 개인 정보 보호 및 보안 → 화면 녹화에서\n' +
+              'Linear Capture를 다시 활성화해주세요.',
+      buttons: ['지금 재시작', '나중에'],
       defaultId: 0,
       cancelId: 1,
     })
