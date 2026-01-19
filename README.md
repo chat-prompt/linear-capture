@@ -1,104 +1,84 @@
 # Linear Capture
 
-화면을 캡처하고 Linear 이슈를 즉시 생성하는 macOS 앱
+화면을 캡처하고 AI 분석으로 Linear 이슈를 즉시 생성하는 macOS 앱
 
 ## 기능
 
 - **⌘+Shift+L**: 화면 영역을 선택해서 캡처
+- **다중 이미지**: 최대 10장의 스크린샷을 하나의 이슈에 첨부
+- **AI 분석**: Claude Haiku가 스크린샷을 분석하여 제목/설명/담당자/우선순위 자동 추천
 - **자동 업로드**: 캡처 이미지가 Cloudflare R2에 자동 업로드
-- **Linear 이슈 생성**: 제목, 설명, 팀, 프로젝트 선택 후 이슈 생성
-- **클립보드 복사**: 생성된 이슈 URL이 자동으로 클립보드에 복사
+- **Linear 이슈 생성**: 팀, 프로젝트, 사이클 선택 후 이슈 생성
+- **자동 업데이트**: 새 버전 알림 및 업데이트 (Settings에서 확인)
 
-## Quick Start
+## 설치
 
-### 1. Clone & Install
+### GitHub Releases에서 다운로드
+
+1. [Releases](https://github.com/chat-prompt/linear-capture/releases) 페이지에서 최신 DMG 다운로드
+2. DMG 마운트 후 Applications 폴더로 드래그
+3. **중요**: Finder에서 앱 우클릭 → "열기" 선택 (Gatekeeper 우회)
+
+### 개발 환경
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/chat-prompt/linear-capture.git
 cd linear-capture
 npm install
-```
-
-### 2. Configure
-
-```bash
-cp .env.example .env
-# Edit .env with your API tokens
-```
-
-### 3. Run
-
-```bash
 npm start
 ```
 
-### 4. Use
-
-- 메뉴바에 아이콘이 나타납니다
-- `⌘+Shift+L`을 눌러 캡처
-- 영역을 선택하면 이슈 생성 창이 열립니다
-- 제목과 팀을 선택하고 "Create Issue" 클릭
-
-## Configuration
+## 설정
 
 ### Linear API Token
 
 1. [Linear](https://linear.app) → Settings → API → Personal API keys
 2. "New API Key" 클릭
-3. 토큰을 `.env`의 `LINEAR_API_TOKEN`에 입력
-
-### Cloudflare R2
-
-1. [Cloudflare Dashboard](https://dash.cloudflare.com) → R2
-2. 버킷 생성 (예: `linear-captures`)
-3. Settings → R2 API Tokens → Create API Token
-   - 권한: Object Read & Write
-4. 버킷을 Public으로 설정하거나 Custom Domain 연결
-5. `.env`에 정보 입력:
+3. `.env` 파일 생성:
 
 ```env
-R2_ACCOUNT_ID=your-account-id      # Cloudflare Account ID
-R2_ACCESS_KEY_ID=your-access-key   # R2 API Token의 Access Key ID
-R2_SECRET_ACCESS_KEY=your-secret   # R2 API Token의 Secret Access Key
-R2_BUCKET_NAME=linear-captures     # 생성한 버킷 이름
-R2_PUBLIC_URL=https://...          # 버킷의 Public URL 또는 Custom Domain
+LINEAR_API_TOKEN=lin_api_xxxxx
+DEFAULT_TEAM_ID=your-team-id  # 선택사항
 ```
 
-### Default Team (Optional)
+**참고**: R2 및 AI API 키는 서버(Cloudflare Worker)에서 관리되므로 설정 불필요.
 
-`.env`에 기본 팀 ID를 설정하면 매번 선택하지 않아도 됩니다:
+## 사용법
 
-```env
-DEFAULT_TEAM_ID=e108ae14-a354-4c09-86ac-6c1186bc6132
-```
+1. 메뉴바에 L 아이콘이 나타납니다
+2. `⌘+Shift+L`을 눌러 캡처 (또는 아이콘 클릭)
+3. 화면 영역을 드래그로 선택
+4. "분석 시작" 버튼으로 AI 분석 실행
+5. 필요시 내용 수정 후 "Create Issue" 클릭
+6. 이슈 URL이 자동으로 클립보드에 복사됨
 
-## Development
+## 트러블슈팅
 
-```bash
-# Build and run
-npm start
-
-# Watch mode (manual restart required)
-npm run dev
-```
-
-## Troubleshooting
-
-### "Screen Recording" 권한 요청
+### 화면 녹화 권한
 
 처음 실행 시 macOS에서 화면 녹화 권한을 요청합니다.
-System Preferences → Privacy & Security → Screen Recording에서 허용해주세요.
+시스템 환경설정 → 개인 정보 보호 및 보안 → 화면 녹화에서 허용.
 
 ### 캡처가 안 되는 경우
 
-1. 권한 확인 후 앱 재시작
-2. 터미널에서 수동 테스트: `screencapture -i test.png`
+```bash
+# TCC 권한 리셋
+tccutil reset ScreenCapture com.gpters.linear-capture
 
-### R2 업로드 실패
+# 앱 재시작 후 다시 권한 허용
+```
 
-1. `.env` 파일의 R2 설정 확인
-2. API Token 권한이 "Object Read & Write"인지 확인
-3. 버킷 이름이 정확한지 확인
+### 업데이트 후 권한 오류
+
+앱 업데이트 후 화면 캡처가 안 되면 위의 TCC 리셋 명령어 실행.
+
+## 기술 스택
+
+- **Frontend**: Electron + TypeScript
+- **Backend**: Cloudflare Workers (AI 분석 + R2 업로드)
+- **AI**: Claude Haiku 4.5 / Gemini Flash
+- **Storage**: Cloudflare R2
+- **API**: Linear GraphQL
 
 ## License
 
