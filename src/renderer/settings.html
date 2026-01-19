@@ -203,6 +203,46 @@
     .btn-close:hover:not(:disabled) {
       background: #eee;
     }
+
+    /* Version & Update Section */
+    .version-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #eee;
+    }
+
+    .version-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .version-label {
+      font-size: 13px;
+      color: #666;
+    }
+
+    .version-value {
+      font-size: 13px;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .btn-update {
+      padding: 8px 16px;
+      background: #f8f9fa;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #666;
+    }
+
+    .btn-update:hover:not(:disabled) {
+      background: #eee;
+    }
   </style>
 </head>
 <body>
@@ -236,6 +276,15 @@
       <button class="btn-secondary" id="validateBtn">검증</button>
       <button class="btn-primary" id="saveBtn" disabled>저장</button>
       <button class="btn-close" id="closeBtn">닫기</button>
+    </div>
+
+    <!-- Version & Update Section -->
+    <div class="version-section">
+      <div class="version-info">
+        <span class="version-label">Version</span>
+        <span class="version-value" id="appVersion">-</span>
+      </div>
+      <button class="btn-update" id="checkUpdateBtn">업데이트 확인</button>
     </div>
   </div>
 
@@ -429,6 +478,38 @@
 
     // 설정 로드
     loadSettings();
+
+    // 버전 정보 로드
+    async function loadVersion() {
+      try {
+        const version = await ipcRenderer.invoke('get-app-version');
+        document.getElementById('appVersion').textContent = version || '-';
+      } catch (error) {
+        console.error('Failed to get version:', error);
+      }
+    }
+    loadVersion();
+
+    // 업데이트 확인 버튼
+    const checkUpdateBtn = document.getElementById('checkUpdateBtn');
+    checkUpdateBtn.addEventListener('click', async () => {
+      checkUpdateBtn.disabled = true;
+      checkUpdateBtn.innerHTML = '<span class="loading"></span>확인 중...';
+
+      try {
+        const result = await ipcRenderer.invoke('check-for-updates');
+        if (!result.success && result.error) {
+          alert(result.error);
+        }
+        // 성공 시 메인 프로세스에서 다이얼로그 표시
+      } catch (error) {
+        console.error('Update check failed:', error);
+        alert('업데이트 확인에 실패했습니다');
+      } finally {
+        checkUpdateBtn.disabled = false;
+        checkUpdateBtn.textContent = '업데이트 확인';
+      }
+    });
   </script>
 </body>
 </html>

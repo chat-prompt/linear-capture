@@ -19,6 +19,7 @@ import {
   getAllSettings,
   UserInfo as SettingsUserInfo,
 } from '../services/settings-store';
+import { initAutoUpdater, checkForUpdates } from '../services/auto-updater';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
@@ -591,6 +592,21 @@ app.whenReady().then(async () => {
     settingsWindow?.close();
   });
 
+  // Check for updates manually (from Settings)
+  ipcMain.handle('check-for-updates', async () => {
+    if (app.isPackaged) {
+      await checkForUpdates(false); // false = show result dialog
+      return { success: true };
+    } else {
+      return { success: false, error: 'Updates only work in packaged app' };
+    }
+  });
+
+  // Get current app version
+  ipcMain.handle('get-app-version', () => {
+    return app.getVersion();
+  });
+
   // Set traffic lights (window buttons) visibility
   ipcMain.handle('set-traffic-lights-visible', (_event, visible: boolean) => {
     if (mainWindow && process.platform === 'darwin') {
@@ -625,6 +641,23 @@ app.whenReady().then(async () => {
 
   // Create window (hidden)
   createWindow();
+
+  // Initialize auto-updater (only in packaged app)
+  if (app.isPackaged && mainWindow) {
+    initAutoUpdater(mainWindow);
+
+    // Check for updates after 5 seconds (avoid blocking startup)
+    setTimeout(() => {
+      console.log('Checking for updates...');
+      checkForUpdates();
+    }, 5000);
+
+    // Check for updates every 4 hours
+    setInterval(() => {
+      console.log('Periodic update check...');
+      checkForUpdates();
+    }, 4 * 60 * 60 * 1000);
+  }
 
   console.log('Linear Capture ready! Press ⌘+Shift+L to capture.');
 });

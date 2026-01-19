@@ -1,0 +1,12 @@
+# Development configuration for testing auto-update
+# This file is used when running in development mode with forceDevUpdateConfig = true
+#
+# To test auto-update in development:
+# 1. Uncomment forceDevUpdateConfig in auto-updater.ts
+# 2. Create a GitHub Release with a higher version number
+# 3. Run: npm start
+# 4. The app will check for updates against GitHub Releases
+
+owner: chat-prompt
+repo: linear-capture
+provider: github

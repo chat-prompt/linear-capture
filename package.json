@@ -37,10 +37,21 @@
           "arch": [
             "universal"
           ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
         }
       ],
       "hardenedRuntime": false,
       "gatekeeperAssess": false
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "chat-prompt",
+      "repo": "linear-capture"
     },
     "dmg": {
       "title": "Linear Capture",
@@ -77,6 +88,7 @@
     "@google/genai": "^1.35.0",
     "@linear/sdk": "^38.0.0",
     "dotenv": "^16.3.1",
-    "electron-store": "^8.1.0"
+    "electron-store": "^8.1.0",
+    "electron-updater": "^6.7.3"
   }
 }
