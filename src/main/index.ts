@@ -132,8 +132,8 @@ function createSettingsWindow(): void {
   }
 
   settingsWindow = new BrowserWindow({
-    width: 400,
-    height: 420,
+    width: 480,
+    height: 630,
     show: false,
     frame: true, // 신호등 버튼 표시
     resizable: false,
@@ -647,10 +647,15 @@ app.whenReady().then(async () => {
     if (success) {
       // Save to settings
       setCaptureHotkey(hotkey);
+      const displayHotkey = formatHotkeyForDisplay(hotkey);
+      // Notify main window about hotkey change
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('hotkey-changed', { hotkey, displayHotkey });
+      }
       return {
         success: true,
         hotkey: hotkey,
-        displayHotkey: formatHotkeyForDisplay(hotkey),
+        displayHotkey: displayHotkey,
       };
     } else {
       return {
@@ -666,10 +671,15 @@ app.whenReady().then(async () => {
     const success = updateHotkey(defaultHotkey);
     if (success) {
       resetCaptureHotkey();
+      const displayHotkey = formatHotkeyForDisplay(defaultHotkey);
+      // Notify main window about hotkey change
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('hotkey-changed', { hotkey: defaultHotkey, displayHotkey });
+      }
       return {
         success: true,
         hotkey: defaultHotkey,
-        displayHotkey: formatHotkeyForDisplay(defaultHotkey),
+        displayHotkey: displayHotkey,
       };
     } else {
       return {

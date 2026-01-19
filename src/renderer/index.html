@@ -719,7 +719,7 @@
   <div class="container">
     <div class="header">
       <h1>Create Linear Issue</h1>
-      <div class="shortcut-hint"><kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd> 로 캡처 (최대 10장)</div>
+      <div class="shortcut-hint" id="shortcutHint"><kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd> 로 캡처 (최대 10장)</div>
     </div>
 
     <!-- Image Gallery (multiple images) -->
@@ -1693,6 +1693,34 @@
 
     // 페이지 로드 시 초기 갤러리 렌더링 (캡처하기 버튼 표시)
     renderGallery();
+
+    // ==================== Hotkey Hint Update ====================
+    const shortcutHint = document.getElementById('shortcutHint');
+
+    // Load and display current hotkey
+    async function updateShortcutHint() {
+      try {
+        const result = await ipcRenderer.invoke('get-hotkey');
+        if (result && result.displayHotkey) {
+          // Parse display hotkey (e.g., "⌘ + ⇧ + L") into kbd elements
+          const parts = result.displayHotkey.split(' + ').map(part => part.trim());
+          const kbdHtml = parts.map(p => `<kbd>${p}</kbd>`).join(' + ');
+          shortcutHint.innerHTML = `${kbdHtml} 로 캡처 (최대 10장)`;
+        }
+      } catch (error) {
+        console.error('Failed to load hotkey:', error);
+      }
+    }
+    updateShortcutHint();
+
+    // Listen for hotkey changes
+    ipcRenderer.on('hotkey-changed', (event, data) => {
+      if (data && data.displayHotkey) {
+        const parts = data.displayHotkey.split(' + ').map(part => part.trim());
+        const kbdHtml = parts.map(p => `<kbd>${p}</kbd>`).join(' + ');
+        shortcutHint.innerHTML = `${kbdHtml} 로 캡처 (최대 10장)`;
+      }
+    });
   </script>
 </body>
 </html>
