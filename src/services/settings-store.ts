@@ -17,7 +17,10 @@ export interface Settings {
   linearApiToken?: string;
   userInfo?: UserInfo;
   defaultTeamId?: string;
+  captureHotkey?: string;  // 기본값: 'CommandOrControl+Shift+L'
 }
+
+const DEFAULT_HOTKEY = 'CommandOrControl+Shift+L';
 
 // ⚠️ encryptionKey 사용 안 함 (DMG 패키징 문제 방지)
 const settingsStore = new Store<Settings>({
@@ -92,5 +95,34 @@ export function getAllSettings(): Settings {
     linearApiToken: settingsStore.get('linearApiToken'),
     userInfo: settingsStore.get('userInfo'),
     defaultTeamId: settingsStore.get('defaultTeamId'),
+    captureHotkey: settingsStore.get('captureHotkey'),
   };
+}
+
+/**
+ * 캡처 단축키 가져오기
+ */
+export function getCaptureHotkey(): string {
+  return settingsStore.get('captureHotkey') || DEFAULT_HOTKEY;
+}
+
+/**
+ * 캡처 단축키 저장
+ */
+export function setCaptureHotkey(hotkey: string): void {
+  settingsStore.set('captureHotkey', hotkey);
+}
+
+/**
+ * 캡처 단축키 기본값으로 리셋
+ */
+export function resetCaptureHotkey(): void {
+  settingsStore.delete('captureHotkey');
+}
+
+/**
+ * 기본 단축키 가져오기
+ */
+export function getDefaultHotkey(): string {
+  return DEFAULT_HOTKEY;
 }

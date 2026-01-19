@@ -243,6 +243,99 @@
     .btn-update:hover:not(:disabled) {
       background: #eee;
     }
+
+    /* Hotkey Section */
+    .hotkey-section {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #eee;
+    }
+
+    .hotkey-section h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 12px;
+    }
+
+    .hotkey-input-container {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .hotkey-input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, monospace;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: white;
+      -webkit-app-region: no-drag;
+    }
+
+    .hotkey-input:hover {
+      border-color: #bbb;
+    }
+
+    .hotkey-input:focus {
+      outline: none;
+      border-color: #5e6ad2;
+      background: #f8f8ff;
+    }
+
+    .hotkey-input.recording {
+      border-color: #5e6ad2;
+      background: #f0f1ff;
+      animation: pulse 1.5s infinite;
+    }
+
+    .hotkey-input.error {
+      border-color: #ef4444;
+      background: #fef2f2;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .btn-reset {
+      padding: 10px 14px;
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #666;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-reset:hover:not(:disabled) {
+      background: #eee;
+    }
+
+    .hotkey-hint {
+      font-size: 12px;
+      color: #888;
+      margin-top: 8px;
+    }
+
+    .hotkey-error {
+      font-size: 12px;
+      color: #ef4444;
+      margin-top: 8px;
+    }
+
+    .hotkey-success {
+      font-size: 12px;
+      color: #22c55e;
+      margin-top: 8px;
+    }
   </style>
 </head>
 <body>
@@ -276,6 +369,22 @@
       <button class="btn-secondary" id="validateBtn">검증</button>
       <button class="btn-primary" id="saveBtn" disabled>저장</button>
       <button class="btn-close" id="closeBtn">닫기</button>
+    </div>
+
+    <!-- Hotkey Section -->
+    <div class="hotkey-section">
+      <h2>Capture Hotkey</h2>
+      <div class="hotkey-input-container">
+        <input type="text" 
+               id="hotkeyInput" 
+               class="hotkey-input" 
+               readonly 
+               placeholder="Click to record...">
+        <button class="btn-reset" id="resetHotkeyBtn">Reset</button>
+      </div>
+      <div id="hotkeyHint" class="hotkey-hint">Click and press new key combination</div>
+      <div id="hotkeyError" class="hotkey-error" style="display: none;"></div>
+      <div id="hotkeySuccess" class="hotkey-success" style="display: none;"></div>
     </div>
 
     <!-- Version & Update Section -->
@@ -478,6 +587,220 @@
 
     // 설정 로드
     loadSettings();
+
+    // ==================== Hotkey Settings ====================
+    const hotkeyInput = document.getElementById('hotkeyInput');
+    const resetHotkeyBtn = document.getElementById('resetHotkeyBtn');
+    const hotkeyHint = document.getElementById('hotkeyHint');
+    const hotkeyError = document.getElementById('hotkeyError');
+    const hotkeySuccess = document.getElementById('hotkeySuccess');
+
+    let isRecording = false;
+    let currentHotkey = '';
+    let recordedKeys = [];
+
+    // Load current hotkey
+    async function loadHotkey() {
+      try {
+        const result = await ipcRenderer.invoke('get-hotkey');
+        currentHotkey = result.hotkey;
+        hotkeyInput.value = result.displayHotkey;
+      } catch (error) {
+        console.error('Failed to load hotkey:', error);
+      }
+    }
+    loadHotkey();
+
+    // Start recording on focus
+    hotkeyInput.addEventListener('focus', () => {
+      isRecording = true;
+      recordedKeys = [];
+      hotkeyInput.classList.add('recording');
+      hotkeyInput.value = 'Press keys...';
+      hotkeyHint.textContent = 'Press modifier + key (e.g., ⌘+Shift+L)';
+      hotkeyError.style.display = 'none';
+      hotkeySuccess.style.display = 'none';
+    });
+
+    // Stop recording on blur
+    hotkeyInput.addEventListener('blur', () => {
+      isRecording = false;
+      hotkeyInput.classList.remove('recording');
+      // Restore current hotkey if nothing was recorded
+      if (recordedKeys.length === 0) {
+        loadHotkey();
+      }
+    });
+
+    // Key mapping for Electron accelerator format
+    function keyToAccelerator(key, code) {
+      // Special key mappings
+      const keyMap = {
+        'ArrowUp': 'Up',
+        'ArrowDown': 'Down',
+        'ArrowLeft': 'Left',
+        'ArrowRight': 'Right',
+        ' ': 'Space',
+        'Escape': 'Escape',
+        'Backspace': 'Backspace',
+        'Delete': 'Delete',
+        'Enter': 'Return',
+        'Tab': 'Tab',
+      };
+
+      if (keyMap[key]) return keyMap[key];
+
+      // Function keys
+      if (key.match(/^F\d+$/)) return key;
+
+      // Letters and numbers
+      if (key.length === 1 && /[a-zA-Z0-9]/.test(key)) {
+        return key.toUpperCase();
+      }
+
+      return null;
+    }
+
+    // Format for display (macOS symbols)
+    function formatForDisplay(accelerator) {
+      return accelerator
+        .replace(/CommandOrControl/g, '⌘')
+        .replace(/Command/g, '⌘')
+        .replace(/Control/g, '⌃')
+        .replace(/Ctrl/g, '⌃')
+        .replace(/Alt/g, '⌥')
+        .replace(/Option/g, '⌥')
+        .replace(/Shift/g, '⇧')
+        .replace(/\+/g, ' + ');
+    }
+
+    // Handle keydown during recording
+    hotkeyInput.addEventListener('keydown', async (e) => {
+      if (!isRecording) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Build accelerator string
+      const parts = [];
+
+      // Add modifiers (use CommandOrControl for cross-platform)
+      if (e.metaKey || e.ctrlKey) {
+        parts.push('CommandOrControl');
+      }
+      if (e.altKey) {
+        parts.push('Alt');
+      }
+      if (e.shiftKey) {
+        parts.push('Shift');
+      }
+
+      // Get the main key
+      const mainKey = keyToAccelerator(e.key, e.code);
+
+      // If only modifier keys are pressed, show them but don't save yet
+      if (['Meta', 'Control', 'Alt', 'Shift'].includes(e.key)) {
+        if (parts.length > 0) {
+          hotkeyInput.value = formatForDisplay(parts.join('+')) + ' + ...';
+        }
+        return;
+      }
+
+      // Need at least one modifier
+      if (parts.length === 0) {
+        hotkeyError.textContent = 'Please include a modifier key (⌘, ⌃, ⌥, or ⇧)';
+        hotkeyError.style.display = 'block';
+        hotkeySuccess.style.display = 'none';
+        return;
+      }
+
+      if (!mainKey) {
+        hotkeyError.textContent = 'Invalid key. Use letters, numbers, or function keys.';
+        hotkeyError.style.display = 'block';
+        hotkeySuccess.style.display = 'none';
+        return;
+      }
+
+      parts.push(mainKey);
+      const accelerator = parts.join('+');
+
+      // Show what was recorded
+      hotkeyInput.value = formatForDisplay(accelerator);
+
+      // Validate and save
+      try {
+        const validation = await ipcRenderer.invoke('validate-hotkey', accelerator);
+        if (!validation.valid) {
+          hotkeyError.textContent = validation.error;
+          hotkeyError.style.display = 'block';
+          hotkeySuccess.style.display = 'none';
+          return;
+        }
+
+        // Save the hotkey
+        const result = await ipcRenderer.invoke('save-hotkey', accelerator);
+        if (result.success) {
+          currentHotkey = result.hotkey;
+          hotkeyInput.value = result.displayHotkey;
+          hotkeySuccess.textContent = 'Hotkey saved!';
+          hotkeySuccess.style.display = 'block';
+          hotkeyError.style.display = 'none';
+          hotkeyHint.textContent = 'Hotkey updated successfully';
+
+          // Stop recording
+          isRecording = false;
+          hotkeyInput.classList.remove('recording');
+          hotkeyInput.blur();
+
+          // Hide success message after 2 seconds
+          setTimeout(() => {
+            hotkeySuccess.style.display = 'none';
+            hotkeyHint.textContent = 'Click and press new key combination';
+          }, 2000);
+        } else {
+          hotkeyError.textContent = result.error || 'Failed to save hotkey';
+          hotkeyError.style.display = 'block';
+          hotkeySuccess.style.display = 'none';
+        }
+      } catch (error) {
+        console.error('Hotkey save error:', error);
+        hotkeyError.textContent = 'Failed to save hotkey';
+        hotkeyError.style.display = 'block';
+        hotkeySuccess.style.display = 'none';
+      }
+    });
+
+    // Reset hotkey button
+    resetHotkeyBtn.addEventListener('click', async () => {
+      resetHotkeyBtn.disabled = true;
+      resetHotkeyBtn.textContent = 'Resetting...';
+
+      try {
+        const result = await ipcRenderer.invoke('reset-hotkey');
+        if (result.success) {
+          currentHotkey = result.hotkey;
+          hotkeyInput.value = result.displayHotkey;
+          hotkeySuccess.textContent = 'Reset to default!';
+          hotkeySuccess.style.display = 'block';
+          hotkeyError.style.display = 'none';
+
+          setTimeout(() => {
+            hotkeySuccess.style.display = 'none';
+          }, 2000);
+        } else {
+          hotkeyError.textContent = result.error || 'Failed to reset';
+          hotkeyError.style.display = 'block';
+          hotkeySuccess.style.display = 'none';
+        }
+      } catch (error) {
+        console.error('Reset hotkey error:', error);
+        hotkeyError.textContent = 'Failed to reset hotkey';
+        hotkeyError.style.display = 'block';
+      } finally {
+        resetHotkeyBtn.disabled = false;
+        resetHotkeyBtn.textContent = 'Reset';
+      }
+    });
 
     // 버전 정보 로드
     async function loadVersion() {

@@ -551,6 +551,163 @@
       font-family: -apple-system, BlinkMacSystemFont, monospace;
       font-size: 11px;
     }
+
+    /* Label Multi-select Styles */
+    .label-select {
+      position: relative;
+    }
+
+    .label-chips-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px 10px;
+      min-height: 42px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      align-items: center;
+    }
+
+    .label-chips-container:hover {
+      border-color: #bbb;
+    }
+
+    .label-chips-container:focus-within {
+      border-color: #5e6ad2;
+    }
+
+    .label-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      background: #f0f0f0;
+      color: #333;
+    }
+
+    .label-chip-color {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .label-chip-remove {
+      background: none;
+      border: none;
+      padding: 0;
+      margin-left: 2px;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      color: #666;
+      opacity: 0.6;
+    }
+
+    .label-chip-remove:hover {
+      opacity: 1;
+    }
+
+    .label-add-btn {
+      background: none;
+      border: none;
+      padding: 3px 8px;
+      font-size: 12px;
+      color: #888;
+      cursor: pointer;
+    }
+
+    .label-add-btn:hover {
+      color: #5e6ad2;
+    }
+
+    .label-dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      margin-top: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 1000;
+      max-height: 220px;
+      overflow: hidden;
+    }
+
+    .label-dropdown.open {
+      display: block;
+    }
+
+    .label-search-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: none;
+      border-bottom: 1px solid #eee;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .label-options {
+      max-height: 170px;
+      overflow-y: auto;
+    }
+
+    .label-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .label-option:hover {
+      background: #f5f5f5;
+    }
+
+    .label-option.selected {
+      background: #e8e9f3;
+    }
+
+    .label-option.hidden {
+      display: none;
+    }
+
+    .label-option-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .label-option-name {
+      flex: 1;
+    }
+
+    .label-option-check {
+      font-size: 14px;
+      color: #5e6ad2;
+    }
+
+    .label-no-results {
+      padding: 12px;
+      color: #888;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .label-empty-hint {
+      color: #999;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
@@ -666,11 +823,26 @@
         </div>
       </div>
 
-      <div class="form-group">
-        <label for="cycle">Cycle</label>
-        <select id="cycle" name="cycle">
-          <option value="">None</option>
-        </select>
+      <div class="row">
+        <div class="form-group">
+          <label for="cycle">Cycle</label>
+          <select id="cycle" name="cycle">
+            <option value="">None</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Labels</label>
+          <div class="label-select" id="labelSelect">
+            <div class="label-chips-container" id="labelChipsContainer">
+              <span class="label-empty-hint" id="labelEmptyHint">+ Add labels...</span>
+            </div>
+            <div class="label-dropdown" id="labelDropdown">
+              <input type="text" class="label-search-input" id="labelSearchInput" placeholder="Search labels...">
+              <div class="label-options" id="labelOptions"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div id="error" class="error"></div>
@@ -876,6 +1048,16 @@
     let allTeams = [];
     let allProjects = [];
     let allUsers = [];
+    let allLabels = [];
+    let selectedLabelIds = [];  // Currently selected label IDs
+
+    // Label select elements
+    const labelSelect = document.getElementById('labelSelect');
+    const labelChipsContainer = document.getElementById('labelChipsContainer');
+    const labelEmptyHint = document.getElementById('labelEmptyHint');
+    const labelDropdown = document.getElementById('labelDropdown');
+    const labelSearchInput = document.getElementById('labelSearchInput');
+    const labelOptions = document.getElementById('labelOptions');
 
     // Searchable select helper functions
     function createSearchableSelect(config) {
@@ -942,9 +1124,140 @@
     }
 
     // Close dropdowns when clicking outside
-    document.addEventListener('click', () => {
+    document.addEventListener('click', (e) => {
       document.querySelectorAll('.dropdown.open').forEach(d => d.classList.remove('open'));
+      // Close label dropdown if clicking outside
+      if (!labelSelect.contains(e.target)) {
+        labelDropdown.classList.remove('open');
+      }
     });
+
+    // ==================== Label Multi-Select Logic ====================
+
+    // Toggle label dropdown
+    labelChipsContainer.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Close other dropdowns
+      document.querySelectorAll('.dropdown.open').forEach(d => d.classList.remove('open'));
+      labelDropdown.classList.toggle('open');
+      if (labelDropdown.classList.contains('open')) {
+        labelSearchInput.focus();
+        renderLabelOptions();
+      }
+    });
+
+    // Label search
+    labelSearchInput.addEventListener('input', () => {
+      renderLabelOptions();
+    });
+    labelSearchInput.addEventListener('click', (e) => e.stopPropagation());
+
+    // Render label options in dropdown
+    function renderLabelOptions() {
+      const query = labelSearchInput.value.toLowerCase();
+      const selectedTeamId = teamSelect.value;
+
+      // Filter labels: show workspace labels + selected team's labels
+      const filteredLabels = allLabels.filter(label => {
+        const matchesSearch = label.name.toLowerCase().includes(query);
+        const matchesTeam = !label.teamId || label.teamId === selectedTeamId;
+        return matchesSearch && matchesTeam;
+      });
+
+      labelOptions.innerHTML = '';
+
+      if (filteredLabels.length === 0) {
+        labelOptions.innerHTML = '<div class="label-no-results">No labels found</div>';
+        return;
+      }
+
+      filteredLabels.forEach(label => {
+        const isSelected = selectedLabelIds.includes(label.id);
+        const option = document.createElement('div');
+        option.className = 'label-option' + (isSelected ? ' selected' : '');
+        option.innerHTML = `
+          <span class="label-option-color" style="background-color: ${label.color}"></span>
+          <span class="label-option-name">${label.name}</span>
+          ${isSelected ? '<span class="label-option-check">✓</span>' : ''}
+        `;
+        option.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleLabel(label.id);
+        });
+        labelOptions.appendChild(option);
+      });
+    }
+
+    // Toggle label selection
+    function toggleLabel(labelId) {
+      const idx = selectedLabelIds.indexOf(labelId);
+      if (idx === -1) {
+        selectedLabelIds.push(labelId);
+      } else {
+        selectedLabelIds.splice(idx, 1);
+      }
+      renderLabelChips();
+      renderLabelOptions();
+    }
+
+    // Render selected label chips
+    function renderLabelChips() {
+      // Clear container except empty hint
+      labelChipsContainer.innerHTML = '';
+
+      if (selectedLabelIds.length === 0) {
+        labelChipsContainer.innerHTML = '<span class="label-empty-hint">+ Add labels...</span>';
+        return;
+      }
+
+      selectedLabelIds.forEach(labelId => {
+        const label = allLabels.find(l => l.id === labelId);
+        if (!label) return;
+
+        const chip = document.createElement('span');
+        chip.className = 'label-chip';
+        chip.innerHTML = `
+          <span class="label-chip-color" style="background-color: ${label.color}"></span>
+          ${label.name}
+          <button type="button" class="label-chip-remove" data-id="${label.id}">×</button>
+        `;
+        labelChipsContainer.appendChild(chip);
+      });
+
+      // Add "+ Add" button at the end
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'label-add-btn';
+      addBtn.textContent = '+';
+      addBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        labelDropdown.classList.add('open');
+        labelSearchInput.focus();
+        renderLabelOptions();
+      });
+      labelChipsContainer.appendChild(addBtn);
+    }
+
+    // Remove label chip via event delegation
+    labelChipsContainer.addEventListener('click', (e) => {
+      if (e.target.classList.contains('label-chip-remove')) {
+        e.stopPropagation();
+        const labelId = e.target.dataset.id;
+        toggleLabel(labelId);
+      }
+    });
+
+    // Re-render labels when team changes
+    function updateLabelsForTeam() {
+      // Remove labels that don't belong to the new team
+      const selectedTeamId = teamSelect.value;
+      selectedLabelIds = selectedLabelIds.filter(labelId => {
+        const label = allLabels.find(l => l.id === labelId);
+        return label && (!label.teamId || label.teamId === selectedTeamId);
+      });
+      renderLabelChips();
+      renderLabelOptions();
+    }
 
     // Initialize searchable selects
     let projectSearchable, assigneeSearchable;
@@ -1082,12 +1395,13 @@
       console.log('Capture ready:', data);
 
       try {
-      // Store teams, states, cycles, projects, users for filtering
+      // Store teams, states, cycles, projects, users, labels for filtering
       allTeams = data.teams || [];
       allStates = data.states || [];
       allCycles = data.cycles || [];
       allProjects = data.projects || [];
       allUsers = data.users || [];
+      allLabels = data.labels || [];
 
       console.log('AI analysis result:', { title: data.suggestedTitle, desc: data.suggestedDescription });
 
@@ -1162,6 +1476,8 @@
       descInput.value = '';
       prioritySelect.value = '';
       estimateSelect.value = '';
+      selectedLabelIds = [];  // Reset labels
+      renderLabelChips();
       errorDiv.textContent = '';
       submitBtn.disabled = false;
       cancelBtn.disabled = false;
@@ -1234,6 +1550,7 @@
     // Update dropdowns when team changes
     teamSelect.addEventListener('change', () => {
       updateTeamDependentDropdowns(teamSelect.value);
+      updateLabelsForTeam();  // Also update labels
     });
 
     // Handle form submission
@@ -1284,6 +1601,7 @@
           assigneeId: assigneeId || undefined,
           estimate: estimate ? parseInt(estimate, 10) : undefined,
           cycleId: cycleId || undefined,
+          labelIds: selectedLabelIds.length > 0 ? selectedLabelIds : undefined,
         });
 
         if (result.success) {

@@ -13,6 +13,7 @@ export interface CreateIssueParams {
   assigneeId?: string;
   estimate?: number;
   cycleId?: string;
+  labelIds?: string[];    // Labels to attach
 }
 
 export interface CreateIssueResult {
@@ -63,6 +64,15 @@ export interface CycleInfo {
   teamId: string;
 }
 
+export interface LabelInfo {
+  id: string;
+  name: string;
+  color: string;
+  description?: string;
+  teamId?: string;  // null이면 workspace 라벨
+  parentId?: string;  // 부모 라벨 (그룹)
+}
+
 export class LinearService {
   private client: LinearClient;
 
@@ -97,6 +107,7 @@ export class LinearService {
         assigneeId: params.assigneeId || undefined,
         estimate: params.estimate,
         cycleId: params.cycleId || undefined,
+        labelIds: params.labelIds || undefined,
       });
 
       const issue = await issuePayload.issue;
@@ -252,6 +263,38 @@ export class LinearService {
       return result;
     } catch (error) {
       console.error('Failed to fetch cycles:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get all labels (workspace + team labels)
+   */
+  async getLabels(): Promise<LabelInfo[]> {
+    try {
+      const labels = await this.client.issueLabels({ first: 100 });
+      const result: LabelInfo[] = [];
+
+      for (const label of labels.nodes) {
+        const team = await label.team;
+        const parent = await label.parent;
+        
+        result.push({
+          id: label.id,
+          name: label.name,
+          color: label.color,
+          description: label.description || undefined,
+          teamId: team?.id || undefined,
+          parentId: parent?.id || undefined,
+        });
+      }
+
+      // Sort by name for consistent display
+      result.sort((a, b) => a.name.localeCompare(b.name));
+
+      return result;
+    } catch (error) {
+      console.error('Failed to fetch labels:', error);
       return [];
     }
   }

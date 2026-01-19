@@ -3,11 +3,11 @@ import * as path from 'path';
 import * as dotenv from 'dotenv';
 import Store from 'electron-store';
 
-import { registerHotkey, unregisterAllHotkeys } from './hotkey';
+import { registerHotkey, unregisterAllHotkeys, updateHotkey, validateHotkey, formatHotkeyForDisplay, getCurrentShortcut, DEFAULT_SHORTCUT } from './hotkey';
 import { createTray, destroyTray } from './tray';
 import { captureSelection, cleanupCapture, checkScreenCapturePermission } from '../services/capture';
 import { createR2UploaderFromEnv } from '../services/r2-uploader';
-import { createLinearServiceFromEnv, validateLinearToken, TeamInfo, ProjectInfo, UserInfo, WorkflowStateInfo, CycleInfo } from '../services/linear-client';
+import { createLinearServiceFromEnv, validateLinearToken, TeamInfo, ProjectInfo, UserInfo, WorkflowStateInfo, CycleInfo, LabelInfo } from '../services/linear-client';
 import { createGeminiAnalyzer, GeminiAnalyzer, AnalysisResult, AnalysisContext } from '../services/gemini-analyzer';
 import { createAnthropicAnalyzer, AnthropicAnalyzer } from '../services/anthropic-analyzer';
 import {
@@ -17,6 +17,10 @@ import {
   getUserInfo,
   setUserInfo,
   getAllSettings,
+  getCaptureHotkey,
+  setCaptureHotkey,
+  resetCaptureHotkey,
+  getDefaultHotkey,
   UserInfo as SettingsUserInfo,
 } from '../services/settings-store';
 import { initAutoUpdater, checkForUpdates } from '../services/auto-updater';
@@ -45,12 +49,13 @@ let captureSession: CaptureSession | null = null;
 // App settings store
 const store = new Store();
 
-// Cache for teams, projects, users, states, cycles
+// Cache for teams, projects, users, states, cycles, labels
 let teamsCache: TeamInfo[] = [];
 let projectsCache: ProjectInfo[] = [];
 let usersCache: UserInfo[] = [];
 let statesCache: WorkflowStateInfo[] = [];
 let cyclesCache: CycleInfo[] = [];
+let labelsCache: LabelInfo[] = [];
 
 // AI analyzer instance (Anthropic or Gemini)
 let geminiAnalyzer: GeminiAnalyzer | null = null;
@@ -202,6 +207,7 @@ function showCaptureWindow(analysis?: AnalysisResult): void {
       users: usersCache,
       states: statesCache,
       cycles: cyclesCache,
+      labels: labelsCache,
       defaultTeamId: process.env.DEFAULT_TEAM_ID || '',
       defaultProjectId: process.env.DEFAULT_PROJECT_ID || '',
       suggestedTitle: analysis?.title || '',
@@ -329,12 +335,13 @@ async function loadLinearData(): Promise<void> {
 
   try {
     // Load all data in parallel for faster startup
-    const [teams, projects, users, states, cycles] = await Promise.all([
+    const [teams, projects, users, states, cycles, labels] = await Promise.all([
       linear.getTeams(),
       linear.getProjects(),
       linear.getUsers(),
       linear.getWorkflowStates(),
       linear.getCycles(),
+      linear.getLabels(),
     ]);
 
     teamsCache = teams;
@@ -342,8 +349,9 @@ async function loadLinearData(): Promise<void> {
     usersCache = users;
     statesCache = states;
     cyclesCache = cycles;
+    labelsCache = labels;
 
-    console.log(`Loaded: ${teamsCache.length} teams, ${projectsCache.length} projects, ${usersCache.length} users, ${statesCache.length} states, ${cyclesCache.length} cycles`);
+    console.log(`Loaded: ${teamsCache.length} teams, ${projectsCache.length} projects, ${usersCache.length} users, ${statesCache.length} states, ${cyclesCache.length} cycles, ${labelsCache.length} labels`);
   } catch (error) {
     console.error('Failed to load Linear data:', error);
   }
@@ -385,6 +393,7 @@ app.whenReady().then(async () => {
     assigneeId?: string;
     estimate?: number;
     cycleId?: string;
+    labelIds?: string[];
   }) => {
     const linear = createLinearServiceFromEnv();
     if (!linear) {
@@ -437,6 +446,7 @@ app.whenReady().then(async () => {
       assigneeId: data.assigneeId,
       estimate: data.estimate,
       cycleId: data.cycleId,
+      labelIds: data.labelIds,
       imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
     });
 
@@ -607,6 +617,68 @@ app.whenReady().then(async () => {
     return app.getVersion();
   });
 
+  // ==================== Hotkey IPC Handlers ====================
+
+  // Get current hotkey
+  ipcMain.handle('get-hotkey', () => {
+    return {
+      hotkey: getCaptureHotkey(),
+      displayHotkey: formatHotkeyForDisplay(getCaptureHotkey()),
+      defaultHotkey: getDefaultHotkey(),
+      defaultDisplayHotkey: formatHotkeyForDisplay(getDefaultHotkey()),
+    };
+  });
+
+  // Validate hotkey
+  ipcMain.handle('validate-hotkey', (_event, hotkey: string) => {
+    return validateHotkey(hotkey);
+  });
+
+  // Save and apply new hotkey
+  ipcMain.handle('save-hotkey', async (_event, hotkey: string) => {
+    // Validate first
+    const validation = validateHotkey(hotkey);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+
+    // Try to update the hotkey
+    const success = updateHotkey(hotkey);
+    if (success) {
+      // Save to settings
+      setCaptureHotkey(hotkey);
+      return {
+        success: true,
+        hotkey: hotkey,
+        displayHotkey: formatHotkeyForDisplay(hotkey),
+      };
+    } else {
+      return {
+        success: false,
+        error: 'Failed to register hotkey. It may be in use by another application.',
+      };
+    }
+  });
+
+  // Reset hotkey to default
+  ipcMain.handle('reset-hotkey', async () => {
+    const defaultHotkey = getDefaultHotkey();
+    const success = updateHotkey(defaultHotkey);
+    if (success) {
+      resetCaptureHotkey();
+      return {
+        success: true,
+        hotkey: defaultHotkey,
+        displayHotkey: formatHotkeyForDisplay(defaultHotkey),
+      };
+    } else {
+      return {
+        success: false,
+        error: 'Failed to reset hotkey',
+      };
+    }
+  });
+
   // Set traffic lights (window buttons) visibility
   ipcMain.handle('set-traffic-lights-visible', (_event, visible: boolean) => {
     if (mainWindow && process.platform === 'darwin') {
@@ -636,8 +708,10 @@ app.whenReady().then(async () => {
     onQuit: () => app.quit(),
   });
 
-  // Register global hotkey
-  registerHotkey(handleCapture);
+  // Register global hotkey (use saved hotkey or default)
+  const savedHotkey = getCaptureHotkey();
+  registerHotkey(handleCapture, savedHotkey);
+  console.log(`Using hotkey: ${savedHotkey}`);
 
   // Create and show main window on startup
   createWindow();
