@@ -213,19 +213,19 @@ function showCaptureWindow(analysis?: AnalysisResult): void {
     });
   };
 
+  // 창을 열 때 일시적으로 최상위로 올린 후, 포커스 후 해제
+  mainWindow?.setAlwaysOnTop(true);
+  mainWindow?.show();
+  mainWindow?.focus();
+
   // Check if webContents is still loading
   if (mainWindow?.webContents.isLoading()) {
     console.log('Window still loading, waiting for did-finish-load...');
     mainWindow.webContents.once('did-finish-load', sendCaptureData);
   } else {
-    // Already loaded, send immediately
-    sendCaptureData();
+    // Already loaded, send immediately (use setTimeout to ensure DOM is ready)
+    setTimeout(sendCaptureData, 50);
   }
-
-  // 창을 열 때 일시적으로 최상위로 올린 후, 포커스 후 해제
-  mainWindow?.setAlwaysOnTop(true);
-  mainWindow?.show();
-  mainWindow?.focus();
 
   // 잠시 후 alwaysOnTop 해제 → 일반 창처럼 동작
   setTimeout(() => {
@@ -442,16 +442,17 @@ app.whenReady().then(async () => {
     if (result.success && result.issueUrl) {
       // Copy URL to clipboard
       clipboard.writeText(result.issueUrl);
-      showNotification('Issue Created!', `${result.issueIdentifier} - URL copied to clipboard`);
 
-      // Cleanup all images
+      // Cleanup all images (but don't close window - let renderer show success screen)
       cleanupSession();
-
-      // Close window
-      mainWindow?.minimize();
     }
 
     return result;
+  });
+
+  // Close window handler (called from success screen)
+  ipcMain.handle('close-window', () => {
+    mainWindow?.minimize();
   });
 
   ipcMain.handle('cancel', () => {
@@ -588,6 +589,13 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('close-settings', () => {
     settingsWindow?.close();
+  });
+
+  // Set traffic lights (window buttons) visibility
+  ipcMain.handle('set-traffic-lights-visible', (_event, visible: boolean) => {
+    if (mainWindow && process.platform === 'darwin') {
+      mainWindow.setWindowButtonVisibility(visible);
+    }
   });
 
   // Initialize AI analyzer (prefer Gemini, fallback to Anthropic)

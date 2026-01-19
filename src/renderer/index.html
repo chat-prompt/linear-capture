@@ -432,6 +432,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      -webkit-app-region: no-drag; /* 신호등 클릭 방지 */
     }
 
     .modal.hidden {
@@ -445,6 +446,7 @@
       right: 0;
       bottom: 0;
       background: rgba(0, 0, 0, 0.8);
+      -webkit-app-region: no-drag; /* 신호등 클릭 방지 */
     }
 
     .modal-content {
@@ -486,6 +488,52 @@
 
     .gallery-thumb {
       cursor: pointer;
+    }
+
+    /* Success Screen */
+    .success-screen {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .success-screen.hidden {
+      display: none;
+    }
+
+    .success-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .success-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+    }
+
+    .success-issue-id {
+      font-size: 14px;
+      color: #5e6ad2;
+      font-weight: 500;
+      margin-bottom: 24px;
+    }
+
+    .success-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .success-buttons .btn-submit,
+    .success-buttons .btn-cancel {
+      min-width: 120px;
+    }
+
+    .success-hint {
+      font-size: 12px;
+      color: #888;
     }
   </style>
 </head>
@@ -620,6 +668,18 @@
       <div class="spinner" style="margin: 0 auto 10px;"></div>
       <span id="loadingText">Creating issue...</span>
     </div>
+
+    <!-- Success Screen -->
+    <div id="successScreen" class="success-screen hidden">
+      <div class="success-icon">✅</div>
+      <div class="success-title">이슈가 생성되었습니다!</div>
+      <div class="success-issue-id" id="successIssueId"></div>
+      <div class="success-buttons">
+        <button type="button" class="btn-submit" id="viewIssueBtn">Linear에서 보기</button>
+        <button type="button" class="btn-cancel" id="closeSuccessBtn">닫기</button>
+      </div>
+      <div class="success-hint">URL이 클립보드에 복사되었습니다</div>
+    </div>
   </div>
 
   <!-- Image Preview Modal -->
@@ -669,6 +729,13 @@
     let images = []; // Array of { filePath }
     let maxImages = 10;
 
+    // Success Screen
+    const successScreen = document.getElementById('successScreen');
+    const successIssueId = document.getElementById('successIssueId');
+    const viewIssueBtn = document.getElementById('viewIssueBtn');
+    const closeSuccessBtn = document.getElementById('closeSuccessBtn');
+    let createdIssueUrl = '';
+
     // Image Preview Modal
     const imageModal = document.getElementById('imageModal');
     const modalImage = document.getElementById('modalImage');
@@ -678,15 +745,29 @@
     function showImageModal(src) {
       modalImage.src = src;
       imageModal.classList.remove('hidden');
+      // 모달이 열리면 신호등 숨기기
+      ipcRenderer.invoke('set-traffic-lights-visible', false);
     }
 
     function hideImageModal() {
       imageModal.classList.add('hidden');
       modalImage.src = '';
+      // 모달이 닫히면 신호등 다시 표시
+      ipcRenderer.invoke('set-traffic-lights-visible', true);
     }
 
-    modalClose.addEventListener('click', hideImageModal);
-    modalBackdrop.addEventListener('click', hideImageModal);
+    modalClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      hideImageModal();
+    });
+    modalBackdrop.addEventListener('click', (e) => {
+      e.stopPropagation();
+      hideImageModal();
+    });
+    // 모달 컨텐츠 클릭 시 이벤트 전파 방지 (배경으로 전달 안 되게)
+    imageModal.querySelector('.modal-content').addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
 
     // Render image gallery
     function renderGallery() {
@@ -1065,8 +1146,13 @@
       estimateSelect.value = '';
       errorDiv.textContent = '';
       submitBtn.disabled = false;
+      cancelBtn.disabled = false;
+      isSubmitting = false;
       form.style.display = 'block';
       loadingDiv.style.display = 'none';
+      successScreen.classList.add('hidden');
+      imageGallery.style.display = 'flex';
+      createdIssueUrl = '';
 
       // Set default project if available
       if (data.defaultProjectId) {
@@ -1182,7 +1268,14 @@
           cycleId: cycleId || undefined,
         });
 
-        if (!result.success) {
+        if (result.success) {
+          // Success: show success screen
+          loadingDiv.style.display = 'none';
+          imageGallery.style.display = 'none';
+          successIssueId.textContent = result.issueIdentifier || 'Issue created';
+          createdIssueUrl = result.issueUrl || '';
+          successScreen.classList.remove('hidden');
+        } else {
           isSubmitting = false;
           form.style.display = 'block';
           loadingDiv.style.display = 'none';
@@ -1196,7 +1289,6 @@
           }
           renderGallery();
         }
-        // Success case: window will be hidden by main process
       } catch (err) {
         isSubmitting = false;
         form.style.display = 'block';
@@ -1248,6 +1340,19 @@
         aiLoadingDiv.classList.add('hidden');
         reanalyzeBtn.disabled = false;
       }
+    });
+
+    // Success screen: View issue button
+    viewIssueBtn.addEventListener('click', () => {
+      if (createdIssueUrl) {
+        require('electron').shell.openExternal(createdIssueUrl);
+      }
+      ipcRenderer.invoke('close-window');
+    });
+
+    // Success screen: Close button
+    closeSuccessBtn.addEventListener('click', () => {
+      ipcRenderer.invoke('close-window');
     });
   </script>
 </body>
