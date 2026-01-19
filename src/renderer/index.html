@@ -535,6 +535,22 @@
       font-size: 12px;
       color: #888;
     }
+
+    /* Shortcut hint */
+    .shortcut-hint {
+      font-size: 12px;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    .shortcut-hint kbd {
+      background: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      font-family: -apple-system, BlinkMacSystemFont, monospace;
+      font-size: 11px;
+    }
   </style>
 </head>
 <body>
@@ -546,6 +562,7 @@
   <div class="container">
     <div class="header">
       <h1>Create Linear Issue</h1>
+      <div class="shortcut-hint"><kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd> 로 캡처 (최대 10장)</div>
     </div>
 
     <!-- Image Gallery (multiple images) -->
@@ -567,7 +584,7 @@
       </div>
     </div>
 
-    <div id="aiLoading" class="ai-loading">
+    <div id="aiLoading" class="ai-loading hidden">
       <div class="spinner"></div>
       <span id="aiLoadingText">AI가 스크린샷을 분석 중...</span>
     </div>
@@ -798,9 +815,10 @@
       if (images.length < maxImages && !isSubmitting) {
         const addBtn = document.createElement('div');
         addBtn.className = 'gallery-item gallery-add';
+        const labelText = images.length === 0 ? '캡처하기' : `추가 (${images.length}/${maxImages})`;
         addBtn.innerHTML = `
-          <span class="gallery-add-icon">+</span>
-          <span class="gallery-add-text">Add (${images.length}/${maxImages})</span>
+          <span class="gallery-add-icon">${images.length === 0 ? '📸' : '+'}</span>
+          <span class="gallery-add-text">${labelText}</span>
         `;
         addBtn.addEventListener('click', requestAddCapture);
         imageGallery.appendChild(addBtn);
@@ -1354,6 +1372,9 @@
     closeSuccessBtn.addEventListener('click', () => {
       ipcRenderer.invoke('close-window');
     });
+
+    // 페이지 로드 시 초기 갤러리 렌더링 (캡처하기 버튼 표시)
+    renderGallery();
   </script>
 </body>
 </html>

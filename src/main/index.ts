@@ -639,8 +639,9 @@ app.whenReady().then(async () => {
   // Register global hotkey
   registerHotkey(handleCapture);
 
-  // Create window (hidden)
+  // Create and show main window on startup
   createWindow();
+  mainWindow?.show();
 
   // Initialize auto-updater (only in packaged app)
   if (app.isPackaged && mainWindow) {
@@ -673,7 +674,10 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
+  // Dock 아이콘 클릭 시 메인 윈도우 표시
+  if (!mainWindow) {
     createWindow();
   }
+  mainWindow?.show();
+  mainWindow?.focus();
 });
