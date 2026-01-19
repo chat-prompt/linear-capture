@@ -1,0 +1,312 @@
+# Linear Capture - 개발 로그
+
+Claude Code와 함께 진행한 macOS 스크린샷 캡처 → Linear 이슈 자동 생성 앱 개발 작업 기록입니다.
+
+---
+
+## 2026-01-12 (Day 1)
+
+### 1. Linear Capture 초기 버전 구현
+
+```
+macOS용 스크린샷 캡처 → Linear 이슈 자동 생성 앱을 만들고 싶어
+```
+
+**Claude 작업:**
+- Electron 기반 macOS 앱 초기 구조 생성
+- `src/main/index.ts` - Electron 메인 프로세스, IPC 핸들러, 캡처 플로우
+- `src/main/hotkey.ts` - ⌘+Shift+L 전역 단축키 등록
+- `src/main/tray.ts` - 메뉴바 아이콘 생성
+- `src/services/capture.ts` - macOS screencapture CLI 래퍼
+- `src/services/r2-uploader.ts` - Cloudflare R2 이미지 업로드
+- `src/services/linear-client.ts` - Linear SDK 클라이언트
+- `src/renderer/index.html` - 이슈 생성 폼 UI
+- TypeScript 설정 및 빌드 스크립트 구성
+
+---
+
+### 2. 이슈 생성 폼 추가 필드 구현
+
+```
+팀, 프로젝트, 상태, 우선순위, 담당자, 포인트, 사이클까지 선택할 수 있게 해줘
+```
+
+**Claude 작업:**
+- 이슈 생성 폼에 8개 필드 추가 (Title, Description, Team, Project, Status, Priority, Assignee, Estimate, Cycle)
+- Linear API로 팀/프로젝트/사용자/워크플로우/사이클 데이터 조회
+- 팀 선택 시 Status, Cycle 드롭다운 동적 필터링
+- `src/renderer/index.html` - 폼 UI 확장 및 연동 로직
+
+---
+
+### 3. Gemini Vision API 기반 AI 자동 분석 기능
+
+```
+스크린샷을 AI로 분석해서 이슈 제목, 설명, 프로젝트, 담당자까지 자동으로 채워주면 좋겠어
+```
+
+**Claude 작업:**
+- Gemini Vision API 통합 (`gemini-2.5-flash-lite` 모델)
+- `src/services/gemini-analyzer.ts` - 스크린샷 OCR 및 메타데이터 추천
+- 프로젝트 목록(이름+설명), 담당자 목록을 컨텍스트로 제공
+- AI가 자동으로 추천:
+  - 이슈 제목 (접두어 포함)
+  - 마크다운 형식 설명 (## 이슈 / ## 상세 내용 / ## To Do 템플릿)
+  - 관련 프로젝트 선택
+  - 담당자 매칭
+  - 우선순위 (1=긴급, 2=버그, 3=일반, 4=개선)
+  - 작업 포인트 (1/2/3/5/8)
+
+---
+
+### 4. AI 분석 성능 최적화 (병렬 처리)
+
+```
+R2 업로드하고 AI 분석하는 게 순차적이라 느린데, 병렬로 처리하면 1-2초 빨라질 것 같아
+```
+
+**Claude 작업:**
+- R2 업로드 + AI 분석 `Promise.all`로 병렬 실행
+- `src/main/index.ts` - 캡처 플로우 리팩토링
+- 기존: 캡처 → R2 업로드 → AI 분석 (순차)
+- 개선: 캡처 → [R2 업로드 || AI 분석] (병렬)
+- ~1-2초 성능 개선
+
+---
+
+### 5. AI 모델 선택 UI 추가
+
+```
+사용자가 UI에서 Haiku랑 Gemini 중에 선택할 수 있게 해줘
+```
+
+**Claude 작업:**
+- `src/renderer/index.html` - AI 모델 드롭다운 추가 (Haiku 4.5 / Gemini Flash)
+- "Re-analyze" 버튼으로 모델 변경 후 재분석 기능
+- `src/services/anthropic-analyzer.ts` - Claude Haiku 4.5 분석기 추가
+- Anthropic 우선 → Gemini fallback 전략
+
+---
+
+## 2026-01-13 (Day 2)
+
+### 6. macOS 앱 배포 설정 및 UX 개선
+
+```
+DMG로 패키징해서 배포하고 싶어. 그리고 온보딩 화면도 필요해
+```
+
+**Claude 작업:**
+- electron-builder 설정 추가 (`package.json`)
+- DMG 빌드 스크립트 (`npm run dist:mac`)
+- Universal binary (Intel + Apple Silicon)
+- 온보딩 화면 구현 (`src/renderer/onboarding.html`)
+- 화면 녹화 권한 안내 및 자동 설정 열기
+- 첫 실행 감지 로직 (electron-store)
+
+---
+
+### 7. AI 폴백 및 권한 처리 개선
+
+```
+AI 분석 실패하면 빈 폼으로 진행하게 해줘. 그리고 권한 팝업이 안 뜨는 경우 대비해야 해
+```
+
+**Claude 작업:**
+- AI 분석 실패 시 빈 폼으로 graceful degradation
+- TCC(Transparency, Consent, and Control) 권한 체크
+- `systemPreferences.getMediaAccessStatus('screen')` 활용
+- 권한 거부 시 설정 열기 안내
+- `tccutil reset ScreenCapture` 명령어 문서화
+
+---
+
+## 2026-01-14 (Day 3)
+
+### 8. DMG 패키징 후 핫키 작동 문제 해결
+
+```
+개발 모드에서는 핫키가 잘 작동하는데, DMG로 설치하면 앱이 실행이 안 돼
+```
+
+**Claude 작업:**
+- DMG 패키징 문제 원인 분석 및 해결
+- **원인 1**: 네이티브 모듈 (`mac-screen-capture-permissions`) 번들링 실패
+  - 해결: Electron 내장 API (`systemPreferences`) 사용
+- **원인 2**: `fs.writeFileSync`로 crash 로그 쓰기 권한 문제
+  - 해결: `app.getPath('userData')` 사용
+- **원인 3**: Hardened Runtime + Ad-hoc 서명 충돌
+  - 해결: `hardenedRuntime: false` 설정
+- **원인 4**: Gatekeeper 차단
+  - 해결: Finder 우클릭 → "Open" 안내
+- `package.json` - DMG 빌드 설정 최적화
+- CLAUDE.md - 재현 방지 체크리스트 문서화
+
+---
+
+### 9. Settings 기능 구현 시도 및 롤백
+
+```
+멤버별로 Linear API 토큰을 설정할 수 있게 Settings 기능을 만들어줘
+```
+
+**Claude 작업:**
+- Phase 1-6 구현 계획 수립
+  - Phase 1: `settings-store.ts` - electron-store 기반 토큰 저장소
+  - Phase 2: `settings.html` - 토큰 입력/검증 UI
+  - Phase 3: IPC 핸들러 추가
+  - Phase 4: Tray 메뉴 Settings 항목 추가
+  - Phase 5: 메인 UI Settings 버튼
+  - Phase 6: Linear Client 토큰 로직 수정
+- **문제 발생**: DMG 패키징 후 앱이 실행되지 않음
+- **롤백**: 기능 제거 후 안정 버전(`96275bc`)으로 복구
+- CLAUDE.md - Settings 기능 구현 계획 문서화
+
+---
+
+## 2026-01-15 (Day 4)
+
+### 10. Settings 기능 단계별 재구현
+
+```
+이번엔 한 단계씩 DMG 테스트하면서 조심히 구현하자
+```
+
+**Claude 작업:**
+
+#### Phase 1: Settings Store
+- `src/services/settings-store.ts` - 토큰 저장/조회 기능
+- encryption 없이 평문 저장 (DMG 안정성 우선)
+- `.env` fallback 지원
+
+#### Phase 2: Settings UI
+- `src/renderer/settings.html` - 토큰 입력 폼
+- Validate 버튼 → Linear viewer API로 토큰 검증
+- Save/Clear 버튼
+
+#### Phase 3: IPC 핸들러
+- `src/main/index.ts` - Settings 윈도우 관리
+- `validate-token`, `save-settings`, `get-settings` 핸들러
+
+#### Phase 4: Tray 메뉴
+- `src/main/tray.ts` - Settings 메뉴 항목 추가
+- 트레이 아이콘 문제 해결:
+  - 유효한 PNG 아이콘 생성 (16x16, 32x32 L 모양)
+  - `package.json` files에 `assets/**/*` 추가
+  - `app.getAppPath()`로 asar 내부 경로 접근
+  - Template Image 설정으로 light/dark 모드 대응
+
+#### Phase 5: 메인 UI Settings 버튼
+- `src/renderer/index.html` - 우측 상단 톱니바퀴 버튼
+- 고정 헤더로 스크롤 시에도 상단 고정
+- 깔끔한 아이콘 버튼 스타일
+
+---
+
+### 11. Onboarding 개선 및 버전 1.1.0 릴리스
+
+```
+Settings 완성했으니 온보딩도 개선하고 버전 올리자
+```
+
+**Claude 작업:**
+- 온보딩 화면에서 캡처 트리거하여 앱이 권한 리스트에 등록되도록 개선
+- `package.json` - 버전 1.1.0으로 업데이트
+- `feature/settings` 브랜치 master로 머지
+- CHANGELOG.md 작성
+
+---
+
+### 12. AI 제목 생성 개선 (내부 협업용)
+
+```
+팀 내부용으로 쓰는 거라 제목이 너무 정중하게 나와. 더 캐주얼하게 바꿔줘
+```
+
+**Claude 작업:**
+- `src/services/gemini-analyzer.ts`, `src/services/anthropic-analyzer.ts` - 프롬프트 수정
+- 기존: "정중하고 공손한 톤"
+- 개선: "팀 내부 협업용, 간결하고 직관적인 톤"
+- 예시: "로그인 - 소셜로그인 세션 만료 오류 수정" 형식
+- 버전 1.1.1 릴리스
+
+---
+
+## 커밋 히스토리
+
+| 날짜 | 커밋 | 설명 |
+|------|------|------|
+| 01/12 | `c4e1cd8` | feat: Linear Capture 초기 버전 + IPC 버그 수정 |
+| 01/12 | `30f749d` | feat: 이슈 생성 폼에 추가 필드 구현 |
+| 01/12 | `9080cb5` | feat: Gemini Vision API를 활용한 OCR 기반 자동 이슈 생성 기능 추가 |
+| 01/12 | `ede06e0` | docs: CLAUDE.md에 Gemini Vision OCR 기능 문서 추가 |
+| 01/12 | `be6f336` | feat: Linear 이슈 description 마크다운 템플릿 적용 |
+| 01/12 | `b90f0ac` | feat: AI 기반 메타데이터 자동 추천 (프로젝트, 담당자, 우선순위, 포인트) |
+| 01/12 | `d88e4b6` | feat: AI 분석 개선 및 UI/UX 향상 |
+| 01/13 | `03900d7` | feat: add parallel processing and AI model selection UI |
+| 01/13 | `37892bc` | feat: macOS 앱 배포 설정 및 UX 개선 |
+| 01/13 | `2e34ed9` | feat: 온보딩 화면 및 권한 처리, AI 폴백 개선 |
+| 01/14 | `96275bc` | Add CodeRabbit auto-review workflow |
+| 01/14 | `8f15f98` | feat: User settings and DMG hotkey fix (#2) |
+| 01/14 | `a7237a2` | revert: Remove settings features that broke DMG packaging |
+| 01/15 | `445d993` | docs: Add Settings feature implementation plan |
+| 01/15 | `57591ec` | feat(settings): Add settings-store.ts for token storage |
+| 01/15 | `bf03965` | feat(settings): Add settings.html UI for token management |
+| 01/15 | `6426301` | feat(settings): Add IPC handlers and Settings window management |
+| 01/15 | `27261d4` | feat(settings): Complete Phase 4 - Add Settings menu to tray |
+| 01/15 | `fe07f75` | feat(settings): Complete Phase 5 - Add Settings button to main UI |
+| 01/15 | `3651ef5` | feat(settings): Improve Settings UI and permission handling |
+| 01/15 | `3aefd12` | fix(onboarding): Trigger capture on onboarding show to register app in permission list |
+| 01/15 | `1048d01` | Merge feature/settings: Add Settings UI and personal token management |
+| 01/15 | `ab6a3f1` | chore: Bump version to 1.1.0 |
+| 01/15 | `943e7ee` | fix(ai): Improve title generation for internal collaboration |
+| 01/15 | `027d205` | docs: Add CHANGELOG.md for v1.1.1 |
+
+---
+
+## 기술 스택
+
+- **Frontend**: HTML, CSS, JavaScript (Vanilla)
+- **Framework**: Electron 34.1.1, TypeScript 5.7.2
+- **AI**: Google Gemini 2.5 Flash Lite, Anthropic Claude Haiku 4.5
+- **Storage**: Cloudflare R2 (이미지), electron-store (설정)
+- **API**: Linear SDK (@linear/sdk), Google Generative AI
+- **Build**: electron-builder (DMG), esbuild
+- **Platform**: macOS (Universal binary - Intel + Apple Silicon)
+
+---
+
+## 주요 기능
+
+1. **전역 핫키 캡처** (⌘+Shift+L)
+   - macOS screencapture CLI 활용
+   - 메뉴바 트레이 아이콘 제공
+
+2. **AI 기반 이슈 정보 자동 생성**
+   - Gemini Vision API / Claude Haiku 4.5 선택 가능
+   - 스크린샷 OCR로 제목, 설명, 프로젝트, 담당자, 우선순위, 포인트 추천
+   - 마크다운 템플릿 (## 이슈 / ## 상세 내용 / ## To Do)
+
+3. **이미지 업로드 및 Linear 이슈 생성**
+   - Cloudflare R2 자동 업로드
+   - Linear API 연동 (팀, 프로젝트, 상태, 우선순위, 담당자, 포인트, 사이클)
+   - 이슈 URL 클립보드 복사 + macOS 알림
+
+4. **Settings 관리**
+   - 개인 Linear API 토큰 저장
+   - 토큰 검증 (Linear viewer API)
+   - electron-store 기반 영구 저장
+
+5. **온보딩 및 권한 처리**
+   - 첫 실행 시 화면 녹화 권한 안내
+   - TCC 권한 체크 및 설정 열기
+   - `tccutil reset` 명령어 지원
+
+6. **성능 최적화**
+   - R2 업로드 + AI 분석 병렬 처리 (~1-2초 단축)
+   - AI 분석 실패 시 graceful degradation
+
+7. **macOS 네이티브 앱 배포**
+   - DMG 패키징 (Universal binary)
+   - Ad-hoc 서명 지원
+   - Gatekeeper 우회 안내
