@@ -9,3 +9,8 @@ assets/icon.iconset/
 icon/
 test-*.ts
 test-*.js
+
+# Certificates (sensitive)
+*.p12
+*.cer
+*.pem

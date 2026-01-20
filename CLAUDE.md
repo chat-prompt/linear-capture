@@ -1,6 +1,6 @@
 # Linear Capture
 
-macOS 화면 캡처 → Linear 이슈 자동 생성 앱 (v1.2.1)
+macOS 화면 캡처 → Linear 이슈 자동 생성 앱 (v1.2.4)
 
 ## 실행 방법
 
@@ -79,14 +79,44 @@ npm run dist:mac     # DMG 패키징
 npm run reinstall    # 완전 클린 재설치 (권한 리셋 포함)
 ```
 
-## 배포
+## 배포 (코드 서명 + 공증)
+
+앱은 **Apple Developer ID로 서명 및 공증**되어 배포됩니다.
+
+### 환경 설정 (1회성)
+
+`~/.zshrc`에 Apple API Key 환경변수가 설정되어 있음:
+```bash
+export APPLE_API_KEY="/Users/wine_ny/side-project/linear_project/linear-capture/AuthKey_2AW98DM4X7.p8"
+export APPLE_API_KEY_ID="2AW98DM4X7"
+export APPLE_API_ISSUER="9094d5c9-acd0-40fa-b7d6-4567c644afa7"
+```
+
+### 배포 절차
 
 ```bash
-# 버전 업 + 태그 푸시 → GitHub Actions 자동 빌드
-npm version patch
+# 1. 코드 수정 후 버전 업
+npm version patch  # or minor, major
+
+# 2. 빌드 (서명 + 공증 자동 실행)
+npm run dist:mac
+
+# 3. 태그 푸시 + GitHub Release
 git push origin master --tags
-# Draft 릴리즈 → Publish 필요
-gh release edit vX.X.X --repo chat-prompt/linear-capture --draft=false
+gh release create vX.X.X release/Linear\ Capture-X.X.X-universal.dmg release/Linear\ Capture-X.X.X-universal-mac.zip --title "vX.X.X" --notes "변경사항"
+```
+
+### 인증서/키 파일 (민감정보 - .gitignore에 포함됨)
+- `AuthKey_2AW98DM4X7.p8` - App Store Connect API Key
+- `*.p12` - Developer ID 인증서
+
+### 서명 확인
+```bash
+# 서명 확인
+codesign -dv "release/mac-universal/Linear Capture.app"
+
+# 공증 확인 (accepted = 성공)
+spctl --assess --type execute -v "release/mac-universal/Linear Capture.app"
 ```
 
 ## Worker (linear-capture-ai)
@@ -115,13 +145,4 @@ tccutil reset ScreenCapture com.gpters.linear-capture
 ## 자동 업데이트
 
 - GitHub Releases에서 `latest-mac.yml` 확인
-- **제한**: Ad-hoc 서명으로 자동 설치 불가 (Gatekeeper 차단)
-- **현재 동작**: 업데이트 감지 → 다운로드 → 설치 실패 → 수동 설치 필요
-- **해결책**: Apple Developer 인증서로 서명 필요
-
-## Ad-hoc 서명 주의사항
-
-- `hardenedRuntime: false` 유지
-- 네이티브 모듈 사용 금지
-- 최초 실행 시 Finder에서 우클릭 → "열기"
-- 업데이트 후 TCC 권한 리셋 필요할 수 있음
+- **현재 상태**: Developer ID 서명 + 공증 완료 → 자동 업데이트 가능

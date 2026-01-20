@@ -44,9 +44,12 @@
           ]
         }
       ],
-      "hardenedRuntime": false,
-      "gatekeeperAssess": false
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist"
     },
+    "afterSign": "scripts/notarize.js",
     "publish": {
       "provider": "github",
       "owner": "chat-prompt",
@@ -76,6 +79,7 @@
   ],
   "license": "MIT",
   "devDependencies": {
+    "@electron/notarize": "^3.1.1",
     "@types/node": "^20.10.0",
     "electron": "^28.3.3",
     "electron-builder": "^26.4.0",
