@@ -552,6 +552,52 @@
       font-size: 11px;
     }
 
+    /* Token warning banner */
+    .token-warning {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: #fef3cd;
+      border: 1px solid #ffc107;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+
+    .token-warning.hidden {
+      display: none;
+    }
+
+    .token-warning-content {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #856404;
+    }
+
+    .token-warning-icon {
+      font-size: 16px;
+    }
+
+    .token-warning-btn {
+      padding: 6px 12px;
+      background: #fff;
+      border: 1px solid #ffc107;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #856404;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .token-warning-btn:hover {
+      background: #fff3cd;
+    }
+
     /* Label Multi-select Styles */
     .label-select {
       position: relative;
@@ -717,6 +763,15 @@
   </div>
 
   <div class="container">
+    <!-- Token warning banner -->
+    <div id="tokenWarning" class="token-warning hidden">
+      <div class="token-warning-content">
+        <span class="token-warning-icon">⚠️</span>
+        <span>Linear API 토큰이 설정되지 않았습니다</span>
+      </div>
+      <button class="token-warning-btn" id="tokenWarningBtn">설정하기</button>
+    </div>
+
     <div class="header">
       <h1>Create Linear Issue</h1>
       <div class="shortcut-hint" id="shortcutHint"><kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd> 로 캡처 (최대 10장)</div>
@@ -887,6 +942,75 @@
     const settingsBtn = document.getElementById('settingsBtn');
     settingsBtn.addEventListener('click', () => {
       ipcRenderer.invoke('open-settings');
+    });
+
+    // Token warning banner
+    const tokenWarning = document.getElementById('tokenWarning');
+    const tokenWarningBtn = document.getElementById('tokenWarningBtn');
+    tokenWarningBtn.addEventListener('click', () => {
+      ipcRenderer.invoke('open-settings');
+    });
+
+    // Check token status on load
+    async function checkTokenStatus() {
+      try {
+        const settings = await ipcRenderer.invoke('get-settings');
+        if (!settings || !settings.linearApiToken) {
+          tokenWarning.classList.remove('hidden');
+        } else {
+          tokenWarning.classList.add('hidden');
+        }
+      } catch (error) {
+        console.error('Failed to check token status:', error);
+      }
+    }
+    checkTokenStatus();
+
+    // Listen for settings changes to update warning
+    ipcRenderer.on('settings-updated', () => {
+      checkTokenStatus();
+    });
+
+    // Listen for Linear data updates (after token is saved)
+    ipcRenderer.on('linear-data-updated', (event, data) => {
+      console.log('Linear data updated:', data);
+
+      // Update cached data
+      allTeams = data.teams || [];
+      allStates = data.states || [];
+      allCycles = data.cycles || [];
+      allProjects = data.projects || [];
+      allUsers = data.users || [];
+      allLabels = data.labels || [];
+
+      // Repopulate team dropdown
+      const currentTeamId = teamSelect.value;
+      teamSelect.innerHTML = '<option value="">Select team...</option>';
+      allTeams.forEach(team => {
+        const option = document.createElement('option');
+        option.value = team.id;
+        option.textContent = `${team.name} (${team.key})`;
+        if (team.id === data.defaultTeamId || team.id === currentTeamId) {
+          option.selected = true;
+        }
+        teamSelect.appendChild(option);
+      });
+
+      // Reinitialize searchable dropdowns
+      if (projectSearchable) {
+        projectSearchable.setItems(allProjects);
+      }
+      if (assigneeSearchable) {
+        assigneeSearchable.setItems(allUsers);
+      }
+
+      // Update team-dependent dropdowns if team is selected
+      if (teamSelect.value) {
+        updateTeamDependentDropdowns(teamSelect.value);
+        updateLabelsForTeam();
+      }
+
+      console.log(`Refreshed: ${allTeams.length} teams, ${allProjects.length} projects, ${allUsers.length} users`);
     });
 
     const form = document.getElementById('issueForm');

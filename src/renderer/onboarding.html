@@ -27,11 +27,51 @@
       -webkit-app-region: no-drag;
     }
 
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
     h1 {
       font-size: 18px;
       font-weight: 600;
-      margin-bottom: 20px;
       color: #333;
+    }
+
+    /* Step indicator */
+    .step-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #888;
+    }
+
+    .step-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ddd;
+      transition: background 0.3s;
+    }
+
+    .step-dot.active {
+      background: #5e6ad2;
+    }
+
+    .step-dot.completed {
+      background: #22c55e;
+    }
+
+    /* Step content */
+    .step-content {
+      display: none;
+    }
+
+    .step-content.active {
+      display: block;
     }
 
     .shortcut-box {
@@ -91,6 +131,12 @@
       font-weight: 500;
       cursor: pointer;
       transition: all 0.2s;
+      -webkit-app-region: no-drag;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     .btn-secondary {
@@ -99,7 +145,7 @@
       color: #666;
     }
 
-    .btn-secondary:hover {
+    .btn-secondary:hover:not(:disabled) {
       background: #eee;
     }
 
@@ -109,52 +155,363 @@
       color: white;
     }
 
-    .btn-primary:hover {
+    .btn-primary:hover:not(:disabled) {
       background: #4c5abd;
+    }
+
+    /* Step 2: Token input */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #666;
+      margin-bottom: 6px;
+    }
+
+    input[type="password"],
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+      -webkit-app-region: no-drag;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #5e6ad2;
+    }
+
+    .info-text {
+      font-size: 12px;
+      color: #888;
+      margin-top: 8px;
+    }
+
+    .info-text a {
+      color: #5e6ad2;
+      text-decoration: none;
+    }
+
+    .info-text a:hover {
+      text-decoration: underline;
+    }
+
+    .status-box {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-icon {
+      font-size: 16px;
+    }
+
+    .status-text {
+      font-size: 13px;
+      color: #666;
+    }
+
+    .status-text.success {
+      color: #22c55e;
+    }
+
+    .status-text.error {
+      color: #ef4444;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #ddd;
+      border-top-color: #5e6ad2;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 13px;
+      color: #333;
+    }
+
+    .user-info.hidden {
+      display: none;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Linear Capture</h1>
-
-    <div class="shortcut-box">
-      <div class="shortcut">
-        <kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd>
+    <div class="header">
+      <h1>Linear Capture</h1>
+      <div class="step-indicator">
+        <span class="step-dot active" id="dot1"></span>
+        <span class="step-dot" id="dot2"></span>
+        <span id="stepText">1/2</span>
       </div>
-      <p class="description">
-        단축키로 화면을 캡처하고 바로 Linear 이슈를 생성하세요
-      </p>
     </div>
 
-    <div class="warning">
-      <span>⚠️</span>
-      <span>화면 녹화 권한이 필요합니다</span>
+    <!-- Step 1: Screen capture permission -->
+    <div class="step-content active" id="step1">
+      <div class="shortcut-box">
+        <div class="shortcut">
+          <kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd>
+        </div>
+        <p class="description">
+          단축키로 화면을 캡처하고 바로 Linear 이슈를 생성하세요
+        </p>
+      </div>
+
+      <div class="warning">
+        <span>⚠️</span>
+        <span>화면 녹화 권한이 필요합니다</span>
+      </div>
+
+      <div class="buttons">
+        <button class="btn-secondary" id="openSettings">권한 설정</button>
+        <button class="btn-primary" id="nextStep">다음</button>
+      </div>
     </div>
 
-    <div class="buttons">
-      <button class="btn-secondary" id="openSettings">권한 설정</button>
-      <button class="btn-primary" id="start">시작</button>
+    <!-- Step 2: Linear API Token -->
+    <div class="step-content" id="step2">
+      <div class="form-group">
+        <label for="token">Linear API Token</label>
+        <input type="password" id="token" placeholder="lin_api_xxxxxxxxxxxxx">
+        <p class="info-text">
+          Linear Settings &gt; API &gt; Personal API keys에서 발급
+        </p>
+      </div>
+
+      <div class="status-box">
+        <span class="status-icon" id="statusIcon">⏳</span>
+        <span class="status-text" id="statusText">토큰을 입력하세요</span>
+      </div>
+
+      <div class="user-info hidden" id="userInfo">
+        <span>👤</span>
+        <span id="userName"></span>
+      </div>
+
+      <div class="buttons">
+        <button class="btn-secondary" id="prevStep">이전</button>
+        <button class="btn-secondary" id="validateBtn">검증</button>
+        <button class="btn-primary" id="startBtn" disabled>시작</button>
+      </div>
     </div>
   </div>
 
   <script>
     const { ipcRenderer } = require('electron');
 
-    document.getElementById('openSettings').addEventListener('click', () => {
+    // Elements
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    const dot1 = document.getElementById('dot1');
+    const dot2 = document.getElementById('dot2');
+    const stepText = document.getElementById('stepText');
+
+    const tokenInput = document.getElementById('token');
+    const statusIcon = document.getElementById('statusIcon');
+    const statusText = document.getElementById('statusText');
+    const userInfoDiv = document.getElementById('userInfo');
+    const userName = document.getElementById('userName');
+
+    const openSettingsBtn = document.getElementById('openSettings');
+    const nextStepBtn = document.getElementById('nextStep');
+    const prevStepBtn = document.getElementById('prevStep');
+    const validateBtn = document.getElementById('validateBtn');
+    const startBtn = document.getElementById('startBtn');
+
+    let isValidated = false;
+    let validatedUser = null;
+
+    // Step navigation
+    function goToStep(step) {
+      if (step === 1) {
+        step1.classList.add('active');
+        step2.classList.remove('active');
+        dot1.classList.add('active');
+        dot1.classList.remove('completed');
+        dot2.classList.remove('active');
+        stepText.textContent = '1/2';
+      } else if (step === 2) {
+        step1.classList.remove('active');
+        step2.classList.add('active');
+        dot1.classList.remove('active');
+        dot1.classList.add('completed');
+        dot2.classList.add('active');
+        stepText.textContent = '2/2';
+        tokenInput.focus();
+      }
+    }
+
+    // Status display
+    function showPending() {
+      statusIcon.textContent = '⏳';
+      statusText.textContent = '토큰을 입력하세요';
+      statusText.className = 'status-text';
+      userInfoDiv.classList.add('hidden');
+      isValidated = false;
+      validatedUser = null;
+      startBtn.disabled = true;
+    }
+
+    function showValidating() {
+      statusIcon.innerHTML = '<span class="loading"></span>';
+      statusText.textContent = '검증 중...';
+      statusText.className = 'status-text';
+      validateBtn.disabled = true;
+    }
+
+    function showSuccess(user) {
+      statusIcon.textContent = '✅';
+      statusText.textContent = '연결 성공!';
+      statusText.className = 'status-text success';
+      userInfoDiv.classList.remove('hidden');
+      userName.textContent = `${user.name} (${user.email})`;
+      validateBtn.disabled = false;
+      isValidated = true;
+      validatedUser = user;
+      startBtn.disabled = false;
+    }
+
+    function showError(message) {
+      statusIcon.textContent = '❌';
+      statusText.textContent = message || '유효하지 않은 토큰입니다';
+      statusText.className = 'status-text error';
+      userInfoDiv.classList.add('hidden');
+      validateBtn.disabled = false;
+      isValidated = false;
+      validatedUser = null;
+      startBtn.disabled = true;
+    }
+
+    // Event listeners
+    openSettingsBtn.addEventListener('click', () => {
       ipcRenderer.send('open-screen-capture-settings');
     });
 
-    document.getElementById('start').addEventListener('click', () => {
-      ipcRenderer.send('close-onboarding');
+    nextStepBtn.addEventListener('click', () => {
+      goToStep(2);
     });
 
-    // ESC로 닫기
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        ipcRenderer.send('close-onboarding');
+    prevStepBtn.addEventListener('click', () => {
+      goToStep(1);
+    });
+
+    tokenInput.addEventListener('input', () => {
+      showPending();
+    });
+
+    validateBtn.addEventListener('click', async () => {
+      const token = tokenInput.value.trim();
+      if (!token) {
+        showError('토큰을 입력하세요');
+        return;
+      }
+
+      showValidating();
+
+      try {
+        const result = await ipcRenderer.invoke('validate-token', token);
+
+        if (result.valid && result.user) {
+          showSuccess(result.user);
+        } else {
+          showError(result.error || '유효하지 않은 토큰입니다');
+        }
+      } catch (error) {
+        showError('검증 중 오류가 발생했습니다');
       }
     });
+
+    startBtn.addEventListener('click', async () => {
+      if (!isValidated || !validatedUser) return;
+
+      startBtn.disabled = true;
+      startBtn.textContent = '저장 중...';
+
+      try {
+        // Save token and user info
+        const result = await ipcRenderer.invoke('save-settings', {
+          linearApiToken: tokenInput.value.trim(),
+          userInfo: validatedUser
+        });
+
+        if (result.success) {
+          // Close onboarding and signal completion
+          ipcRenderer.send('onboarding-complete');
+        } else {
+          showError(result.error || '저장에 실패했습니다');
+          startBtn.disabled = false;
+          startBtn.textContent = '시작';
+        }
+      } catch (error) {
+        showError('저장 중 오류가 발생했습니다');
+        startBtn.disabled = false;
+        startBtn.textContent = '시작';
+      }
+    });
+
+    // Enter key handling
+    tokenInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        if (isValidated && !startBtn.disabled) {
+          startBtn.click();
+        } else {
+          validateBtn.click();
+        }
+      }
+    });
+
+    // ESC key - only on step 1
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (step1.classList.contains('active')) {
+          // Step 1에서는 ESC로 닫기 (토큰 없이 시작 - 기존 사용자용)
+          ipcRenderer.send('close-onboarding');
+        } else {
+          // Step 2에서는 이전 단계로
+          goToStep(1);
+        }
+      }
+    });
+
+    // Check if token already exists (returning user)
+    async function checkExistingToken() {
+      try {
+        const settings = await ipcRenderer.invoke('get-settings');
+        if (settings && settings.linearApiToken) {
+          tokenInput.value = settings.linearApiToken;
+          if (settings.userInfo) {
+            showSuccess(settings.userInfo);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check existing token:', error);
+      }
+    }
+    checkExistingToken();
   </script>
 </body>
 </html>

@@ -21,6 +21,7 @@ import {
   setCaptureHotkey,
   resetCaptureHotkey,
   getDefaultHotkey,
+  hasToken,
   UserInfo as SettingsUserInfo,
 } from '../services/settings-store';
 import { initAutoUpdater, checkForUpdates } from '../services/auto-updater';
@@ -382,6 +383,19 @@ app.whenReady().then(async () => {
     onboardingWindow?.close();
   });
 
+  // Handle onboarding complete (with token saved)
+  ipcMain.on('onboarding-complete', async () => {
+    onboardingWindow?.close();
+    // Reload Linear data with new token
+    await loadLinearData();
+    // Show main window
+    if (!mainWindow) {
+      createWindow();
+    }
+    mainWindow?.show();
+    mainWindow?.focus();
+  });
+
   // Register IPC handlers
   ipcMain.handle('create-issue', async (_event, data: {
     title: string;
@@ -577,6 +591,20 @@ app.whenReady().then(async () => {
       setUserInfo(data.userInfo);
       // Reload Linear data with new token
       await loadLinearData();
+      // Notify main window about settings change and send updated data
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('settings-updated');
+        // Send updated Linear data to refresh dropdowns
+        mainWindow.webContents.send('linear-data-updated', {
+          teams: teamsCache,
+          projects: projectsCache,
+          users: usersCache,
+          states: statesCache,
+          cycles: cyclesCache,
+          labels: labelsCache,
+          defaultTeamId: process.env.DEFAULT_TEAM_ID || '',
+        });
+      }
       return { success: true };
     } catch (error) {
       console.error('Save settings error:', error);
@@ -708,7 +736,7 @@ app.whenReady().then(async () => {
     console.log('Anthropic AI analysis enabled (fallback)');
   }
 
-  // Load Linear data first
+  // Load Linear data first (if token exists)
   await loadLinearData();
 
   // Create tray
@@ -722,6 +750,13 @@ app.whenReady().then(async () => {
   const savedHotkey = getCaptureHotkey();
   registerHotkey(handleCapture, savedHotkey);
   console.log(`Using hotkey: ${savedHotkey}`);
+
+  // Check token status for existing users (not first launch)
+  if (hasLaunched && !hasToken()) {
+    // Existing user without token - force settings window
+    console.log('Existing user without token, opening settings...');
+    createSettingsWindow();
+  }
 
   // Create and show main window on startup
   createWindow();
