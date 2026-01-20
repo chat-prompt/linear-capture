@@ -195,7 +195,16 @@ function showRestartDialog(info: UpdateInfo): void {
     })
     .then((result) => {
       if (result.response === 0) {
-        autoUpdater.quitAndInstall(false, true);
+        console.log('[AutoUpdater] Closing all windows before restart...');
+        BrowserWindow.getAllWindows().forEach((win) => {
+          win.removeAllListeners('close');
+          win.close();
+        });
+
+        setTimeout(() => {
+          console.log('[AutoUpdater] Executing quitAndInstall...');
+          autoUpdater.quitAndInstall(false, true);
+        }, 500);
       }
     });
 }

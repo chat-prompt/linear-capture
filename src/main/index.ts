@@ -29,6 +29,24 @@ import { initAutoUpdater, checkForUpdates } from '../services/auto-updater';
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
+// Single instance lock - 중복 실행 방지
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  console.log('Another instance is already running. Quitting...');
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    console.log('Second instance detected, focusing existing window...');
+    const windowToFocus = mainWindow || settingsWindow || onboardingWindow;
+    if (windowToFocus) {
+      if (windowToFocus.isMinimized()) windowToFocus.restore();
+      windowToFocus.show();
+      windowToFocus.focus();
+    }
+  });
+}
+
 let mainWindow: BrowserWindow | null = null;
 let onboardingWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
@@ -161,6 +179,11 @@ function createSettingsWindow(): void {
  * Create the issue creation window
  */
 function createWindow(): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    console.log('Main window already exists, skipping creation');
+    return;
+  }
+
   mainWindow = new BrowserWindow({
     width: 728,
     height: 720,
