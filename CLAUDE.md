@@ -110,6 +110,30 @@ gh release create vX.X.X \
   --title "vX.X.X" --notes "변경사항"
 ```
 
+### ⚠️ 자동 업데이트 주의사항 (중요!)
+
+GitHub는 파일 업로드 시 **파일명의 공백을 `.`으로 치환**합니다:
+- 로컬: `Linear Capture-1.2.5-universal-mac.zip`
+- GitHub: `Linear.Capture-1.2.5-universal-mac.zip`
+
+**`latest-mac.yml` 작성 시 반드시 GitHub에 업로드된 실제 파일명(점 포함)을 사용해야 합니다!**
+
+```yaml
+# ❌ 잘못된 예 (자동 업데이트 실패)
+files:
+  - url: Linear Capture-1.2.5-universal-mac.zip
+
+# ✅ 올바른 예
+files:
+  - url: Linear.Capture-1.2.5-universal-mac.zip
+```
+
+**확인 방법:**
+```bash
+# GitHub에 업로드된 실제 파일명 확인
+gh release view vX.X.X --repo chat-prompt/linear-capture
+```
+
 ### 인증서/키 파일 (민감정보 - .gitignore에 포함됨)
 - `AuthKey_2AW98DM4X7.p8` - App Store Connect API Key (Issuer: 9094d5c9-acd0-40fa-b7d6-4567c644afa7)
 - `2601-cert.p12` - Developer ID Application 인증서 (Geniefy Inc.)
