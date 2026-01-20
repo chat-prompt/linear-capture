@@ -81,7 +81,7 @@ npm run reinstall    # 완전 클린 재설치 (권한 리셋 포함)
 
 ## 배포 (코드 서명 + 공증)
 
-앱은 **Apple Developer ID로 서명 및 공증**되어 배포됩니다.
+앱은 **Apple Developer ID로 서명 및 공증**되어 배포됩니다 (Geniefy Inc. 팀 계정).
 
 ### 환경 설정 (1회성)
 
@@ -103,12 +103,16 @@ npm run dist:mac
 
 # 3. 태그 푸시 + GitHub Release
 git push origin master --tags
-gh release create vX.X.X release/Linear\ Capture-X.X.X-universal.dmg release/Linear\ Capture-X.X.X-universal-mac.zip --title "vX.X.X" --notes "변경사항"
+gh release create vX.X.X \
+  "release/Linear Capture-X.X.X-universal.dmg" \
+  "release/Linear Capture-X.X.X-universal-mac.zip" \
+  "release/latest-mac.yml" \
+  --title "vX.X.X" --notes "변경사항"
 ```
 
 ### 인증서/키 파일 (민감정보 - .gitignore에 포함됨)
-- `AuthKey_2AW98DM4X7.p8` - App Store Connect API Key
-- `*.p12` - Developer ID 인증서
+- `AuthKey_2AW98DM4X7.p8` - App Store Connect API Key (Issuer: 9094d5c9-acd0-40fa-b7d6-4567c644afa7)
+- `2601-cert.p12` - Developer ID Application 인증서 (Geniefy Inc.)
 
 ### 서명 확인
 ```bash
@@ -117,6 +121,20 @@ codesign -dv "release/mac-universal/Linear Capture.app"
 
 # 공증 확인 (accepted = 성공)
 spctl --assess --type execute -v "release/mac-universal/Linear Capture.app"
+```
+
+### 인증서 재설치 (다른 Mac에서 빌드 시)
+```bash
+# 1. Developer ID G2 중간 인증서 설치 (필수)
+curl -s -o /tmp/DeveloperIDG2CA.cer "https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer"
+security add-certificates /tmp/DeveloperIDG2CA.cer
+
+# 2. p12 인증서 설치
+security import 2601-cert.p12 -k ~/Library/Keychains/login.keychain-db -P "비밀번호" -T /usr/bin/codesign -T /usr/bin/security -A
+
+# 3. 설치 확인
+security find-identity -v -p codesigning
+# "Developer ID Application: Geniefy Inc. (6CU3UP6D4N)" 표시되면 성공
 ```
 
 ## Worker (linear-capture-ai)
@@ -146,3 +164,18 @@ tccutil reset ScreenCapture com.gpters.linear-capture
 
 - GitHub Releases에서 `latest-mac.yml` 확인
 - **현재 상태**: Developer ID 서명 + 공증 완료 → 자동 업데이트 가능
+- **주의**: v1.1.x 이하 버전은 자동 업데이트 미지원 → 수동 재설치 필요
+
+### 사용자 문제 해결 (앱 재설치)
+
+앱이 이상 동작하거나 업데이트 후 문제 발생 시:
+```bash
+# 1. 기존 앱 삭제
+rm -rf /Applications/Linear\ Capture.app
+
+# 2. 캐시 삭제
+rm -rf ~/Library/Application\ Support/linear-capture
+rm -rf ~/Library/Caches/linear-capture*
+
+# 3. GitHub Releases에서 최신 DMG 다운로드 후 재설치
+```
