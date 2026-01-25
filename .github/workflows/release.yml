@@ -10,7 +10,14 @@ permissions:
 
 jobs:
   release:
-    runs-on: macos-latest
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: windows-latest
+            platform: win
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout code
@@ -28,18 +35,42 @@ jobs:
       - name: Build TypeScript
         run: npm run build
 
-      - name: Build and Publish to GitHub Releases
+      - name: Build and Publish (macOS)
+        if: matrix.platform == 'mac'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: npm run dist:mac -- --publish always
 
-      - name: Upload Release Artifacts
+      - name: Build and Publish (Windows)
+        if: matrix.platform == 'win'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run dist:win -- --publish always
+
+      - name: Upload Release Artifacts (macOS)
+        if: matrix.platform == 'mac'
         uses: actions/upload-artifact@v4
         with:
           name: mac-release
           path: |
             release/*.dmg
             release/*.zip
-            release/*.yml
+            release/latest-mac.yml
+            release/*.blockmap
+          if-no-files-found: error
+
+      - name: Upload Release Artifacts (Windows)
+        if: matrix.platform == 'win'
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-release
+          path: |
+            release/*.exe
+            release/latest.yml
             release/*.blockmap
           if-no-files-found: error

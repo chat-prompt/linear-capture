@@ -6,6 +6,7 @@
   "author": "GPTers",
   "scripts": {
     "start": "npm run build && unset ELECTRON_RUN_AS_NODE && electron .",
+    "start:clean": "pkill -f Electron || true; tccutil reset ScreenCapture com.github.Electron; rm -rf dist && npm run build && unset ELECTRON_RUN_AS_NODE && electron .",
     "dev": "tsc && npm run copy-assets && unset ELECTRON_RUN_AS_NODE && electron .",
     "build": "tsc && npm run copy-assets",
     "copy-assets": "mkdir -p dist/renderer && cp src/renderer/*.html dist/renderer/",
@@ -13,6 +14,8 @@
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:all": "npm run build && electron-builder --mac --win",
     "reinstall": "./scripts/clean-reinstall.sh",
     "reinstall:quick": "./scripts/quick-reinstall.sh"
   },
@@ -49,6 +52,21 @@
       "entitlements": "entitlements.mac.plist",
       "entitlementsInherit": "entitlements.mac.plist"
     },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico"
+    },
     "afterSign": "scripts/notarize.js",
     "publish": {
       "provider": "github",
@@ -75,7 +93,8 @@
     "linear",
     "screenshot",
     "capture",
-    "macos"
+    "macos",
+    "windows"
   ],
   "license": "MIT",
   "devDependencies": {

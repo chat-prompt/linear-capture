@@ -3,9 +3,11 @@ import * as path from 'path';
 import * as dotenv from 'dotenv';
 import Store from 'electron-store';
 
+app.disableHardwareAcceleration();
+
 import { registerHotkey, unregisterAllHotkeys, updateHotkey, validateHotkey, formatHotkeyForDisplay, getCurrentShortcut, DEFAULT_SHORTCUT } from './hotkey';
 import { createTray, destroyTray } from './tray';
-import { captureSelection, cleanupCapture, checkScreenCapturePermission } from '../services/capture';
+import { createCaptureService, cleanupCapture, ICaptureService } from '../services/capture';
 import { createR2UploaderFromEnv } from '../services/r2-uploader';
 import { createLinearServiceFromEnv, validateLinearToken, TeamInfo, ProjectInfo, UserInfo, WorkflowStateInfo, CycleInfo, LabelInfo } from '../services/linear-client';
 import { createGeminiAnalyzer, GeminiAnalyzer, AnalysisResult, AnalysisContext } from '../services/gemini-analyzer';
@@ -80,11 +82,10 @@ let labelsCache: LabelInfo[] = [];
 let geminiAnalyzer: GeminiAnalyzer | null = null;
 let anthropicAnalyzer: AnthropicAnalyzer | null = null;
 
-/**
- * Open screen capture permission settings
- */
+let captureService: ICaptureService;
+
 function openScreenCaptureSettings(): void {
-  shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture');
+  captureService.openPermissionSettings();
 }
 
 /**
@@ -101,14 +102,10 @@ function showPermissionNotification(): void {
     cancelId: 1,
   }).then(async (result: { response: number }) => {
     if (result.response === 0) {
-      // "권한 설정" 버튼 클릭
-      // 먼저 캡처 시도 → macOS가 앱을 권한 목록에 등록
       console.log('Triggering capture to register app in permission list...');
-      await captureSelection();
-      // 그 다음 시스템 환경설정 열기
+      await captureService.captureSelection();
       openScreenCaptureSettings();
     }
-    // "취소" 버튼은 그냥 닫기
   });
 }
 
@@ -133,11 +130,8 @@ function createOnboardingWindow(): void {
 
   onboardingWindow.once('ready-to-show', async () => {
     onboardingWindow?.show();
-
-    // 온보딩 표시 후 바로 캡처 시도하여 권한 목록에 앱 등록
-    // 사용자가 ESC 누르거나 취소하면 파일은 생성되지 않음
     console.log('Triggering capture to register in permission list...');
-    await captureSelection();
+    await captureService.captureSelection();
   });
 
   onboardingWindow.on('closed', () => {
@@ -194,12 +188,12 @@ function createWindow(): void {
     show: false,
     frame: true,
     resizable: false,
-    alwaysOnTop: false,  // 기본값은 false, 단축키로 열 때만 일시적으로 최상위
+    alwaysOnTop: false,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
     },
-    titleBarStyle: 'hiddenInset',
+    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' } : {}),
   });
 
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
@@ -286,13 +280,11 @@ async function handleCapture(): Promise<void> {
   isCapturing = true;
 
   try {
-    // Check screen capture permission
-    const permission = checkScreenCapturePermission();
+    const permission = captureService.checkPermission();
 
-    // If permission not granted, still attempt capture to register app in macOS permission list
     if (permission !== 'granted') {
       console.log('Permission not granted, attempting capture to register app in permission list...');
-      const result = await captureSelection();
+      const result = await captureService.captureSelection();
 
       if (!result.success || !result.filePath) {
         // Capture failed (permission denied or user cancelled)
@@ -321,11 +313,10 @@ async function handleCapture(): Promise<void> {
       return;
     }
 
-    const result = await captureSelection();
+    const result = await captureService.captureSelection();
 
     if (!result.success || !result.filePath) {
       console.log('Capture cancelled or failed:', result.error);
-      // Show window again if we were adding to session
       if (isAddingToSession) {
         mainWindow?.show();
       }
@@ -415,10 +406,12 @@ async function loadLinearData(): Promise<void> {
   }
 }
 
-// App lifecycle
 app.whenReady().then(async () => {
-  // Dock에 아이콘 표시 (Alt+Tab에 보이게)
-  app.dock?.show();
+  captureService = createCaptureService();
+  
+  if (process.platform === 'darwin') {
+    app.dock?.show();
+  }
 
   // Check if first launch and show onboarding
   const hasLaunched = store.get('hasLaunched', false);
@@ -427,12 +420,9 @@ app.whenReady().then(async () => {
     createOnboardingWindow();
   }
 
-  // IPC handlers for onboarding window
   ipcMain.on('open-screen-capture-settings', async () => {
-    // 먼저 캡처를 한 번 시도해야 macOS 권한 목록에 앱이 나타남
     console.log('Triggering capture to register in permission list...');
-    await captureSelection();
-    // 그 다음 시스템 환경설정 열기
+    await captureService.captureSelection();
     openScreenCaptureSettings();
   });
 

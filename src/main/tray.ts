@@ -30,15 +30,17 @@ export function createTray(callbacks: TrayCallbacks): Tray {
     });
   }
 
-  // Set as template image for proper light/dark mode support
-  icon.setTemplateImage(true);
+  if (process.platform === 'darwin') {
+    icon.setTemplateImage(true);
+  }
 
   tray = new Tray(icon);
   tray.setToolTip('Linear Capture');
 
+  const shortcutLabel = process.platform === 'darwin' ? '⌘+Shift+L' : 'Ctrl+Shift+L';
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Capture Screen (⌘+Shift+L)',
+      label: `Capture Screen (${shortcutLabel})`,
       click: callbacks.onCapture,
     },
     { type: 'separator' },
@@ -55,9 +57,10 @@ export function createTray(callbacks: TrayCallbacks): Tray {
 
   tray.setContextMenu(contextMenu);
 
-  // On macOS, clicking the tray icon shows the context menu
   tray.on('click', () => {
-    tray?.popUpContextMenu();
+    if (process.platform === 'darwin') {
+      tray?.popUpContextMenu();
+    }
   });
 
   return tray;

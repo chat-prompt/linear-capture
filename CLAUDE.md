@@ -1,6 +1,6 @@
 # Linear Capture
 
-macOS 화면 캡처 → Linear 이슈 자동 생성 앱 (v1.2.6)
+macOS/Windows 화면 캡처 → Linear 이슈 자동 생성 앱 (v1.2.7)
 
 ## 실행 방법
 
@@ -37,13 +37,16 @@ linear-capture/
 ├── src/
 │   ├── main/
 │   │   ├── index.ts          # 메인 프로세스, IPC 핸들러
-│   │   ├── hotkey.ts         # ⌘+Shift+L 글로벌 단축키
-│   │   └── tray.ts           # 메뉴바 아이콘
+│   │   ├── hotkey.ts         # ⌘+Shift+L (Ctrl+Shift+L) 글로벌 단축키
+│   │   └── tray.ts           # 메뉴바/시스템 트레이 아이콘
 │   ├── renderer/
 │   │   ├── index.html        # 이슈 생성 폼 UI
 │   │   └── settings.html     # 설정 UI
 │   └── services/
-│       ├── capture.ts        # macOS screencapture 호출
+│       ├── capture/                 # 크로스 플랫폼 캡처 서비스
+│       │   ├── index.ts            # 인터페이스 + 팩토리
+│       │   ├── capture.darwin.ts   # macOS 구현 (screencapture CLI)
+│       │   └── capture.win32.ts    # Windows 구현 (예정)
 │       ├── r2-uploader.ts    # Worker 통해 R2 업로드
 │       ├── anthropic-analyzer.ts  # Worker 통해 AI 분석
 │       ├── linear-client.ts  # Linear SDK 래퍼
@@ -74,6 +77,7 @@ DEFAULT_TEAM_ID=e108ae14-a354-4c09-86ac-6c1186bc6132
 
 ```bash
 npm run start        # 빌드 후 실행
+npm run start:clean  # 클린 환경 테스트 (Electron 종료 + TCC 리셋 + dist 삭제 + 빌드 + 실행)
 npm run build        # TypeScript 컴파일
 npm run dist:mac     # DMG 패키징
 npm run reinstall    # 완전 클린 재설치 (권한 리셋 포함)
