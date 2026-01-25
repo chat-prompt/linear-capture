@@ -14,3 +14,5 @@ test-*.js
 *.p12
 *.cer
 *.pem
+AuthKey_*.p8
+AI_CASE_STUDY*.md
