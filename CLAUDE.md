@@ -1,6 +1,6 @@
 # Linear Capture
 
-macOS 화면 캡처 → Linear 이슈 자동 생성 앱 (v1.2.4)
+macOS 화면 캡처 → Linear 이슈 자동 생성 앱 (v1.2.6)
 
 ## 실행 방법
 
@@ -177,12 +177,79 @@ security find-identity -v -p codesigning
 
 ## 권한 문제 해결
 
+### macOS 화면 녹화 권한 동작 원리
+
+macOS TCC(Transparency, Consent, and Control) 시스템의 핵심:
+- **앱이 실제로 `screencapture`를 호출해야** 권한 목록에 등록됨
+- 단순히 권한 상태 조회(`getMediaAccessStatus`)만으로는 등록 안 됨
+
+### v1.2.6 권한 로직 개선 (2025-01)
+
+**문제**: 재설치 후 "권한 설정" 버튼 눌러도 앱이 권한 목록에 안 뜸
+
+**해결**:
+1. `showPermissionNotification()`에서 "권한 설정" 버튼 클릭 시 `captureSelection()` 먼저 호출
+2. `handleCapture()`에서 권한 없어도 캡처 시도 → macOS가 앱을 권한 목록에 등록
+3. debounce 추가: 단축키 중복 입력 시 1회만 실행
+
+```typescript
+// src/main/index.ts - showPermissionNotification()
+if (result.response === 0) {
+  // 먼저 캡처 시도 → macOS가 앱을 권한 목록에 등록
+  await captureSelection();
+  // 그 다음 시스템 환경설정 열기
+  openScreenCaptureSettings();
+}
+```
+
+### 테스트 방법 (권한 완전 초기화)
+
 ```bash
-# TCC 권한 리셋 (화면 녹화 권한 문제 시)
+# 1. TCC 권한 리셋
 tccutil reset ScreenCapture com.gpters.linear-capture
 
-# 앱 재시작 후 Finder에서 우클릭 → 열기
+# 2. 앱 데이터 삭제
+rm -rf ~/Library/Application\ Support/linear-capture
+
+# 3. 패키징된 앱으로 테스트 (개발 모드는 Electron으로 인식됨)
+npm run dist:mac
+open "release/mac-universal/Linear Capture.app"
+
+# 4. 확인: 시스템 환경설정 > 개인 정보 보호 > 화면 및 시스템 오디오 녹음
+#    → "Linear Capture"가 목록에 표시되어야 함
 ```
+
+**주의**: `npm run start` (개발 모드)는 "Electron"으로 인식되어 권한 테스트에 부적합. 반드시 패키징된 `.app`으로 테스트.
+
+## 프로젝트-팀 불일치 문제 (v1.2.6 개선)
+
+### 문제
+Product 팀으로 이슈 생성 시 Education 팀 프로젝트가 선택되면 에러:
+```
+Project not in same team as issue - The provided project is not associated with the issue's team
+```
+
+### 해결 (2025-01)
+
+1. **프로젝트 선택 시 팀 자동 변경**: `onSelect` 콜백에서 `project.teamIds` 확인 후 팀 자동 전환
+2. **제출 전 최종 검증**: 프로젝트-팀 불일치 시 에러 메시지 표시하고 제출 차단
+3. **디버그 로깅 추가**: 개발자 도구 콘솔에서 `project.teamIds` 값 확인 가능
+
+```javascript
+// src/renderer/index.html - onSelect 콜백
+onSelect: (value, label, project) => {
+  console.log('Project selected:', { value, label, project });
+  console.log('Project teamIds:', project?.teamIds);
+  // ...팀 자동 변경 로직
+}
+```
+
+### 테스트 방법
+
+1. 개발자 도구 열기 (View > Toggle Developer Tools)
+2. Education 팀 선택 후 Product 팀 프로젝트 선택
+3. 콘솔에서 `Project teamIds:` 로그 확인
+4. 팀이 자동으로 Product로 변경되는지 확인
 
 ## 자동 업데이트
 
