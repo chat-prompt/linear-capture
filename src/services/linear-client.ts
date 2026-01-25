@@ -38,6 +38,7 @@ export interface ProjectInfo {
   name: string;
   description?: string;
   state?: string;  // planned/started/paused/completed/canceled
+  teamIds: string[];  // 프로젝트가 속한 팀들의 ID
 }
 
 export interface UserInfo {
@@ -157,12 +158,22 @@ export class LinearService {
           state: { in: ['planned', 'started'] }
         }
       });
-      return projects.nodes.map((project: Project) => ({
-        id: project.id,
-        name: project.name,
-        description: project.description || undefined,
-        state: project.state,
-      }));
+      
+      const result: ProjectInfo[] = [];
+      for (const project of projects.nodes) {
+        const teamsConnection = await project.teams();
+        const teamIds = teamsConnection.nodes.map(team => team.id);
+        
+        result.push({
+          id: project.id,
+          name: project.name,
+          description: project.description || undefined,
+          state: project.state,
+          teamIds,
+        });
+      }
+      
+      return result;
     } catch (error) {
       console.error('Failed to fetch projects:', error);
       return [];
