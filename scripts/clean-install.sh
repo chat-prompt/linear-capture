@@ -146,9 +146,7 @@ echo ""
 echo -e "${BLUE}💡 단축키: ⌘+Shift+L 로 화면 캡처${NC}"
 echo ""
 
-# 앱 실행 여부 묻기
-read -p "지금 앱을 실행하시겠습니까? (y/N) " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    open "/Applications/Linear Capture.app"
-fi
+# 앱 자동 실행
+echo "7️⃣  앱 실행 중..."
+open "/Applications/Linear Capture.app"
+echo -e "   ${GREEN}✓ 앱 실행됨${NC}"
