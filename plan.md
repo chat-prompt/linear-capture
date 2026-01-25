@@ -1,291 +1,601 @@
-# Linear Capture 개발 계획
+# Linear Capture - Windows 크로스 플랫폼 지원 계획
 
-## 📌 버전 1.3.0 목표 기능
-
-1. **Label(라벨) 지원** - Linear 이슈에 라벨 추가 기능
-2. **커스텀 단축키 등록** - 사용자가 캡처 단축키 직접 설정
-
----
-
-## 🏷️ 기능 1: Label 지원
-
-### 개요
-- Linear 이슈 생성 시 라벨(Label) 선택 기능 추가
-- 드롭다운 + 컬러 칩 UI로 다중 선택 지원
-- 팀 선택 시 해당 팀 + workspace 라벨 표시
-
-### 구현 상세
-
-#### Phase 1-1: Linear API 연동
-
-**파일: `src/services/linear-client.ts`**
-
-```typescript
-// 추가할 인터페이스
-export interface LabelInfo {
-  id: string;
-  name: string;
-  color: string;
-  description?: string;
-  teamId?: string;  // null이면 workspace 라벨
-  parentId?: string;  // 부모 라벨 (그룹)
-}
-
-// CreateIssueParams에 추가
-labelIds?: string[];
-
-// 추가할 메서드
-async getLabels(): Promise<LabelInfo[]>
-```
-
-**구현 내용:**
-- `client.issueLabels()` API 호출
-- workspace 라벨 + 팀 라벨 모두 조회
-- 색상, 설명, 부모 라벨 정보 포함
-
-#### Phase 1-2: 메인 프로세스 연동
-
-**파일: `src/main/index.ts`**
-
-```typescript
-// 추가할 캐시
-let labelsCache: LabelInfo[] = [];
-
-// loadLinearData()에 추가
-const labels = await linear.getLabels();
-labelsCache = labels;
-
-// capture-ready 이벤트에 추가
-labels: labelsCache,
-```
-
-**구현 내용:**
-- 앱 시작 시 라벨 데이터 로드
-- IPC로 렌더러에 라벨 데이터 전달
-- `create-issue` 핸들러에 `labelIds` 파라미터 처리
-
-#### Phase 1-3: UI 구현
-
-**파일: `src/renderer/index.html`**
-
-**UI 디자인: 드롭다운 + 컬러 칩**
-
-```
-┌─────────────────────────────────────┐
-│ Labels                              │
-│ ┌─────────────────────────────────┐ │
-│ │ 🔴 Bug  🟢 Feature  ✕           │ │  ← 선택된 라벨 (칩)
-│ │ + Add label...                  │ │
-│ └─────────────────────────────────┘ │
-│   ┌─────────────────────────────┐   │  ← 드롭다운 (클릭 시)
-│   │ 🔍 Search labels...         │   │
-│   │ ─────────────────────────── │   │
-│   │ 🔴 Bug                      │   │
-│   │ 🟢 Feature                  │   │
-│   │ 🟡 Improvement              │   │
-│   │ 🔵 Documentation            │   │
-│   └─────────────────────────────┘   │
-└─────────────────────────────────────┘
-```
-
-**구현 내용:**
-- 선택된 라벨은 색상 칩으로 표시
-- 칩에 ✕ 버튼으로 제거
-- 드롭다운에서 검색 및 선택
-- Linear 라벨 색상 그대로 사용
-- 팀 선택 변경 시 라벨 목록 필터링
-
-#### Phase 1-4: 이슈 생성 연동
-
-**수정 내용:**
-- 폼 제출 시 선택된 `labelIds` 배열 전달
-- `linear.createIssue()`에 `labelIds` 포함
-
-### 테스트 체크리스트
-
-- [ ] 라벨 목록 정상 로드
-- [ ] 라벨 검색 동작
-- [ ] 다중 라벨 선택/해제
-- [ ] 팀 변경 시 라벨 필터링
-- [ ] 이슈 생성 시 라벨 정상 연결
-- [ ] 라벨 색상 정상 표시
+> **목표**: macOS 전용 앱을 Windows에서도 동작하도록 확장  
+> **버전**: v2.0.0  
+> **예상 작업량**: ~13시간  
+> **작성일**: 2025-01-25  
+> **브랜치**: `feature/windows-support`
 
 ---
 
-## ⌨️ 기능 2: 커스텀 단축키 등록
+## 브랜치 전략
 
-### 개요
-- 사용자가 캡처 단축키를 직접 설정
-- 키 녹화 방식 UI (입력 필드 클릭 → 키 조합 누르기)
-- Settings 화면에서 설정
-
-### 구현 상세
-
-#### Phase 2-1: 설정 저장
-
-**파일: `src/services/settings-store.ts`**
-
-```typescript
-// Settings 인터페이스에 추가
-captureHotkey?: string;  // 기본값: 'CommandOrControl+Shift+L'
-
-// 추가할 함수
-export function getCaptureHotkey(): string
-export function setCaptureHotkey(hotkey: string): void
-export function resetCaptureHotkey(): void
+```
+master (현재 macOS 버전)
+   │
+   └── feature/windows-support (Windows 개발)
+          │
+          ├── Phase 1-5 작업
+          │
+          └── 완료 후 master에 PR 머지 → v2.0.0 릴리즈
 ```
 
-#### Phase 2-2: 단축키 동적 등록
+### 브랜치 생성
 
-**파일: `src/main/hotkey.ts`**
+```bash
+git checkout -b feature/windows-support
+git push -u origin feature/windows-support
+```
+
+### 머지 전략
+
+- **Squash Merge** 권장: Windows 지원 관련 커밋을 하나로 정리
+- PR 제목: `feat: Windows cross-platform support`
+- 머지 후 `master`에서 `npm version minor` → v2.0.0
+
+---
+
+## 현재 상태 분석
+
+### 플랫폼 의존성 현황
+
+| 영역 | 현재 상태 | 의존성 | 난이도 |
+|------|----------|--------|--------|
+| **화면 캡처** | `screencapture` CLI | macOS 전용 | :red_circle: High |
+| **권한 시스템** | `getMediaAccessStatus`, `x-apple.systempreferences:` | macOS TCC | :red_circle: High |
+| **창 스타일** | `titleBarStyle: 'hiddenInset'`, `setWindowButtonVisibility` | macOS 전용 | :yellow_circle: Medium |
+| **Tray 아이콘** | `setTemplateImage(true)` | macOS 전용 | :yellow_circle: Medium |
+| **단축키** | `CommandOrControl+Shift+L` | 크로스 플랫폼 | :green_circle: Done |
+| **빌드 설정** | `dist:mac` only | macOS 전용 | :yellow_circle: Medium |
+| **CI/CD** | `macos-latest` | macOS 전용 | :green_circle: Low |
+
+### 영향받는 파일
+
+```
+src/
+├── services/
+│   └── capture.ts              # 완전 재작성 필요
+├── main/
+│   ├── index.ts                # 플랫폼 분기 추가
+│   └── tray.ts                 # 플랫폼 분기 추가
+```
+
+---
+
+## 아키텍처 설계
+
+### 핵심 원칙
+
+> **"맥 버전 개선하면 윈도우도 같이 개선되게"**
+
+- 인터페이스 기반 추상화로 플랫폼별 구현 분리
+- 공통 로직은 한 곳에서 관리
+- `process.platform` 분기는 최소화
+
+### 폴더 구조 변경
+
+```
+src/
+├── main/
+│   ├── index.ts                # 플랫폼 분기 추가 (최소한)
+│   ├── hotkey.ts               # 변경 없음
+│   └── tray.ts                 # 플랫폼 분기 추가
+├── renderer/                   # 변경 없음
+│   └── ...
+└── services/
+    ├── capture/                        # NEW: 캡처 서비스 모듈
+    │   ├── index.ts                   # 인터페이스 + 팩토리
+    │   ├── capture.darwin.ts          # macOS 구현 (기존 로직)
+    │   └── capture.win32.ts           # Windows 구현 (신규)
+    ├── linear-client.ts               # 변경 없음
+    ├── r2-uploader.ts                 # 변경 없음
+    └── ...
+
+assets/
+├── icon.icns                   # macOS (기존)
+├── icon.ico                    # NEW: Windows
+├── tray-icon.png               # macOS (기존)
+└── tray-icon.ico               # NEW: Windows (선택)
+```
+
+### Capture 서비스 인터페이스
 
 ```typescript
-// 추가할 함수
-export function updateHotkey(
-  newShortcut: string,
-  callback: () => void,
-  oldShortcut?: string
-): boolean
+// src/services/capture/index.ts
 
-export function validateHotkey(shortcut: string): {
-  valid: boolean;
+export interface CaptureResult {
+  success: boolean;
+  filePath?: string;
   error?: string;
 }
+
+export interface ICaptureService {
+  /** 화면 캡처 권한 상태 확인 */
+  checkPermission(): 'granted' | 'denied' | 'not-determined' | 'restricted' | 'unknown';
+  
+  /** 영역 선택 캡처 실행 */
+  captureSelection(): Promise<CaptureResult>;
+  
+  /** 권한 설정 화면 열기 */
+  openPermissionSettings(): void;
+}
+
+/** 현재 플랫폼에 맞는 캡처 서비스 생성 */
+export function createCaptureService(): ICaptureService {
+  const platform = process.platform;
+  
+  if (platform === 'darwin') {
+    return new (require('./capture.darwin').DarwinCaptureService)();
+  } else if (platform === 'win32') {
+    return new (require('./capture.win32').Win32CaptureService)();
+  }
+  
+  throw new Error(`Unsupported platform: ${platform}`);
+}
 ```
 
-**구현 내용:**
-- 기존 단축키 해제 → 새 단축키 등록
-- 단축키 형식 유효성 검사
-- 시스템 단축키 충돌 검사
+---
 
-#### Phase 2-3: IPC 핸들러
+## 구현 계획
 
-**파일: `src/main/index.ts`**
+### Phase 1: 캡처 서비스 추상화 (필수)
+
+**목표**: 기존 macOS 코드를 인터페이스 기반으로 리팩토링
+
+#### Task 1.1: 캡처 인터페이스 정의
+- [ ] `src/services/capture/index.ts` 생성
+- [ ] `ICaptureService` 인터페이스 정의
+- [ ] 플랫폼 감지 팩토리 함수 구현
+
+#### Task 1.2: macOS 구현 분리
+- [ ] `src/services/capture/capture.darwin.ts` 생성
+- [ ] 기존 `capture.ts` 로직 이동
+- [ ] `DarwinCaptureService` 클래스로 래핑
+
+#### Task 1.3: import 경로 업데이트
+- [ ] `src/main/index.ts`에서 import 변경
+  ```typescript
+  // Before
+  import { captureSelection, checkScreenCapturePermission } from '../services/capture';
+  
+  // After
+  import { createCaptureService } from '../services/capture';
+  const captureService = createCaptureService();
+  ```
+
+#### Task 1.4: 기존 기능 검증
+- [ ] macOS에서 캡처 정상 동작 확인
+- [ ] 권한 체크 정상 동작 확인
+- [ ] 권한 설정 열기 정상 동작 확인
+
+**예상 시간**: 2-3시간
+
+---
+
+### Phase 2: Windows 캡처 구현 (필수)
+
+**목표**: Windows에서 동작하는 화면 캡처 구현
+
+#### 기술 선택: `desktopCapturer` + 커스텀 영역 선택
+
+| 방법 | 선택 이유 |
+|------|----------|
+| Electron `desktopCapturer` | 의존성 없음, 네이티브 지원 |
+| 커스텀 영역 선택 오버레이 | macOS `screencapture -i -s`와 동일한 UX |
+
+#### Task 2.1: Win32 캡처 서비스 기본 구현
+- [ ] `src/services/capture/capture.win32.ts` 생성
+- [ ] `Win32CaptureService` 클래스 구현
+- [ ] `desktopCapturer.getSources()` 연동
+
+#### Task 2.2: 영역 선택 오버레이 구현
+- [ ] 전체 화면 투명 오버레이 창 생성
+- [ ] 마우스 드래그로 영역 선택 UI
+- [ ] 선택 영역 좌표 반환
+- [ ] ESC 키로 취소 처리
+
+#### Task 2.3: 스크린샷 크롭 및 저장
+- [ ] `nativeImage`로 전체 화면 캡처
+- [ ] 선택 영역으로 크롭
+- [ ] PNG 파일로 저장
+
+#### Task 2.4: 권한 처리 (Windows)
+- [ ] Windows는 별도 권한 불필요 → `'granted'` 반환
+- [ ] `openPermissionSettings()`는 빈 함수 또는 안내 메시지
+
+**예상 시간**: 3-4시간
+
+**참고 구현 (GitHub)**:
+- `pavlobu/deskreen` - desktopCapturer 사용 예시
+- `xpf0000/FlyEnv` - 크로스 플랫폼 캡처
+- `moeru-ai/airi` - 영역 선택 구현
+
+---
+
+### Phase 3: UI/UX 플랫폼 대응 (필수)
+
+**목표**: Windows에서 자연스러운 UI 제공
+
+#### Task 3.1: 창 스타일 분기
+- [ ] `src/main/index.ts` 수정
 
 ```typescript
-// 추가할 핸들러
-ipcMain.handle('get-hotkey', () => getCaptureHotkey())
+// Before
+titleBarStyle: 'hiddenInset',
 
-ipcMain.handle('save-hotkey', async (_event, hotkey: string) => {
-  // 1. 유효성 검사
-  // 2. 기존 단축키 해제
-  // 3. 새 단축키 등록
-  // 4. 설정 저장
-})
-
-ipcMain.handle('reset-hotkey', () => {
-  // 기본값으로 복원
-})
+// After
+...(process.platform === 'darwin' ? {
+  titleBarStyle: 'hiddenInset',
+} : {}),
 ```
 
-#### Phase 2-4: Settings UI
+#### Task 3.2: Traffic lights 분기
+- [ ] `setWindowButtonVisibility` macOS 전용으로 분기
 
-**파일: `src/renderer/settings.html`**
-
-**UI 디자인: 키 녹화 방식**
-
-```
-┌─────────────────────────────────────┐
-│ Capture Hotkey                      │
-│ ┌─────────────────────────────────┐ │
-│ │ ⌘ + Shift + L          [Reset] │ │
-│ └─────────────────────────────────┘ │
-│ Click and press new key combination │
-└─────────────────────────────────────┘
-```
-
-**구현 내용:**
-- 입력 필드 클릭 시 "Press keys..." 표시
-- keydown 이벤트로 키 조합 캡처
-- Modifier 키 (⌘⌃⌥⇧) + 일반 키 조합
-- 유효하지 않은 조합 시 에러 표시
-- "Reset" 버튼으로 기본값 복원
-
-**키 조합 표시 형식:**
-```
-CommandOrControl+Shift+L  →  ⌘ + Shift + L (macOS)
-CommandOrControl+Shift+L  →  Ctrl + Shift + L (Windows)
-```
-
-### 단축키 제약 사항
-
-- 반드시 Modifier 키 1개 이상 필요 (⌘, ⌃, ⌥, ⇧)
-- 단일 키만으로는 등록 불가 (예: 'L'만)
-- 시스템 예약 단축키 제외 (예: ⌘+Q, ⌘+W)
-
-### 테스트 체크리스트
-
-- [ ] 키 녹화 정상 동작
-- [ ] 유효하지 않은 키 조합 에러 표시
-- [ ] 단축키 저장 후 즉시 적용
-- [ ] 앱 재시작 후 저장된 단축키 유지
-- [ ] 기본값 리셋 동작
-- [ ] 단축키 충돌 시 에러 처리
-
----
-
-## 📁 변경 파일 요약
-
-| 파일 | Label | 단축키 |
-|------|-------|--------|
-| `src/services/linear-client.ts` | ✅ | |
-| `src/services/settings-store.ts` | | ✅ |
-| `src/main/index.ts` | ✅ | ✅ |
-| `src/main/hotkey.ts` | | ✅ |
-| `src/renderer/index.html` | ✅ | |
-| `src/renderer/settings.html` | | ✅ |
-
----
-
-## 🚀 작업 순서
-
-### Day 1: Label 지원
-1. [ ] `linear-client.ts` - LabelInfo 인터페이스 + getLabels() 메서드
-2. [ ] `index.ts` (main) - labelsCache + IPC 연동
-3. [ ] `index.html` - Label 선택 UI 구현
-4. [ ] 테스트 및 버그 수정
-
-### Day 2: 커스텀 단축키
-1. [ ] `settings-store.ts` - hotkey 설정 저장
-2. [ ] `hotkey.ts` - updateHotkey(), validateHotkey()
-3. [ ] `index.ts` (main) - IPC 핸들러
-4. [ ] `settings.html` - 키 녹화 UI
-5. [ ] 테스트 및 버그 수정
-
-### Day 3: 마무리
-1. [ ] 통합 테스트
-2. [ ] README.md 업데이트
-3. [ ] CHANGELOG.md 작성
-4. [ ] 버전 업 (1.3.0)
-
----
-
-## 📝 참고 사항
-
-### Linear Label API
 ```typescript
-// 라벨 조회
-const labels = await client.issueLabels();
+if (process.platform === 'darwin') {
+  mainWindow.setWindowButtonVisibility(visible);
+}
+```
 
-// 이슈 생성 시 라벨 포함
-await client.createIssue({
-  teamId: "...",
-  title: "...",
-  labelIds: ["label-id-1", "label-id-2"]
+#### Task 3.3: Tray 아이콘 분기
+- [ ] `src/main/tray.ts` 수정
+
+```typescript
+// Template image는 macOS 전용
+if (process.platform === 'darwin') {
+  icon.setTemplateImage(true);
+}
+
+// 클릭 동작 분기
+tray.on('click', () => {
+  if (process.platform === 'darwin') {
+    tray?.popUpContextMenu();  // macOS: 메뉴 표시
+  } else {
+    // Windows: 메인 윈도우 토글 (일반적인 패턴)
+    if (mainWindow?.isVisible()) {
+      mainWindow.hide();
+    } else {
+      mainWindow?.show();
+    }
+  }
 });
 ```
 
-### Electron 단축키 형식
-```
-CommandOrControl+Shift+L  // ⌘/Ctrl + Shift + L
-Alt+Shift+C               // ⌥/Alt + Shift + C
-CommandOrControl+F12      // ⌘/Ctrl + F12
+#### Task 3.4: 메뉴 단축키 표시 분기
+- [ ] `Capture Screen (⌘+Shift+L)` → Windows에서는 `Ctrl+Shift+L`
+
+```typescript
+label: `Capture Screen (${process.platform === 'darwin' ? '⌘' : 'Ctrl'}+Shift+L)`,
 ```
 
-### 키 코드 매핑 (macOS)
-| Key | Display |
-|-----|---------|
-| CommandOrControl | ⌘ |
-| Alt | ⌥ |
-| Shift | ⇧ |
-| Control | ⌃ |
+#### Task 3.5: Dock 관련 분기
+- [ ] `app.dock?.show()` macOS 전용
+
+```typescript
+if (process.platform === 'darwin') {
+  app.dock?.show();
+}
+```
+
+**예상 시간**: 2시간
+
+---
+
+### Phase 4: 빌드 및 배포 설정 (필수)
+
+**목표**: Windows 빌드 및 CI/CD 구성
+
+#### Task 4.1: Windows 아이콘 생성
+- [ ] `assets/icon.ico` 생성 (256x256 포함)
+- [ ] 기존 PNG에서 변환: `png2ico` 또는 온라인 도구
+
+#### Task 4.2: package.json Windows 설정 추가
+- [ ] `build.win` 섹션 추가
+
+```json
+{
+  "build": {
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "publisherName": "GPTers"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico"
+    }
+  },
+  "scripts": {
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:all": "npm run build && electron-builder --mac --win"
+  }
+}
+```
+
+#### Task 4.3: GitHub Actions 매트릭스 빌드
+- [ ] `.github/workflows/release.yml` 수정
+
+```yaml
+jobs:
+  release:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: windows-latest
+            platform: win
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - run: npm ci
+      - run: npm run build
+      
+      - name: Build and Publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS 코드 서명 (mac only)
+          CSC_LINK: ${{ matrix.platform == 'mac' && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.CSC_KEY_PASSWORD || '' }}
+          APPLE_API_KEY: ${{ matrix.platform == 'mac' && secrets.APPLE_API_KEY || '' }}
+          APPLE_API_KEY_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_API_KEY_ID || '' }}
+          APPLE_API_ISSUER: ${{ matrix.platform == 'mac' && secrets.APPLE_API_ISSUER || '' }}
+        run: npm run dist:${{ matrix.platform }} -- --publish always
+```
+
+#### Task 4.4: 자동 업데이트 설정
+- [ ] `latest.yml` (Windows용) 자동 생성 확인
+- [ ] `electron-updater` Windows 지원 확인
+
+**예상 시간**: 2.5시간
+
+---
+
+### Phase 5: 테스트 및 검증 (필수)
+
+#### Task 5.1: macOS 회귀 테스트
+- [ ] 캡처 기능 정상 동작
+- [ ] 권한 요청 플로우 정상
+- [ ] Tray 아이콘 및 메뉴 정상
+- [ ] 자동 업데이트 정상
+
+#### Task 5.2: Windows 테스트
+- [ ] 앱 설치 (NSIS installer)
+- [ ] 캡처 기능 동작
+- [ ] 영역 선택 UI 동작
+- [ ] Tray 아이콘 동작
+- [ ] 단축키 동작 (`Ctrl+Shift+L`)
+
+#### Task 5.3: 크로스 플랫폼 테스트
+- [ ] 동일 기능이 양 플랫폼에서 동작 확인
+- [ ] UI 일관성 확인
+
+**예상 시간**: 2-3시간
+
+---
+
+### Phase 6: 코드 서명 (선택)
+
+> Windows 코드 서명은 **선택사항**이지만 권장됨
+
+| 상태 | 사용자 경험 |
+|------|------------|
+| 서명 없음 | "알 수 없는 게시자" 경고, SmartScreen 차단 |
+| OV 인증서 | 경고 감소, 점진적 신뢰 구축 (~$200/년) |
+| EV 인증서 | 즉시 SmartScreen 신뢰 (~$400/년) |
+
+#### Task 6.1 (선택): 코드 서명 인증서 구매
+- [ ] OV 또는 EV 인증서 구매
+- [ ] GitHub Secrets에 `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD` 추가
+
+---
+
+## 작업 우선순위
+
+```
+Phase 1 (캡처 추상화)     ━━━━━━━━━━ 2-3h
+         ↓
+Phase 2 (Windows 캡처)    ━━━━━━━━━━━━━━ 3-4h
+         ↓
+Phase 3 (UI 플랫폼 대응)  ━━━━━━━━ 2h
+         ↓
+Phase 4 (빌드/배포)       ━━━━━━━━━ 2.5h
+         ↓
+Phase 5 (테스트)          ━━━━━━━━━━ 2-3h
+         ↓
+[선택] Phase 6 (코드 서명)
+```
+
+**총 예상 시간**: ~13시간 (Phase 6 제외)
+
+---
+
+## 위험 요소 및 대응
+
+| 위험 | 확률 | 대응 |
+|------|------|------|
+| Windows 영역 선택 UI 구현 복잡 | 중 | 오픈소스 참고, 기본 기능 우선 |
+| desktopCapturer 권한 이슈 | 낮 | Windows는 일반적으로 권한 불필요 |
+| 자동 업데이트 Windows 호환성 | 낮 | electron-updater는 Windows 지원 |
+| CI 빌드 시간 증가 | 높 | 매트릭스 빌드로 병렬 처리 |
+
+---
+
+## 완료 기준
+
+- [ ] macOS에서 기존 기능 100% 동작 (회귀 없음)
+- [ ] Windows에서 핵심 기능 동작
+  - [ ] 화면 영역 선택 캡처
+  - [ ] AI 분석
+  - [ ] Linear 이슈 생성
+  - [ ] Tray 아이콘
+  - [ ] 글로벌 단축키
+- [ ] GitHub Releases에서 mac/win 동시 배포
+- [ ] 자동 업데이트 양 플랫폼 지원
+
+---
+
+## Windows 테스트 환경
+
+> macOS에서 개발하면서 Windows 앱을 테스트하는 방법
+
+### 1. 로컬 가상화 (개발 중 기능 테스트)
+
+| 옵션 | 비용 | 성능 | Apple Silicon 호환 |
+|------|------|------|-------------------|
+| **UTM** (권장) | 무료 | 좋음 | ✅ Windows ARM + x64 에뮬레이션 |
+| **Parallels Desktop** | $100+/년 | 최고 | ✅ 가장 안정적 |
+| **VMware Fusion** | 무료 (개인용) | 좋음 | ✅ |
+
+#### UTM 설치 및 Windows 11 설정
+
+```bash
+# UTM 설치
+brew install --cask utm
+
+# Windows 11 ARM ISO 다운로드
+# https://www.microsoft.com/software-download/windows11arm64
+
+# UTM에서 새 VM 생성 → Windows 11 ARM 선택 → ISO 마운트 → 설치
+```
+
+**테스트 워크플로우:**
+1. Mac에서 `npm run dist:win` 실행 (cross-compile)
+2. 생성된 `.exe` 파일을 UTM VM에 복사
+3. VM에서 설치 및 테스트
+
+### 2. GitHub Actions CI/CD (자동 빌드 검증) ⭐
+
+모든 push에서 Windows 빌드를 자동 검증 - **가장 중요!**
+
+```yaml
+# .github/workflows/build-test.yml
+name: Build Test
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - run: npm ci
+      - run: npm run build
+      
+      - name: Build app
+        run: |
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            npm run dist:mac
+          else
+            npm run dist:win
+          fi
+        shell: bash
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}
+          path: |
+            release/*.dmg
+            release/*.exe
+            release/*.zip
+```
+
+**장점:**
+- 실제 Windows 환경에서 빌드 검증
+- 빌드 실패 시 즉시 알림
+- Artifacts에서 빌드된 파일 다운로드 가능
+
+### 3. Cross-Compile (빌드만, 테스트 불가)
+
+Mac에서 Windows 빌드 파일 생성 가능:
+
+```bash
+# macOS에서 Windows용 빌드
+npm run dist:win
+
+# 출력: release/Linear Capture Setup x.x.x.exe
+```
+
+**제한사항:**
+- EV 코드 서명은 Windows에서만 가능
+- 일반 OV 인증서는 Mac에서도 서명 가능
+
+### 4. 베타 테스터 활용 (릴리즈 전 최종 검증)
+
+- Windows 사용자에게 베타 빌드 배포
+- 실제 환경에서 피드백 수집
+- GitHub Releases의 Pre-release 기능 활용
+
+### 테스트 전략 요약
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    단계별 테스트 전략                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  1. 코드 작성 (Mac)                                          │
+│     └─ TypeScript 컴파일 확인                                │
+│                                                             │
+│  2. GitHub Actions 자동 빌드 ⭐                              │
+│     └─ push마다 Windows/Mac 빌드 성공 여부 확인               │
+│     └─ 빌드 성공 = 기본적인 호환성 확인                        │
+│                                                             │
+│  3. UTM 가상머신 테스트                                       │
+│     └─ 주요 기능 변경 시에만                                  │
+│     └─ 화면 캡처, 트레이, 단축키 등 OS 연동 기능               │
+│                                                             │
+│  4. 베타 테스터 검증                                          │
+│     └─ 릴리즈 전 실제 Windows PC에서 테스트                   │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 참고 자료
+
+### Electron 공식 문서
+- [desktopCapturer](https://www.electronjs.org/docs/latest/api/desktop-capturer)
+- [Cross-Platform Considerations](https://www.electronjs.org/docs/latest/tutorial/cross-platform-considerations)
+
+### 오픈소스 참고
+- [pavlobu/deskreen](https://github.com/pavlobu/deskreen) - desktopCapturer 구현
+- [electron/fiddle](https://github.com/electron/fiddle) - 플랫폼 분기 패턴
+
+### 빌드 도구
+- [electron-builder](https://www.electron.build/configuration/win) - Windows 설정
+- [electron-builder code signing](https://www.electron.build/code-signing.html) - 코드 서명 가이드
+- [GitHub Actions Matrix](https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs)
+
+---
+
+## 변경 이력
+
+| 날짜 | 버전 | 내용 |
+|------|------|------|
+| 2025-01-25 | 1.0 | 초안 작성 |
+| 2025-01-25 | 1.1 | 브랜치 전략, Windows 테스트 환경 섹션 추가 |
