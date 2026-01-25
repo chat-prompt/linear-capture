@@ -96,12 +96,17 @@ echo -e "   ${GREEN}✓ 다운로드 완료${NC}"
 # 6. DMG 마운트 및 설치
 echo ""
 echo "6️⃣  앱 설치 중..."
-MOUNT_POINT=$(hdiutil attach "$DMG_FILE" -nobrowse -quiet | grep "/Volumes" | awk '{print $3}')
+
+# 마운트하고 볼륨 경로 추출 (공백 포함 경로 처리)
+MOUNT_OUTPUT=$(hdiutil attach "$DMG_FILE" -nobrowse 2>/dev/null)
+MOUNT_POINT=$(echo "$MOUNT_OUTPUT" | grep -o '/Volumes/.*' | head -1)
 
 if [ -z "$MOUNT_POINT" ]; then
-    # 볼륨 이름에 공백이 있는 경우 처리
-    MOUNT_POINT=$(hdiutil attach "$DMG_FILE" -nobrowse -quiet | tail -1 | sed 's/.*\(\/Volumes\/.*\)/\1/')
+    echo -e "   ${RED}✗ DMG 마운트 실패${NC}"
+    exit 1
 fi
+
+echo "   마운트: $MOUNT_POINT"
 
 if [ -d "$MOUNT_POINT/Linear Capture.app" ]; then
     cp -R "$MOUNT_POINT/Linear Capture.app" /Applications/
