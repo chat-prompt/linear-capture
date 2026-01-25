@@ -95,16 +95,20 @@ function showPermissionNotification(): void {
     type: 'warning',
     title: 'Linear Capture',
     message: '화면 녹화 권한이 필요합니다',
-    detail: '단축키로 화면을 캡처하고 바로 Linear 이슈를 생성하세요',
-    buttons: ['권한 설정', '시작'],
+    detail: '권한 설정을 누르면 캡처가 시도되고, 시스템 환경설정이 열립니다.\n앱이 목록에 표시되면 체크해주세요.',
+    buttons: ['권한 설정', '취소'],
     defaultId: 0,
     cancelId: 1,
-  }).then((result: { response: number }) => {
+  }).then(async (result: { response: number }) => {
     if (result.response === 0) {
       // "권한 설정" 버튼 클릭
+      // 먼저 캡처 시도 → macOS가 앱을 권한 목록에 등록
+      console.log('Triggering capture to register app in permission list...');
+      await captureSelection();
+      // 그 다음 시스템 환경설정 열기
       openScreenCaptureSettings();
     }
-    // "시작" 버튼은 그냥 닫기
+    // "취소" 버튼은 그냥 닫기
   });
 }
 
@@ -264,17 +268,48 @@ function showCaptureWindow(analysis?: AnalysisResult): void {
   }, 100);
 }
 
+// Debounce flag to prevent duplicate capture calls
+let isCapturing = false;
+
 /**
  * Handle screen capture flow
  * If session exists and window is open, add to existing session
  * Otherwise, create new session
  */
 async function handleCapture(): Promise<void> {
+  // Debounce: prevent duplicate calls while capture is in progress
+  if (isCapturing) {
+    console.log('Capture already in progress, ignoring');
+    return;
+  }
+
+  isCapturing = true;
+
   try {
-    // Check screen capture permission first
+    // Check screen capture permission
     const permission = checkScreenCapturePermission();
+
+    // If permission not granted, still attempt capture to register app in macOS permission list
     if (permission !== 'granted') {
-      showPermissionNotification();
+      console.log('Permission not granted, attempting capture to register app in permission list...');
+      const result = await captureSelection();
+
+      if (!result.success || !result.filePath) {
+        // Capture failed (permission denied or user cancelled)
+        // Now show the permission notification
+        showPermissionNotification();
+        return;
+      }
+
+      // Capture succeeded - permission was granted during the attempt
+      console.log('Permission granted during capture attempt, continuing...');
+      // Continue to normal flow below with the captured file
+      if (!captureSession) {
+        captureSession = { images: [] };
+      }
+      captureSession.images.push({ filePath: result.filePath });
+      console.log(`Added image ${captureSession.images.length}/${MAX_IMAGES}`);
+      showCaptureWindow(captureSession.analysisResult);
       return;
     }
 
@@ -285,9 +320,6 @@ async function handleCapture(): Promise<void> {
       showNotification('Maximum Images', `You can only attach up to ${MAX_IMAGES} images.`);
       return;
     }
-
-    // Hide window if visible during capture
-    mainWindow?.hide();
 
     const result = await captureSelection();
 
@@ -325,6 +357,8 @@ async function handleCapture(): Promise<void> {
     }
   } catch (error) {
     console.error('handleCapture error:', error);
+  } finally {
+    isCapturing = false;
   }
 }
 
