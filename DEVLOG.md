@@ -232,6 +232,98 @@ Settings 완성했으니 온보딩도 개선하고 버전 올리자
 
 ---
 
+## 2026-01-19 (Day 5)
+
+### 13. 멀티 이미지 캡처 및 UX 개선
+
+```
+한 번에 여러 장 캡처해서 이슈에 첨부할 수 있으면 좋겠어
+```
+
+**Claude 작업:**
+- 갤러리 형태의 멀티 이미지 UI 구현 (최대 10장)
+- `+ 추가` 버튼으로 추가 캡처, `×` 버튼으로 개별 삭제
+- 이미지 클릭 시 모달로 확대 보기
+- 이미지 확대 모달 열릴 때 macOS 신호등(닫기/최소화/최대화) 버튼 숨김 처리
+- Linear 이슈 description에 모든 이미지 마크다운으로 첨부
+
+---
+
+### 14. 자동 업데이트 기능 추가
+
+```
+새 버전 나오면 자동으로 알려주고 업데이트할 수 있게 해줘
+```
+
+**Claude 작업:**
+- `electron-updater` 패키지 추가
+- `src/services/auto-updater.ts` - GitHub Releases 기반 업데이트 체크
+- Settings 화면에 버전 표시 및 "업데이트 확인" 버튼 추가
+- 업데이트 다운로드 완료 시 재시작 안내 다이얼로그
+- **주의**: Ad-hoc 서명이라 자동 설치는 불가 → 다운로드 후 수동 설치 필요
+- TCC 권한 리셋 필요 안내 메시지 추가
+
+---
+
+### 15. Cloudflare Worker로 API 키 보안 강화
+
+```
+앱에 API 키가 하드코딩되어 있는데, 보안상 Worker로 옮기자
+```
+
+**Claude 작업:**
+- `linear-capture-ai` Cloudflare Worker 생성
+- AI 분석 (Anthropic, Gemini) API 호출을 Worker에서 처리
+- R2 이미지 업로드도 Worker 통해 처리
+- 앱에는 Worker URL만 남기고 모든 API 키 제거
+- Worker Secrets로 안전하게 API 키 관리
+
+---
+
+### 16. 앱 시작 시 메인 창 자동 표시
+
+```
+앱 실행하면 바로 메인 창 보여주고, 캡처 가이드도 알려줘
+```
+
+**Claude 작업:**
+- 앱 시작 시 메인 창 자동 표시 (기존: 트레이만 표시)
+- 단축키 가이드 텍스트 추가 ("⌘+Shift+L로 캡처")
+- 이미지 없을 때 "캡처하기" 버튼 표시
+- 첫 사용자도 바로 사용법 파악 가능
+
+---
+
+### 17. 라벨 지원 및 커스텀 단축키 설정
+
+```
+이슈에 라벨도 붙일 수 있게 해줘. 그리고 단축키도 바꿀 수 있으면 좋겠어
+```
+
+**Claude 작업:**
+- Linear 라벨 멀티 선택 UI 구현 (칩 형태)
+- 팀별 라벨 + 워크스페이스 라벨 검색 및 선택
+- Settings에 Capture Hotkey 섹션 추가
+- 키보드 조합 녹화 방식으로 단축키 변경
+- Reset 버튼으로 기본값(⌘+Shift+L) 복원
+- 버전 1.2.3 릴리스
+
+---
+
+### 18. 단축키 변경 시 메인 UI 가이드 동적 업데이트
+
+```
+단축키가 변경되면 메인 UI의 가이드 텍스트도 바뀌어야할 것 같아
+```
+
+**Claude 작업:**
+- 메인 UI 단축키 힌트 텍스트 동적 업데이트
+- Settings에서 단축키 저장 시 메인 윈도우에 IPC 이벤트 전송
+- Settings 모달 크기 증가 (400×420 → 480×630)
+- 버전 1.2.4 릴리스
+
+---
+
 ## 커밋 히스토리
 
 | 날짜 | 커밋 | 설명 |
@@ -261,6 +353,17 @@ Settings 완성했으니 온보딩도 개선하고 버전 올리자
 | 01/15 | `ab6a3f1` | chore: Bump version to 1.1.0 |
 | 01/15 | `943e7ee` | fix(ai): Improve title generation for internal collaboration |
 | 01/15 | `027d205` | docs: Add CHANGELOG.md for v1.1.1 |
+| 01/19 | `0b7d145` | feat(multi-image): Phase 7 버그 수정 및 UX 개선 |
+| 01/19 | `39f88c0` | feat(ui): Hide macOS traffic lights when image modal opens |
+| 01/19 | `84ead4c` | feat(auto-update): Add electron-updater for automatic app updates |
+| 01/19 | `92a9184` | feat(auto-update): Add TCC permission warning on update restart |
+| 01/19 | `d34437d` | feat: Use Cloudflare Worker for AI analysis (API key security) |
+| 01/19 | `e17424a` | fix: Use Worker for R2 uploads, fix update check double-dialog |
+| 01/19 | `dfbc58c` | feat(ui): Show main window on startup with capture guide |
+| 01/19 | `6437471` | feat: Add label support and custom hotkey settings |
+| 01/19 | `c698a87` | chore: Bump version to 1.2.3 |
+| 01/19 | `ca7cfe2` | feat(ui): Dynamic hotkey hint and larger settings modal |
+| 01/19 | `c419b4d` | chore: Bump version to 1.2.4 |
 
 ---
 
@@ -278,33 +381,35 @@ Settings 완성했으니 온보딩도 개선하고 버전 올리자
 
 ## 주요 기능
 
-1. **전역 핫키 캡처** (⌘+Shift+L)
+1. **전역 핫키 캡처** (커스텀 단축키 지원)
+   - 기본: ⌘+Shift+L (Settings에서 변경 가능)
    - macOS screencapture CLI 활용
    - 메뉴바 트레이 아이콘 제공
 
-2. **AI 기반 이슈 정보 자동 생성**
+2. **멀티 이미지 캡처**
+   - 최대 10장까지 캡처 후 한 번에 이슈 생성
+   - 갤러리 UI로 미리보기, 추가, 삭제
+   - 클릭 시 모달로 확대 보기
+
+3. **AI 기반 이슈 정보 자동 생성**
    - Gemini Vision API / Claude Haiku 4.5 선택 가능
    - 스크린샷 OCR로 제목, 설명, 프로젝트, 담당자, 우선순위, 포인트 추천
-   - 마크다운 템플릿 (## 이슈 / ## 상세 내용 / ## To Do)
+   - Cloudflare Worker 통해 API 호출 (보안 강화)
 
-3. **이미지 업로드 및 Linear 이슈 생성**
-   - Cloudflare R2 자동 업로드
-   - Linear API 연동 (팀, 프로젝트, 상태, 우선순위, 담당자, 포인트, 사이클)
+4. **이미지 업로드 및 Linear 이슈 생성**
+   - Cloudflare R2 자동 업로드 (Worker 경유)
+   - Linear API 연동 (팀, 프로젝트, 상태, 우선순위, 담당자, 포인트, 사이클, 라벨)
    - 이슈 URL 클립보드 복사 + macOS 알림
 
-4. **Settings 관리**
+5. **Settings 관리**
    - 개인 Linear API 토큰 저장
-   - 토큰 검증 (Linear viewer API)
-   - electron-store 기반 영구 저장
+   - 커스텀 캡처 단축키 설정
+   - 버전 정보 및 업데이트 확인
 
-5. **온보딩 및 권한 처리**
-   - 첫 실행 시 화면 녹화 권한 안내
-   - TCC 권한 체크 및 설정 열기
-   - `tccutil reset` 명령어 지원
-
-6. **성능 최적화**
-   - R2 업로드 + AI 분석 병렬 처리 (~1-2초 단축)
-   - AI 분석 실패 시 graceful degradation
+6. **자동 업데이트**
+   - GitHub Releases 기반 업데이트 체크
+   - 새 버전 다운로드 및 설치 안내
+   - TCC 권한 리셋 필요 시 안내
 
 7. **macOS 네이티브 앱 배포**
    - DMG 패키징 (Universal binary)
