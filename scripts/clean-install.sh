@@ -97,25 +97,35 @@ echo -e "   ${GREEN}✓ 다운로드 완료${NC}"
 echo ""
 echo "6️⃣  앱 설치 중..."
 
-# 마운트하고 볼륨 경로 추출 (공백 포함 경로 처리)
-MOUNT_OUTPUT=$(hdiutil attach "$DMG_FILE" -nobrowse 2>/dev/null)
-MOUNT_POINT=$(echo "$MOUNT_OUTPUT" | grep -o '/Volumes/.*' | head -1)
+# 기존 Linear Capture 볼륨 언마운트
+for vol in /Volumes/Linear\ Capture*; do
+    [ -d "$vol" ] && hdiutil detach "$vol" -quiet 2>/dev/null || true
+done
+
+# 마운트
+echo "   DMG 마운트 중..."
+hdiutil attach "$DMG_FILE" -nobrowse -quiet
+
+# 마운트된 볼륨 찾기 (Linear Capture로 시작하는 볼륨)
+MOUNT_POINT=""
+for vol in /Volumes/Linear\ Capture*; do
+    if [ -d "$vol/Linear Capture.app" ]; then
+        MOUNT_POINT="$vol"
+        break
+    fi
+done
 
 if [ -z "$MOUNT_POINT" ]; then
     echo -e "   ${RED}✗ DMG 마운트 실패${NC}"
+    echo "   디버그: /Volumes 내용:"
+    ls -la /Volumes/ | grep -i linear || echo "   (Linear 볼륨 없음)"
     exit 1
 fi
 
 echo "   마운트: $MOUNT_POINT"
 
-if [ -d "$MOUNT_POINT/Linear Capture.app" ]; then
-    cp -R "$MOUNT_POINT/Linear Capture.app" /Applications/
-    echo -e "   ${GREEN}✓ /Applications에 설치됨${NC}"
-else
-    echo -e "   ${RED}✗ DMG에서 앱을 찾을 수 없습니다${NC}"
-    hdiutil detach "$MOUNT_POINT" -quiet 2>/dev/null || true
-    exit 1
-fi
+cp -R "$MOUNT_POINT/Linear Capture.app" /Applications/
+echo -e "   ${GREEN}✓ /Applications에 설치됨${NC}"
 
 # 7. 정리
 hdiutil detach "$MOUNT_POINT" -quiet 2>/dev/null || true
