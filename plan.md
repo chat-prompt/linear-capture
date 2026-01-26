@@ -414,56 +414,66 @@ brew install --cask utm
 2. 생성된 `.exe` 파일을 UTM VM에 복사
 3. VM에서 설치 및 테스트
 
-### 2. GitHub Actions CI/CD (자동 빌드 검증) ⭐
+### 2. GitHub Actions에서 EXE 다운로드 후 Windows PC 테스트 ⭐ (권장)
 
-모든 push에서 Windows 빌드를 자동 검증 - **가장 중요!**
+> **가장 간단하고 실용적인 방법**
 
-```yaml
-# .github/workflows/build-test.yml
-name: Build Test
+#### Step 1: GitHub Actions에서 EXE 다운로드
 
-on: [push, pull_request]
+1. [GitHub Actions 페이지](https://github.com/chat-prompt/linear-capture/actions/workflows/build-test.yml) 접속
+2. 최신 성공한 빌드 클릭
+3. 하단 **Artifacts** 섹션에서 `build-win` 다운로드 (약 78MB)
+4. `build-win.zip` 압축 해제 → `Linear Capture Setup x.x.x.exe`
 
-jobs:
-  build:
-    strategy:
-      matrix:
-        os: [macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - run: npm ci
-      - run: npm run build
-      
-      - name: Build app
-        run: |
-          if [ "$RUNNER_OS" == "macOS" ]; then
-            npm run dist:mac
-          else
-            npm run dist:win
-          fi
-        shell: bash
-      
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-${{ matrix.os }}
-          path: |
-            release/*.dmg
-            release/*.exe
-            release/*.zip
+#### Step 2: Windows PC로 파일 전송
+
+- USB 드라이브
+- Google Drive / Dropbox / OneDrive
+- 이메일 첨부
+- 또는 Windows PC에서 직접 GitHub Actions 페이지 접속해서 다운로드
+
+#### Step 3: Windows에서 설치
+
+```
+1. "Linear Capture Setup x.x.x.exe" 더블클릭
+2. "Windows의 PC 보호" 경고 표시됨 (코드 서명 없음)
+   → "추가 정보" 클릭 → "실행" 클릭
+3. 설치 경로 선택 (기본값 권장) → "설치" 클릭
+4. 설치 완료 → "Linear Capture 실행" 체크 후 "마침"
 ```
 
-**장점:**
-- 실제 Windows 환경에서 빌드 검증
-- 빌드 실패 시 즉시 알림
+#### Step 4: 기능 테스트 체크리스트
+
+| 기능 | 테스트 방법 | 예상 결과 |
+|------|-------------|-----------|
+| **앱 실행** | 시작 메뉴에서 "Linear Capture" 실행 | 메인 창 표시 |
+| **트레이 아이콘** | 우측 하단 시스템 트레이 확인 | L 아이콘 표시 |
+| **트레이 메뉴** | 트레이 아이콘 우클릭 | Capture Screen (Ctrl+Shift+L), Settings, Quit 메뉴 |
+| **단축키** | `Ctrl+Shift+L` 누르기 | 화면 어두워지고 영역 선택 모드 |
+| **영역 선택** | 마우스 드래그로 영역 선택 | 선택 영역 파란 테두리 표시, 크기 표시 |
+| **캡처 완료** | 영역 선택 후 마우스 버튼 놓기 | 캡처된 이미지가 앱에 표시 |
+| **캡처 취소** | ESC 키 누르기 | 영역 선택 취소, 앱으로 돌아감 |
+| **다중 이미지** | 캡처 후 다시 `Ctrl+Shift+L` | 추가 이미지 갤러리에 추가 |
+| **AI 분석** | "분석 시작" 버튼 클릭 | 제목/설명 자동 생성 |
+| **이슈 생성** | Linear API 토큰 설정 후 "Create Issue" | Linear에 이슈 생성 |
+
+#### 문제 발생 시
+
+| 증상 | 원인 | 해결 |
+|------|------|------|
+| 앱이 실행 안 됨 | 설치 실패 | 관리자 권한으로 재설치 |
+| 단축키 안 됨 | 다른 앱과 충돌 | Settings에서 단축키 변경 |
+| 캡처 화면 안 나옴 | 오버레이 문제 | 앱 재시작 |
+| 검은 화면만 캡처됨 | GPU 드라이버 | 그래픽 드라이버 업데이트 |
+
+### 3. GitHub Actions CI/CD (자동 빌드 검증)
+
+모든 push에서 Windows 빌드를 자동 검증:
+
+- `feature/windows-support` 브랜치 push 시 자동 실행
+- macOS + Windows 병렬 빌드
 - Artifacts에서 빌드된 파일 다운로드 가능
+- 빌드 실패 시 즉시 알림
 
 ### 3. Cross-Compile (빌드만, 테스트 불가)
 
