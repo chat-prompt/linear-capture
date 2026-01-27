@@ -128,7 +128,7 @@ Task 9 (Commit & Merge)
 
 ### Pre-work
 
-- [ ] 0. Feature 브랜치 생성
+- [x] 0. Feature 브랜치 생성
 
   **What to do**:
   - main에서 `feature/user-hint` 브랜치 생성
