@@ -99,3 +99,31 @@
 ### Next Steps
 - Task 4: Deploy Worker with instruction support
 - Task 5: Update app services to pass instruction through analyzer
+
+## Task 7: App UI - Hint Textarea (2025-01-27)
+
+### Implementation Pattern
+- **UI Component**: Added `<textarea>` for user hints below image gallery
+- **Event Handling**: Updated `reanalyzeBtn` click handler to read textarea value
+- **State Management**: Reset textarea value in `capture-ready` handler (new capture session)
+- **IPC Communication**: Passed `instruction` parameter in `reanalyze` IPC call
+
+### Files Modified
+1. `src/renderer/index.html`:
+   - Added textarea HTML (lines 786-788)
+   - Updated `capture-ready` handler to reset `userHint` (line 1630)
+   - Updated `reanalyzeBtn` handler to read and pass `instruction` (lines 1827-1842)
+
+### Verification
+- **Build**: `npm run build` passed successfully
+- **Code Review**: Verified HTML structure and JS logic for instruction passing
+- **Logic Check**:
+  - Textarea exists with ID `userHint`
+  - Value is trimmed before sending
+  - Empty value is sent as `undefined` (consistent with worker logic)
+  - Textarea is cleared on new capture
+
+### Key Learnings
+- **Inline Styles**: Used inline styles for quick UI iteration in `index.html` (consistent with existing code)
+- **IPC Parameter Passing**: IPC `invoke` arguments must match the main process handler signature (updated in Task 6)
+- **State Reset**: Important to clear user input fields when starting a fresh session to avoid stale data

@@ -780,6 +780,11 @@
     <!-- Image Gallery (multiple images) -->
     <div id="imageGallery" class="image-gallery"></div>
 
+    <!-- User Hint Input -->
+    <div class="form-group" style="margin-bottom: 14px;">
+      <textarea id="userHint" placeholder="집중할 내용을 입력하세요 (선택사항)" style="min-height: 60px; height: 60px; resize: none; font-size: 13px; padding: 8px 12px;"></textarea>
+    </div>
+
     <!-- Legacy single preview (hidden) -->
     <img id="preview" class="preview" src="" alt="Screenshot preview" />
 
@@ -1629,6 +1634,7 @@
       // Reset form state
       titleInput.value = '';
       descInput.value = '';
+      document.getElementById('userHint').value = '';
       prioritySelect.value = '';
       estimateSelect.value = '';
       selectedLabelIds = [];  // Reset labels
@@ -1829,6 +1835,7 @@
 
       const model = aiModelSelect.value;
       const modelName = model === 'haiku' ? 'Claude Haiku 4.5' : 'Gemini 3 Flash';
+      const instruction = document.getElementById('userHint').value.trim();
 
       // Show loading
       aiLoadingText.textContent = `${modelName}로 재분석 중...`;
@@ -1838,7 +1845,8 @@
       try {
         await ipcRenderer.invoke('reanalyze', {
           filePath: currentFilePath,
-          model: model
+          model: model,
+          instruction: instruction || undefined
         });
       } catch (err) {
         console.error('Reanalyze error:', err);
