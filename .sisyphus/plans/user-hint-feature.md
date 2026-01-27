@@ -49,11 +49,11 @@
    - instruction 필드 전달 테스트
 
 ### Definition of Done
-- [ ] `npm run build` 성공
-- [ ] `npm run test` 모든 테스트 통과
-- [ ] 빈 힌트로 분석 시 기존과 동일하게 동작
-- [ ] 힌트 입력 시 AI 응답에 힌트 내용이 반영됨
-- [ ] Worker 배포 후 앱에서 정상 동작
+- [x] `npm run build` 성공
+- [x] `npm run test` 모든 테스트 통과
+- [x] 빈 힌트로 분석 시 기존과 동일하게 동작
+- [x] 힌트 입력 시 AI 응답에 힌트 내용이 반영됨
+- [x] Worker 배포 후 앱에서 정상 동작
 
 ### Must Have
 - 힌트 textarea UI (갤러리 아래)
@@ -522,8 +522,8 @@ npm start  # Expected: App launches with hint textarea visible
 ```
 
 ### Final Checklist
-- [ ] 모든 "Must Have" 기능 구현됨
-- [ ] 모든 "Must NOT Have" 항목 없음
-- [ ] 모든 테스트 통과
-- [ ] Worker 배포 완료
-- [ ] 빈 힌트 regression 없음
+- [x] 모든 "Must Have" 기능 구현됨
+- [x] 모든 "Must NOT Have" 항목 없음
+- [x] 모든 테스트 통과
+- [x] Worker 배포 완료
+- [x] 빈 힌트 regression 없음
