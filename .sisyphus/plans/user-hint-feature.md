@@ -196,7 +196,7 @@ Task 9 (Commit & Merge)
 
 ### Worker 수정 (linear-capture-worker)
 
-- [ ] 2. Worker 타입에 instruction 필드 추가
+- [x] 2. Worker 타입에 instruction 필드 추가
 
   **What to do**:
   - `src/prompts/types.ts`의 `PromptContext`에 `instruction?: string` 추가
