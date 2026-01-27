@@ -426,7 +426,7 @@ Task 9 (Commit & Merge)
 
 ### Integration & Finalization
 
-- [ ] 8. 통합 테스트
+- [x] 8. 통합 테스트
 
   **What to do**:
   - 전체 흐름 테스트: 캡처 → 힌트 입력 → 분석 → 결과 확인
