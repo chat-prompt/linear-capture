@@ -54,3 +54,48 @@
 ### Next Steps
 - Task 3: Update prompt builders to use instruction field
 - Task 4: Integrate instruction into AI analysis flow
+
+## Task 3: Worker Prompt - instruction Field (2025-01-27)
+
+### Implementation Pattern
+- **TDD RED-GREEN workflow**: Created test file with logic pattern assertions, then implemented buildImagePrompt changes
+- **Conditional section pattern**: Created `buildInstructionSection()` helper function following `buildContextSection()` pattern
+- **Instruction passing**: Updated `analyzeWithGemini()` and `analyzeWithHaiku()` to merge instruction into context
+
+### Files Modified
+1. `linear-capture-worker/src/prompts/issue-prompt.ts`:
+   - Added `buildInstructionSection()` function (lines 58-61)
+   - Modified `buildImagePrompt()` to include instruction section (lines 113-122)
+2. `linear-capture-worker/src/index.ts`:
+   - Updated `analyzeWithGemini()` to merge instruction into context (lines 223-230)
+   - Updated `analyzeWithHaiku()` to merge instruction into context (lines 271-278)
+3. `src/__tests__/worker-prompt.test.ts` - Created 4 tests verifying instruction inclusion logic
+
+### Test Results
+- ✅ RED phase: Test file created with 4 assertions about instruction section
+- ✅ GREEN phase: All 4 tests pass after implementation
+- ✅ TypeScript: `npx tsc --noEmit` succeeds (no compilation errors)
+- ✅ Full test suite: `npm test` → 9 passed (4 new + 5 existing)
+
+### Manual Verification
+- ✅ Worker started locally: `npm run dev` → Ready on http://localhost:8787
+- ✅ Prompt with instruction: `buildImagePrompt(1, { instruction: "테스트 힌트" })` includes "## 사용자 요청" section
+- ✅ Prompt without instruction: `buildImagePrompt(1, {})` does NOT include "## 사용자 요청" section
+- ✅ Empty instruction handling: `buildInstructionSection("")` returns empty string (no section added)
+
+### Key Learnings
+- **Instruction merging pattern**: When instruction is separate from context, merge it before passing to prompt builder
+  ```typescript
+  const contextWithInstruction = context ? { ...context, instruction } : { instruction };
+  const prompt = buildImagePrompt(images.length, contextWithInstruction);
+  ```
+- **Conditional section pattern**: Check for both undefined and empty string to avoid adding empty sections
+  ```typescript
+  if (!instruction || instruction.trim() === '') return '';
+  ```
+- **Prompt structure**: Instruction section appears after initial request but before title rules for better AI focus
+- **Backward compatibility**: Empty/undefined instruction doesn't change prompt structure (no regression)
+
+### Next Steps
+- Task 4: Deploy Worker with instruction support
+- Task 5: Update app services to pass instruction through analyzer
