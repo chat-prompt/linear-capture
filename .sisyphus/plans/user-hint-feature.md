@@ -280,7 +280,7 @@ Task 9 (Commit & Merge)
 
 ---
 
-- [ ] 4. Worker 배포
+- [x] 4. Worker 배포
 
   **What to do**:
   - Worker 배포: `cd linear-capture-worker && npm run deploy`
@@ -311,7 +311,7 @@ Task 9 (Commit & Merge)
 
 ### App 수정 (linear-capture)
 
-- [ ] 5. App 서비스에 instruction 필드 추가
+- [x] 5. App 서비스에 instruction 필드 추가
 
   **What to do**:
   - `src/services/anthropic-analyzer.ts`의 AnalysisContext에 `instruction?: string` 추가
@@ -349,7 +349,7 @@ Task 9 (Commit & Merge)
 
 ---
 
-- [ ] 6. App IPC 핸들러에 instruction 전달
+- [x] 6. App IPC 핸들러에 instruction 전달
 
   **What to do**:
   - `reanalyze` IPC 핸들러가 data.instruction을 받아서 analyzer에 전달
@@ -385,7 +385,7 @@ Task 9 (Commit & Merge)
 
 ---
 
-- [ ] 7. App UI에 힌트 textarea 추가
+- [x] 7. App UI에 힌트 textarea 추가
 
   **What to do**:
   - `src/renderer/index.html`에 textarea 추가 (갤러리 아래, 모델 선택 위)
