@@ -1,8 +1,11 @@
 {
   "active_plan": "/Users/wine_ny/side-project/linear_project/linear-capture/.sisyphus/plans/user-hint-feature.md",
   "started_at": "2026-01-27T13:43:14.399Z",
+  "completed_at": "2026-01-27T14:17:52.000Z",
   "session_ids": [
+    "ses_4005b8cffffeQhZaEyEPkgnHpJ",
     "ses_4005b8cffffeQhZaEyEPkgnHpJ"
   ],
-  "plan_name": "user-hint-feature"
+  "plan_name": "user-hint-feature",
+  "status": "completed"
 }
