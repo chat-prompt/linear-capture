@@ -564,7 +564,7 @@ app.whenReady().then(async () => {
   });
 
   // Handle re-analyze request with specific model (supports multiple images)
-  ipcMain.handle('reanalyze', async (_event, data: { filePath: string; model: string }) => {
+  ipcMain.handle('reanalyze', async (_event, data: { filePath: string; model: string; instruction?: string }) => {
     // Get all image paths from session
     const imagePaths = captureSession?.images.map(img => img.filePath) || [data.filePath];
     console.log(`Re-analyzing ${imagePaths.length} image(s) with model: ${data.model}`);
@@ -577,6 +577,7 @@ app.whenReady().then(async () => {
       })),
       users: usersCache.map(u => ({ id: u.id, name: u.name })),
       defaultTeamId: process.env.DEFAULT_TEAM_ID,
+      instruction: data.instruction,
     };
 
     try {
