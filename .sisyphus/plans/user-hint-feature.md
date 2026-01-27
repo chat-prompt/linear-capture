@@ -232,7 +232,7 @@ Task 9 (Commit & Merge)
 
 ---
 
-- [ ] 3. Worker 프롬프트에 instruction 포함
+- [x] 3. Worker 프롬프트에 instruction 포함
 
   **What to do**:
   - `buildImagePrompt()` 함수가 context.instruction을 프롬프트에 포함하도록 수정
