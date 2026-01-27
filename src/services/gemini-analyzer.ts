@@ -19,6 +19,7 @@ export interface AnalysisContext {
   projects: Array<{ id: string; name: string; description?: string }>;
   users: Array<{ id: string; name: string }>;
   defaultTeamId?: string;
+  instruction?: string;
 }
 
 export class GeminiAnalyzer {
@@ -90,6 +91,7 @@ export class GeminiAnalyzer {
         projects: context.projects,
         users: context.users
       } : undefined,
+      instruction: context?.instruction,
       model: 'gemini'
     };
 
