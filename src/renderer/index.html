@@ -1611,21 +1611,29 @@
       });
       projectSearchable.render(allProjects);
 
-      // Initialize searchable assignee dropdown
-      assigneeSearchable = createSearchableSelect({
-        trigger: assigneeTrigger,
-        dropdown: assigneeDropdown,
-        searchInput: assigneeSearch,
-        optionsContainer: assigneeOptions,
-        hiddenInput: assigneeInput,
-        items: allUsers,
-        defaultLabel: 'Unassigned',
-        getValue: (u) => u.id,
-        getLabel: (u) => u.name
-      });
-      assigneeSearchable.render(allUsers);
+       // Initialize searchable assignee dropdown
+       assigneeSearchable = createSearchableSelect({
+         trigger: assigneeTrigger,
+         dropdown: assigneeDropdown,
+         searchInput: assigneeSearch,
+         optionsContainer: assigneeOptions,
+         hiddenInput: assigneeInput,
+         items: allUsers,
+         defaultLabel: 'Unassigned',
+         getValue: (u) => u.id,
+         getLabel: (u) => u.name
+       });
+       assigneeSearchable.render(allUsers);
 
-      // Initialize team-dependent dropdowns
+       // Set default assignee to token owner if available and no AI suggestion
+       if (data.userInfo && !data.suggestedAssigneeId) {
+         const tokenOwner = allUsers.find(u => u.id === data.userInfo.id);
+         if (tokenOwner) {
+           assigneeSearchable.selectOption(tokenOwner.id, tokenOwner.name);
+         }
+       }
+
+       // Initialize team-dependent dropdowns
       if (data.defaultTeamId) {
         updateTeamDependentDropdowns(data.defaultTeamId);
       }

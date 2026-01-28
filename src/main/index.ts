@@ -240,6 +240,8 @@ function showCaptureWindow(analysis?: AnalysisResult): void {
       suggestedAssigneeId: analysis?.suggestedAssigneeId || '',
       suggestedPriority: analysis?.suggestedPriority || 0,
       suggestedEstimate: analysis?.suggestedEstimate || 0,
+      // 토큰 소유자 정보 (기본 담당자로 사용)
+      userInfo: getUserInfo(),
     });
   };
 
@@ -402,6 +404,23 @@ async function loadLinearData(): Promise<void> {
     labelsCache = labels;
 
     console.log(`Loaded: ${teamsCache.length} teams, ${projectsCache.length} projects, ${usersCache.length} users, ${statesCache.length} states, ${cyclesCache.length} cycles, ${labelsCache.length} labels`);
+
+    // Load local cache and merge recent issue titles into projects
+    try {
+      const { loadLocalCache } = await import('../services/linear-local-cache');
+      const localCache = await loadLocalCache();
+      if (localCache) {
+        for (const project of projectsCache) {
+          const cached = localCache.projects.find(p => p.id === project.id);
+          if (cached) {
+            project.recentIssueTitles = cached.recentIssueTitles;
+          }
+        }
+        console.log(`Merged local cache: ${localCache.projects.length} projects with recent issues`);
+      }
+    } catch (cacheError) {
+      console.warn('Failed to load local cache (non-critical):', cacheError instanceof Error ? cacheError.message : 'Unknown error');
+    }
   } catch (error) {
     console.error('Failed to load Linear data:', error);
   }

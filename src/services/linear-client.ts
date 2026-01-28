@@ -39,6 +39,7 @@ export interface ProjectInfo {
   description?: string;
   state?: string;  // planned/started/paused/completed/canceled
   teamIds: string[];  // 프로젝트가 속한 팀들의 ID
+  recentIssueTitles?: string[];  // 최근 이슈 제목들 (로컬 캐시에서 로드)
 }
 
 export interface UserInfo {
