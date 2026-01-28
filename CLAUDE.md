@@ -76,11 +76,39 @@ DEFAULT_TEAM_ID=e108ae14-a354-4c09-86ac-6c1186bc6132
 ## 개발 명령어
 
 ```bash
-npm run start        # 빌드 후 실행
+npm run start        # 빌드 후 실행 (개발 모드 - 권한 문제 있음)
 npm run start:clean  # 클린 환경 테스트 (Electron 종료 + TCC 리셋 + dist 삭제 + 빌드 + 실행)
 npm run build        # TypeScript 컴파일
-npm run dist:mac     # DMG 패키징
+npm run pack         # .app만 빌드 (서명O, 공증X - 빠름)
+npm run dist:mac     # DMG 패키징 (서명 + 공증 - 배포용)
 npm run reinstall    # 완전 클린 재설치 (권한 리셋 포함)
+```
+
+## ⚠️ 테스트 원칙 (중요!)
+
+**개발 모드(`npm start`)는 화면 캡처 권한 문제로 테스트에 부적합합니다.**
+
+개발 모드에서는 앱이 "Electron"으로 인식되어 "Linear Capture"와 별도의 권한이 필요합니다.
+매번 권한 설정하기 번거로우므로, **항상 패키징된 .app으로 테스트**하세요.
+
+### 빠른 테스트 방법 (권장)
+
+```bash
+# 서명만 하고 공증은 생략 → 빠르게 .app 생성 (~30초)
+npm run pack && open 'release/mac-arm64/Linear Capture.app'
+```
+
+- 이미 시스템에 "Linear Capture" 권한이 있으면 바로 테스트 가능
+- DMG 빌드보다 훨씬 빠름
+- 코드 수정 → `npm run pack` → 앱 실행 사이클로 개발
+
+### 온보딩 화면 테스트
+
+온보딩은 최초 실행 시에만 표시됩니다. 다시 보려면:
+
+```bash
+rm -rf ~/Library/Application\ Support/linear-capture
+npm run pack && open 'release/mac-arm64/Linear Capture.app'
 ```
 
 ## 배포 (코드 서명 + 공증)

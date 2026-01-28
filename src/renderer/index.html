@@ -780,24 +780,27 @@
     <!-- Image Gallery (multiple images) -->
     <div id="imageGallery" class="image-gallery"></div>
 
-    <!-- User Hint Input -->
-    <div class="form-group" style="margin-bottom: 14px;">
-      <textarea id="userHint" placeholder="집중할 내용을 입력하세요 (선택사항)" style="min-height: 60px; height: 60px; resize: none; font-size: 13px; padding: 8px 12px;"></textarea>
-    </div>
-
-    <!-- Legacy single preview (hidden) -->
-    <img id="preview" class="preview" src="" alt="Screenshot preview" />
-
-    <div class="row" style="margin-bottom: 14px;">
-      <div class="form-group" style="flex: 2;">
-        <label for="aiModel">AI Model</label>
-        <select id="aiModel" name="aiModel">
-          <option value="gemini" selected>Gemini 3 Flash (기본)</option>
-          <option value="haiku">Claude Haiku 4.5</option>
-        </select>
+    <!-- AI Analysis Section (hidden on success) -->
+    <div id="aiAnalysisSection">
+      <!-- User Hint Input -->
+      <div class="form-group" style="margin-bottom: 14px;">
+        <textarea id="userHint" placeholder="(옵션) 리니어 이슈 생성 시 가장 집중해야할 내용이 있다면 작성해주세요" style="min-height: 60px; height: 60px; resize: none; font-size: 13px; padding: 8px 12px;"></textarea>
       </div>
-      <div class="form-group" style="flex: 1; display: flex; align-items: flex-end;">
-        <button type="button" id="reanalyzeBtn" class="btn-submit" style="width: 100%; padding: 10px;">분석 시작</button>
+
+      <!-- Legacy single preview (hidden) -->
+      <img id="preview" class="preview" src="" alt="Screenshot preview" />
+
+      <div class="row" style="margin-bottom: 14px;">
+        <div class="form-group" style="flex: 2;">
+          <label for="aiModel">AI Model</label>
+          <select id="aiModel" name="aiModel">
+            <option value="gemini" selected>Gemini 3 Flash (기본)</option>
+            <option value="haiku">Claude Haiku 4.5</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex: 1; display: flex; align-items: flex-end;">
+          <button type="button" id="reanalyzeBtn" class="btn-submit" style="width: 100%; padding: 10px;">분석 시작</button>
+        </div>
       </div>
     </div>
 
@@ -1038,6 +1041,7 @@
     const aiModelSelect = document.getElementById('aiModel');
     const reanalyzeBtn = document.getElementById('reanalyzeBtn');
     const loadingText = document.getElementById('loadingText');
+    const aiAnalysisSection = document.getElementById('aiAnalysisSection');
 
     let currentFilePath = '';
     let isSubmitting = false; // Track form submission state
@@ -1647,6 +1651,7 @@
       loadingDiv.style.display = 'none';
       successScreen.classList.add('hidden');
       imageGallery.style.display = 'flex';
+      aiAnalysisSection.style.display = 'block';
       createdIssueUrl = '';
 
       // Set default project if available
@@ -1783,6 +1788,7 @@
           // Success: show success screen
           loadingDiv.style.display = 'none';
           imageGallery.style.display = 'none';
+          aiAnalysisSection.style.display = 'none';
           successIssueId.textContent = result.issueIdentifier || 'Issue created';
           createdIssueUrl = result.issueUrl || '';
           successScreen.classList.remove('hidden');

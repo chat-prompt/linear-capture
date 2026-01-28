@@ -117,13 +117,14 @@ function createOnboardingWindow(): void {
     width: 380,
     height: 414,
     show: false,
-    frame: false,
+    frame: true,
     resizable: false,
     alwaysOnTop: false,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
     },
+    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' } : {}),
   });
 
   onboardingWindow.loadFile(path.join(__dirname, '../renderer/onboarding.html'));
