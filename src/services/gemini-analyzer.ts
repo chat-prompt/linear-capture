@@ -16,7 +16,7 @@ export interface AnalysisResult {
 }
 
 export interface AnalysisContext {
-  projects: Array<{ id: string; name: string; description?: string }>;
+  projects: Array<{ id: string; name: string; description?: string; recentIssueTitles?: string[] }>;
   users: Array<{ id: string; name: string }>;
   defaultTeamId?: string;
   instruction?: string;

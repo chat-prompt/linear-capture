@@ -1581,28 +1581,10 @@
         getValue: (p) => p.id,
         getLabel: (p) => p.name,
         onSelect: (value, label, project) => {
-          // Debug logging for project-team validation
-          console.log('Project selected:', { value, label, project });
-          console.log('Project teamIds:', project?.teamIds);
-          console.log('Current team:', teamSelect.value);
-
-          // Skip if no project selected (None option)
-          if (!value || !project) {
-            console.log('No project selected, skipping team validation');
-            return;
-          }
-
-          // Check teamIds
+          if (!value || !project) return;
+          
           const teamIds = project.teamIds || [];
-          if (teamIds.length === 0) {
-            console.warn('Project has no associated teams!');
-            return;
-          }
-
-          const currentTeamId = teamSelect.value;
-          if (!teamIds.includes(currentTeamId)) {
-            // Current team is not in project's teams - switch to first team
-            console.log(`Switching team from ${currentTeamId} to ${teamIds[0]}`);
+          if (teamIds.length > 0) {
             teamSelect.value = teamIds[0];
             updateTeamDependentDropdowns(teamIds[0]);
             updateLabelsForTeam();
@@ -1704,13 +1686,13 @@
       if (data.suggestedProjectId) {
         const project = allProjects.find(p => p.id === data.suggestedProjectId);
         if (project) {
-          projectSearchable.selectOption(project.id, project.name);
+          projectSearchable.selectOption(project.id, project.name, project);
         }
       }
       if (data.suggestedAssigneeId) {
         const user = allUsers.find(u => u.id === data.suggestedAssigneeId);
         if (user) {
-          assigneeSearchable.selectOption(user.id, user.name);
+          assigneeSearchable.selectOption(user.id, user.name, user);
         }
       }
       if (data.suggestedPriority) {
@@ -1749,20 +1731,6 @@
       if (!teamId) {
         errorDiv.textContent = 'Team is required';
         return;
-      }
-
-      // Validate project-team match before submission
-      if (projectId) {
-        const selectedProject = allProjects.find(p => p.id === projectId);
-        if (selectedProject && selectedProject.teamIds && !selectedProject.teamIds.includes(teamId)) {
-          errorDiv.textContent = '선택한 프로젝트가 해당 팀에 속하지 않습니다. 팀을 확인해주세요.';
-          console.error('Project-team mismatch:', {
-            projectId,
-            projectTeamIds: selectedProject.teamIds,
-            selectedTeamId: teamId
-          });
-          return;
-        }
       }
 
       // Set submitting state

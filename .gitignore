@@ -16,3 +16,7 @@ test-*.js
 *.pem
 AuthKey_*.p8
 AI_CASE_STUDY*.md
+
+# Python
+__pycache__/
+*.pyc
