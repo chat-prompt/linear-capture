@@ -336,6 +336,99 @@
       color: #22c55e;
       margin-top: 8px;
     }
+
+    .slack-section {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #eee;
+    }
+
+    .slack-section h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .slack-section h2 img {
+      width: 20px;
+      height: 20px;
+    }
+
+    .slack-status-box {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .slack-status-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .slack-status-label {
+      font-size: 12px;
+      color: #888;
+    }
+
+    .slack-status-value {
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .slack-status-value.disconnected {
+      color: #888;
+    }
+
+    .slack-status-value.connected {
+      color: #22c55e;
+    }
+
+    .btn-slack {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-slack-connect {
+      background: #4A154B;
+      color: white;
+      border: none;
+    }
+
+    .btn-slack-connect:hover:not(:disabled) {
+      background: #611f69;
+    }
+
+    .btn-slack-disconnect {
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      color: #666;
+    }
+
+    .btn-slack-disconnect:hover:not(:disabled) {
+      background: #eee;
+    }
+
+    .slack-error {
+      font-size: 12px;
+      color: #ef4444;
+      margin-top: 8px;
+    }
   </style>
 </head>
 <body>
@@ -369,6 +462,24 @@
       <button class="btn-secondary" id="validateBtn">검증</button>
       <button class="btn-primary" id="saveBtn" disabled>저장</button>
       <button class="btn-close" id="closeBtn">닫기</button>
+    </div>
+
+    <!-- Slack Section -->
+    <div class="slack-section">
+      <h2>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" fill="#E01E5A"/>
+        </svg>
+        Slack
+      </h2>
+      <div class="slack-status-box">
+        <div class="slack-status-info">
+          <span class="slack-status-label">Status</span>
+          <span class="slack-status-value disconnected" id="slackStatusText">연결 안됨</span>
+        </div>
+        <button class="btn-slack btn-slack-connect" id="slackConnectBtn">Connect</button>
+      </div>
+      <div id="slackError" class="slack-error" style="display: none;"></div>
     </div>
 
     <!-- Hotkey Section -->
@@ -802,7 +913,93 @@
       }
     });
 
-    // 버전 정보 로드
+    // ==================== Slack Settings ====================
+    const slackStatusText = document.getElementById('slackStatusText');
+    const slackConnectBtn = document.getElementById('slackConnectBtn');
+    const slackError = document.getElementById('slackError');
+
+    async function loadSlackStatus() {
+      try {
+        const status = await ipcRenderer.invoke('slack-status');
+        updateSlackUI(status);
+      } catch (error) {
+        console.error('Failed to load Slack status:', error);
+      }
+    }
+
+    function updateSlackUI(status) {
+      if (status.connected) {
+        const workspaceName = status.workspace?.name || 'Workspace';
+        slackStatusText.textContent = `${workspaceName} 연결됨`;
+        slackStatusText.className = 'slack-status-value connected';
+        slackConnectBtn.textContent = 'Disconnect';
+        slackConnectBtn.className = 'btn-slack btn-slack-disconnect';
+      } else {
+        slackStatusText.textContent = '연결 안됨';
+        slackStatusText.className = 'slack-status-value disconnected';
+        slackConnectBtn.textContent = 'Connect';
+        slackConnectBtn.className = 'btn-slack btn-slack-connect';
+      }
+      slackError.style.display = 'none';
+    }
+
+    slackConnectBtn.addEventListener('click', async () => {
+      const isConnected = slackStatusText.classList.contains('connected');
+      
+      slackConnectBtn.disabled = true;
+      slackError.style.display = 'none';
+
+      try {
+        if (isConnected) {
+          slackConnectBtn.textContent = 'Disconnecting...';
+          const result = await ipcRenderer.invoke('slack-disconnect');
+          if (result.success) {
+            updateSlackUI({ connected: false });
+          } else {
+            slackError.textContent = result.error || 'Failed to disconnect';
+            slackError.style.display = 'block';
+          }
+        } else {
+          slackConnectBtn.textContent = 'Connecting...';
+          const result = await ipcRenderer.invoke('slack-connect');
+          if (!result.success) {
+            slackError.textContent = result.error || 'Failed to start OAuth flow';
+            slackError.style.display = 'block';
+            updateSlackUI({ connected: false });
+          }
+        }
+      } catch (error) {
+        console.error('Slack action error:', error);
+        slackError.textContent = 'An error occurred';
+        slackError.style.display = 'block';
+      } finally {
+        slackConnectBtn.disabled = false;
+        if (!slackStatusText.classList.contains('connected')) {
+          slackConnectBtn.textContent = 'Connect';
+        } else {
+          slackConnectBtn.textContent = 'Disconnect';
+        }
+      }
+    });
+
+    ipcRenderer.on('slack-connected', (_event, result) => {
+      console.log('Slack connected:', result);
+      updateSlackUI({
+        connected: true,
+        workspace: result.workspace,
+        user: result.user,
+      });
+    });
+
+    ipcRenderer.on('slack-oauth-error', (_event, data) => {
+      console.error('Slack OAuth error:', data.error);
+      slackError.textContent = data.error || 'OAuth failed';
+      slackError.style.display = 'block';
+      updateSlackUI({ connected: false });
+    });
+
+    loadSlackStatus();
+
     async function loadVersion() {
       try {
         const version = await ipcRenderer.invoke('get-app-version');

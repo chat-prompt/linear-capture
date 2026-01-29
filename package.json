@@ -31,6 +31,12 @@
       "node_modules/**/*",
       "assets/**/*"
     ],
+    "protocols": [
+      {
+        "name": "Linear Capture",
+        "schemes": ["linear-capture"]
+      }
+    ],
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "assets/icon.icns",

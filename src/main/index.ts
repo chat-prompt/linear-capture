@@ -24,9 +24,11 @@ import {
   resetCaptureHotkey,
   getDefaultHotkey,
   hasToken,
+  getDeviceId,
   UserInfo as SettingsUserInfo,
 } from '../services/settings-store';
 import { initAutoUpdater, checkForUpdates } from '../services/auto-updater';
+import { createSlackService, SlackService } from '../services/slack-client';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
@@ -38,7 +40,7 @@ if (!gotTheLock) {
   console.log('Another instance is already running. Quitting...');
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, commandLine) => {
     console.log('Second instance detected, focusing existing window...');
     const windowToFocus = mainWindow || settingsWindow || onboardingWindow;
     if (windowToFocus) {
@@ -46,8 +48,63 @@ if (!gotTheLock) {
       windowToFocus.show();
       windowToFocus.focus();
     }
+    
+    const deepLinkUrl = commandLine.find(arg => arg.startsWith('linear-capture://'));
+    if (deepLinkUrl) {
+      handleDeepLink(deepLinkUrl);
+    }
   });
 }
+
+app.setAsDefaultProtocolClient('linear-capture');
+
+function handleDeepLink(url: string): void {
+  console.log('Deep link received:', url);
+  
+  try {
+    const parsed = new URL(url);
+    
+    if (parsed.hostname === 'slack' && parsed.pathname === '/callback') {
+      const code = parsed.searchParams.get('code');
+      const state = parsed.searchParams.get('state');
+      const error = parsed.searchParams.get('error');
+      
+      if (error) {
+        console.error('Slack OAuth error:', error);
+        settingsWindow?.webContents.send('slack-oauth-error', { error });
+        return;
+      }
+      
+      if (code && state) {
+        console.log('Slack OAuth callback received');
+        pendingSlackCallback = { code, state };
+        
+        if (slackService) {
+          slackService.handleCallback(code, state).then(result => {
+            if (result.success) {
+              settingsWindow?.webContents.send('slack-connected', result);
+            } else {
+              settingsWindow?.webContents.send('slack-oauth-error', { error: result.error });
+            }
+            pendingSlackCallback = null;
+          });
+        }
+        
+        if (settingsWindow) {
+          settingsWindow.show();
+          settingsWindow.focus();
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to parse deep link URL:', err);
+  }
+}
+
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  handleDeepLink(url);
+});
 
 let mainWindow: BrowserWindow | null = null;
 let onboardingWindow: BrowserWindow | null = null;
@@ -81,8 +138,10 @@ let labelsCache: LabelInfo[] = [];
 // AI analyzer instance (Anthropic or Gemini)
 let geminiAnalyzer: GeminiAnalyzer | null = null;
 let anthropicAnalyzer: AnthropicAnalyzer | null = null;
+let slackService: SlackService | null = null;
 
 let captureService: ICaptureService;
+let pendingSlackCallback: { code: string; state: string } | null = null;
 
 function openScreenCaptureSettings(): void {
   captureService.openPermissionSettings();
@@ -790,6 +849,41 @@ app.whenReady().then(async () => {
     if (mainWindow && process.platform === 'darwin') {
       mainWindow.setWindowButtonVisibility(visible);
     }
+  });
+
+  // Slack IPC handlers
+  slackService = createSlackService();
+
+  ipcMain.handle('slack-connect', async () => {
+    if (!slackService) {
+      return { success: false, error: 'Slack service not initialized' };
+    }
+    return await slackService.startOAuthFlow();
+  });
+
+  ipcMain.handle('slack-disconnect', async () => {
+    if (!slackService) {
+      return { success: false, error: 'Slack service not initialized' };
+    }
+    return await slackService.disconnect();
+  });
+
+  ipcMain.handle('slack-status', async () => {
+    if (!slackService) {
+      return { connected: false };
+    }
+    return await slackService.getConnectionStatus();
+  });
+
+  ipcMain.handle('slack-channels', async () => {
+    if (!slackService) {
+      return { success: false, error: 'Slack service not initialized' };
+    }
+    return await slackService.getChannels();
+  });
+
+  ipcMain.handle('get-device-id', () => {
+    return getDeviceId();
   });
 
   // Initialize AI analyzer (prefer Gemini, fallback to Anthropic)
