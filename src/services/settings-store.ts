@@ -17,7 +17,8 @@ export interface Settings {
   linearApiToken?: string;
   userInfo?: UserInfo;
   defaultTeamId?: string;
-  captureHotkey?: string;  // 기본값: 'CommandOrControl+Shift+L'
+  captureHotkey?: string;
+  deviceId?: string;
 }
 
 const DEFAULT_HOTKEY = 'CommandOrControl+Shift+L';
@@ -96,6 +97,7 @@ export function getAllSettings(): Settings {
     userInfo: settingsStore.get('userInfo'),
     defaultTeamId: settingsStore.get('defaultTeamId'),
     captureHotkey: settingsStore.get('captureHotkey'),
+    deviceId: settingsStore.get('deviceId'),
   };
 }
 
@@ -120,9 +122,15 @@ export function resetCaptureHotkey(): void {
   settingsStore.delete('captureHotkey');
 }
 
-/**
- * 기본 단축키 가져오기
- */
 export function getDefaultHotkey(): string {
   return DEFAULT_HOTKEY;
+}
+
+export function getDeviceId(): string {
+  let deviceId = settingsStore.get('deviceId');
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    settingsStore.set('deviceId', deviceId);
+  }
+  return deviceId;
 }
