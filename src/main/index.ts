@@ -29,6 +29,8 @@ import {
 } from '../services/settings-store';
 import { initAutoUpdater, checkForUpdates } from '../services/auto-updater';
 import { createSlackService, SlackService } from '../services/slack-client';
+import { createNotionService, NotionService } from '../services/notion-client';
+import { createGmailService, GmailService } from '../services/gmail-client';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
@@ -96,6 +98,72 @@ function handleDeepLink(url: string): void {
         }
       }
     }
+    
+    if (parsed.hostname === 'notion' && parsed.pathname === '/callback') {
+      const code = parsed.searchParams.get('code');
+      const state = parsed.searchParams.get('state');
+      const error = parsed.searchParams.get('error');
+      
+      if (error) {
+        console.error('Notion OAuth error:', error);
+        settingsWindow?.webContents.send('notion-oauth-error', { error });
+        return;
+      }
+      
+      if (code && state) {
+        console.log('Notion OAuth callback received');
+        pendingNotionCallback = { code, state };
+        
+        if (notionService) {
+          notionService.handleCallback(code, state).then(result => {
+            if (result.success) {
+              settingsWindow?.webContents.send('notion-connected', result);
+            } else {
+              settingsWindow?.webContents.send('notion-oauth-error', { error: result.error });
+            }
+            pendingNotionCallback = null;
+          });
+        }
+        
+        if (settingsWindow) {
+          settingsWindow.show();
+          settingsWindow.focus();
+        }
+      }
+    }
+    
+    if (parsed.hostname === 'gmail' && parsed.pathname === '/callback') {
+      const code = parsed.searchParams.get('code');
+      const state = parsed.searchParams.get('state');
+      const error = parsed.searchParams.get('error');
+      
+      if (error) {
+        console.error('Gmail OAuth error:', error);
+        settingsWindow?.webContents.send('gmail-oauth-error', { error });
+        return;
+      }
+      
+      if (code && state) {
+        console.log('Gmail OAuth callback received');
+        pendingGmailCallback = { code, state };
+        
+        if (gmailService) {
+          gmailService.handleCallback(code, state).then(result => {
+            if (result.success) {
+              settingsWindow?.webContents.send('gmail-connected', result);
+            } else {
+              settingsWindow?.webContents.send('gmail-oauth-error', { error: result.error });
+            }
+            pendingGmailCallback = null;
+          });
+        }
+        
+        if (settingsWindow) {
+          settingsWindow.show();
+          settingsWindow.focus();
+        }
+      }
+    }
   } catch (err) {
     console.error('Failed to parse deep link URL:', err);
   }
@@ -139,9 +207,13 @@ let labelsCache: LabelInfo[] = [];
 let geminiAnalyzer: GeminiAnalyzer | null = null;
 let anthropicAnalyzer: AnthropicAnalyzer | null = null;
 let slackService: SlackService | null = null;
+let notionService: NotionService | null = null;
+let gmailService: GmailService | null = null;
 
 let captureService: ICaptureService;
 let pendingSlackCallback: { code: string; state: string } | null = null;
+let pendingNotionCallback: { code: string; state: string } | null = null;
+let pendingGmailCallback: { code: string; state: string } | null = null;
 
 function openScreenCaptureSettings(): void {
   captureService.openPermissionSettings();
@@ -880,6 +952,82 @@ app.whenReady().then(async () => {
       return { success: false, error: 'Slack service not initialized' };
     }
     return await slackService.getChannels();
+  });
+
+  ipcMain.handle('slack-search', async (_event, { query, channels, count }: { query: string; channels?: string[]; count?: number }) => {
+    if (!slackService) {
+      return { success: false, error: 'Slack service not initialized' };
+    }
+    return await slackService.searchMessages(query, channels, count);
+  });
+
+  // Notion IPC handlers
+  notionService = createNotionService();
+
+  ipcMain.handle('notion-connect', async () => {
+    if (!notionService) {
+      return { success: false, error: 'Notion service not initialized' };
+    }
+    return await notionService.startOAuthFlow();
+  });
+
+  ipcMain.handle('notion-disconnect', async () => {
+    if (!notionService) {
+      return { success: false, error: 'Notion service not initialized' };
+    }
+    return await notionService.disconnect();
+  });
+
+  ipcMain.handle('notion-status', async () => {
+    if (!notionService) {
+      return { connected: false };
+    }
+    return await notionService.getConnectionStatus();
+  });
+
+  ipcMain.handle('notion-search', async (_event, { query, pageSize }: { query: string; pageSize?: number }) => {
+    if (!notionService) {
+      return { success: false, error: 'Notion service not initialized' };
+    }
+    return await notionService.searchPages(query, pageSize);
+  });
+
+  ipcMain.handle('notion-get-content', async (_event, { pageId }: { pageId: string }) => {
+    if (!notionService) {
+      return { success: false, error: 'Notion service not initialized' };
+    }
+    return await notionService.getPageContent(pageId);
+  });
+
+  // Gmail IPC handlers
+  gmailService = createGmailService();
+
+  ipcMain.handle('gmail-connect', async () => {
+    if (!gmailService) {
+      return { success: false, error: 'Gmail service not initialized' };
+    }
+    return await gmailService.startOAuthFlow();
+  });
+
+  ipcMain.handle('gmail-disconnect', async () => {
+    if (!gmailService) {
+      return { success: false, error: 'Gmail service not initialized' };
+    }
+    return await gmailService.disconnect();
+  });
+
+  ipcMain.handle('gmail-status', async () => {
+    if (!gmailService) {
+      return { connected: false };
+    }
+    return await gmailService.getConnectionStatus();
+  });
+
+  ipcMain.handle('gmail-search', async (_event, { query, maxResults }: { query: string; maxResults?: number }) => {
+    if (!gmailService) {
+      return { success: false, error: 'Gmail service not initialized' };
+    }
+    return await gmailService.searchEmails(query, maxResults);
   });
 
   ipcMain.handle('get-device-id', () => {

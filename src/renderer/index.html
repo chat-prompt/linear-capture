@@ -754,6 +754,255 @@
       color: #999;
       font-size: 13px;
     }
+
+    /* Context Search Section */
+    .context-section {
+      margin-bottom: 16px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .context-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: #f8f9fa;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .context-header:hover {
+      background: #f0f1f3;
+    }
+
+    .context-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .context-header-icon {
+      font-size: 16px;
+    }
+
+    .context-header-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .context-header-badge {
+      background: #5e6ad2;
+      color: white;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      margin-left: 4px;
+    }
+
+    .context-header-toggle {
+      font-size: 12px;
+      color: #666;
+      transition: transform 0.2s;
+    }
+
+    .context-section.expanded .context-header-toggle {
+      transform: rotate(180deg);
+    }
+
+    .context-body {
+      display: none;
+      padding: 12px;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .context-section.expanded .context-body {
+      display: block;
+    }
+
+    .context-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .context-tab {
+      padding: 6px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: white;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .context-tab:hover {
+      background: #f5f5f5;
+    }
+
+    .context-tab.active {
+      background: #5e6ad2;
+      color: white;
+      border-color: #5e6ad2;
+    }
+
+    .context-tab.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .context-tab-icon {
+      font-size: 14px;
+    }
+
+    .context-search-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .context-search-input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .context-search-input:focus {
+      outline: none;
+      border-color: #5e6ad2;
+    }
+
+    .context-search-btn {
+      padding: 8px 16px;
+      background: #5e6ad2;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .context-search-btn:hover {
+      background: #4c5abd;
+    }
+
+    .context-search-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .context-results {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+    }
+
+    .context-result-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+    }
+
+    .context-result-item:last-child {
+      border-bottom: none;
+    }
+
+    .context-result-item:hover {
+      background: #f8f9fa;
+    }
+
+    .context-result-item.selected {
+      background: #e8e9f3;
+    }
+
+    .context-result-checkbox {
+      margin-top: 2px;
+    }
+
+    .context-result-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .context-result-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 4px;
+    }
+
+    .context-result-channel {
+      background: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .context-result-text {
+      font-size: 13px;
+      color: #333;
+      line-height: 1.4;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .context-empty {
+      padding: 20px;
+      text-align: center;
+      color: #888;
+      font-size: 13px;
+    }
+
+    .context-not-connected {
+      padding: 16px;
+      text-align: center;
+    }
+
+    .context-connect-btn {
+      padding: 8px 16px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .context-connect-btn:hover {
+      background: #f5f5f5;
+    }
+
+    .context-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 20px;
+      color: #666;
+      font-size: 13px;
+    }
+
+    .context-selected-count {
+      font-size: 12px;
+      color: #5e6ad2;
+      margin-top: 8px;
+    }
   </style>
 </head>
 <body>
@@ -807,6 +1056,75 @@
     <div id="aiLoading" class="ai-loading hidden">
       <div class="spinner"></div>
       <span id="aiLoadingText">AI가 스크린샷을 분석 중...</span>
+    </div>
+
+    <div id="contextSection" class="context-section">
+      <div class="context-header" id="contextHeader">
+        <div class="context-header-left">
+          <span class="context-header-icon">🔍</span>
+          <span class="context-header-title">Context Search</span>
+          <span class="context-header-badge" id="contextBadge" style="display: none;">0</span>
+        </div>
+        <span class="context-header-toggle">▼</span>
+      </div>
+      <div class="context-body">
+        <div class="context-tabs">
+          <button type="button" class="context-tab active" id="slackTab" data-service="slack">
+            <span class="context-tab-icon">💬</span>
+            Slack
+          </button>
+          <button type="button" class="context-tab" id="notionTab" data-service="notion">
+            <span class="context-tab-icon">📝</span>
+            Notion
+          </button>
+        </div>
+        
+        <div id="slackContent">
+          <div id="slackNotConnected" class="context-not-connected">
+            <p style="color: #888; margin-bottom: 12px;">Slack에 연결되지 않았습니다</p>
+            <button type="button" class="context-connect-btn" id="slackConnectFromMain">
+              <span>💬</span> Slack 연결하기
+            </button>
+          </div>
+          
+          <div id="slackConnected" style="display: none;">
+            <div class="context-search-row">
+              <input type="text" class="context-search-input" id="slackSearchInput" placeholder="Slack 메시지 검색...">
+              <button type="button" class="context-search-btn" id="slackSearchBtn">검색</button>
+            </div>
+            <div id="slackLoading" class="context-loading" style="display: none;">
+              <div class="spinner"></div>
+              <span>검색 중...</span>
+            </div>
+            <div id="slackResults" class="context-results" style="display: none;"></div>
+            <div id="slackEmpty" class="context-empty" style="display: none;">검색 결과가 없습니다</div>
+            <div id="slackSelectedCount" class="context-selected-count" style="display: none;"></div>
+          </div>
+        </div>
+
+        <div id="notionContent" style="display: none;">
+          <div id="notionNotConnected" class="context-not-connected">
+            <p style="color: #888; margin-bottom: 12px;">Notion에 연결되지 않았습니다</p>
+            <button type="button" class="context-connect-btn" id="notionConnectFromMain">
+              <span>📝</span> Notion 연결하기
+            </button>
+          </div>
+          
+          <div id="notionConnected" style="display: none;">
+            <div class="context-search-row">
+              <input type="text" class="context-search-input" id="notionSearchInput" placeholder="Notion 페이지 검색...">
+              <button type="button" class="context-search-btn" id="notionSearchBtn">검색</button>
+            </div>
+            <div id="notionLoading" class="context-loading" style="display: none;">
+              <div class="spinner"></div>
+              <span>검색 중...</span>
+            </div>
+            <div id="notionResults" class="context-results" style="display: none;"></div>
+            <div id="notionEmpty" class="context-empty" style="display: none;">검색 결과가 없습니다</div>
+            <div id="notionSelectedCount" class="context-selected-count" style="display: none;"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <form id="issueForm">
@@ -1880,6 +2198,493 @@
         shortcutHint.innerHTML = `${kbdHtml} 로 캡처 (최대 10장)`;
       }
     });
+
+    // ==================== Context Search Section ====================
+    const contextSection = document.getElementById('contextSection');
+    const contextHeader = document.getElementById('contextHeader');
+    const contextBadge = document.getElementById('contextBadge');
+    const slackTab = document.getElementById('slackTab');
+    const notionTab = document.getElementById('notionTab');
+    const slackContent = document.getElementById('slackContent');
+    const slackNotConnected = document.getElementById('slackNotConnected');
+    const slackConnected = document.getElementById('slackConnected');
+    const slackConnectFromMain = document.getElementById('slackConnectFromMain');
+    const slackSearchInput = document.getElementById('slackSearchInput');
+    const slackSearchBtn = document.getElementById('slackSearchBtn');
+    const slackLoading = document.getElementById('slackLoading');
+    const slackResults = document.getElementById('slackResults');
+    const slackEmpty = document.getElementById('slackEmpty');
+    const slackSelectedCount = document.getElementById('slackSelectedCount');
+
+    const notionContent = document.getElementById('notionContent');
+    const notionNotConnected = document.getElementById('notionNotConnected');
+    const notionConnected = document.getElementById('notionConnected');
+    const notionConnectFromMain = document.getElementById('notionConnectFromMain');
+    const notionSearchInput = document.getElementById('notionSearchInput');
+    const notionSearchBtn = document.getElementById('notionSearchBtn');
+    const notionLoading = document.getElementById('notionLoading');
+    const notionResults = document.getElementById('notionResults');
+    const notionEmpty = document.getElementById('notionEmpty');
+    const notionSelectedCount = document.getElementById('notionSelectedCount');
+
+    let slackConnectedStatus = false;
+    let notionConnectedStatus = false;
+    let selectedSlackMessages = [];
+    let selectedNotionPages = [];
+    let activeContextTab = 'slack';
+
+    contextHeader.addEventListener('click', () => {
+      contextSection.classList.toggle('expanded');
+    });
+
+    slackTab.addEventListener('click', () => {
+      if (activeContextTab === 'slack') return;
+      activeContextTab = 'slack';
+      slackTab.classList.add('active');
+      notionTab.classList.remove('active');
+      slackContent.style.display = 'block';
+      notionContent.style.display = 'none';
+    });
+
+    notionTab.addEventListener('click', () => {
+      if (activeContextTab === 'notion') return;
+      activeContextTab = 'notion';
+      notionTab.classList.add('active');
+      slackTab.classList.remove('active');
+      notionContent.style.display = 'block';
+      slackContent.style.display = 'none';
+    });
+
+    // 2. Slack Connection Status Check
+    async function checkSlackStatus() {
+      try {
+        const status = await ipcRenderer.invoke('slack-status');
+        slackConnectedStatus = status.connected;
+        updateSlackUI(status);
+      } catch (error) {
+        console.error('Failed to check Slack status:', error);
+        slackConnectedStatus = false;
+        updateSlackUI({ connected: false });
+      }
+    }
+
+    function updateSlackUI(status) {
+      if (status.connected) {
+        slackNotConnected.style.display = 'none';
+        slackConnected.style.display = 'block';
+        slackTab.classList.remove('disabled');
+      } else {
+        slackNotConnected.style.display = 'block';
+        slackConnected.style.display = 'none';
+      }
+    }
+
+    checkSlackStatus();
+
+    async function checkNotionStatus() {
+      try {
+        console.log('Checking Notion status...');
+        const status = await ipcRenderer.invoke('notion-status');
+        console.log('Notion status result:', status);
+        notionConnectedStatus = status.connected;
+        updateNotionUI(status);
+      } catch (error) {
+        console.error('Failed to check Notion status:', error);
+        notionConnectedStatus = false;
+        updateNotionUI({ connected: false });
+      }
+    }
+
+    function updateNotionUI(status) {
+      console.log('Updating Notion UI, connected:', status.connected);
+      if (status.connected) {
+        notionNotConnected.style.display = 'none';
+        notionConnected.style.display = 'block';
+      } else {
+        notionNotConnected.style.display = 'block';
+        notionConnected.style.display = 'none';
+      }
+    }
+
+    checkNotionStatus();
+
+    slackConnectFromMain.addEventListener('click', () => {
+      ipcRenderer.invoke('open-settings');
+    });
+
+    notionConnectFromMain.addEventListener('click', () => {
+      ipcRenderer.invoke('open-settings');
+    });
+
+    // 4. Slack Search
+    async function searchSlack() {
+      const query = slackSearchInput.value.trim();
+      if (!query) return;
+
+      // Show loading
+      slackLoading.style.display = 'flex';
+      slackResults.style.display = 'none';
+      slackEmpty.style.display = 'none';
+      slackSearchBtn.disabled = true;
+
+      try {
+        const result = await ipcRenderer.invoke('slack-search', { query, count: 20 });
+        
+        slackLoading.style.display = 'none';
+        slackSearchBtn.disabled = false;
+
+        if (!result.success) {
+          console.error('Slack search error:', result.error);
+          slackEmpty.textContent = result.error || '검색 중 오류가 발생했습니다';
+          slackEmpty.style.display = 'block';
+          return;
+        }
+
+        if (!result.messages || result.messages.length === 0) {
+          slackEmpty.textContent = '검색 결과가 없습니다';
+          slackEmpty.style.display = 'block';
+          return;
+        }
+
+        // Render results
+        renderSlackResults(result.messages);
+      } catch (error) {
+        console.error('Slack search error:', error);
+        slackLoading.style.display = 'none';
+        slackSearchBtn.disabled = false;
+        slackEmpty.textContent = '검색 중 오류가 발생했습니다';
+        slackEmpty.style.display = 'block';
+      }
+    }
+
+    slackSearchBtn.addEventListener('click', searchSlack);
+    slackSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        searchSlack();
+      }
+    });
+
+    async function searchNotion() {
+      const query = notionSearchInput.value.trim();
+
+      notionLoading.style.display = 'flex';
+      notionResults.style.display = 'none';
+      notionEmpty.style.display = 'none';
+      notionSearchBtn.disabled = true;
+
+      try {
+        const result = await ipcRenderer.invoke('notion-search', { query, pageSize: 20 });
+        
+        notionLoading.style.display = 'none';
+        notionSearchBtn.disabled = false;
+
+        if (!result.success) {
+          console.error('Notion search error:', result.error);
+          notionEmpty.textContent = result.error || '검색 중 오류가 발생했습니다';
+          notionEmpty.style.display = 'block';
+          return;
+        }
+
+        if (!result.pages || result.pages.length === 0) {
+          notionEmpty.textContent = query ? '검색 결과가 없습니다' : '연결된 페이지가 없습니다';
+          notionEmpty.style.display = 'block';
+          return;
+        }
+
+        renderNotionResults(result.pages);
+      } catch (error) {
+        console.error('Notion search error:', error);
+        notionLoading.style.display = 'none';
+        notionSearchBtn.disabled = false;
+        notionEmpty.textContent = '검색 중 오류가 발생했습니다';
+        notionEmpty.style.display = 'block';
+      }
+    }
+
+    notionSearchBtn.addEventListener('click', searchNotion);
+    notionSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        searchNotion();
+      }
+    });
+
+    // 5. Render Slack Search Results
+    function renderSlackResults(messages) {
+      slackResults.innerHTML = '';
+      
+      messages.forEach(msg => {
+        const isSelected = selectedSlackMessages.some(m => m.ts === msg.ts && m.channel.id === msg.channel.id);
+        const item = document.createElement('div');
+        item.className = 'context-result-item' + (isSelected ? ' selected' : '');
+        item.dataset.ts = msg.ts;
+        item.dataset.channelId = msg.channel.id;
+
+        // Format timestamp
+        const date = new Date(msg.timestamp);
+        const timeStr = date.toLocaleString('ko-KR', { 
+          month: 'short', 
+          day: 'numeric', 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        });
+
+        // Truncate text
+        const displayText = msg.text.length > 150 ? msg.text.substring(0, 150) + '...' : msg.text;
+
+        item.innerHTML = `
+          <input type="checkbox" class="context-result-checkbox" ${isSelected ? 'checked' : ''}>
+          <div class="context-result-content">
+            <div class="context-result-meta">
+              <span class="context-result-channel">#${msg.channel.name}</span>
+              <span>${msg.username || msg.user}</span>
+              <span>${timeStr}</span>
+            </div>
+            <div class="context-result-text">${escapeHtml(displayText)}</div>
+          </div>
+        `;
+
+        // Click handler
+        item.addEventListener('click', (e) => {
+          if (e.target.type === 'checkbox') return; // Let checkbox handle itself
+          toggleSlackMessage(msg, item);
+        });
+
+        // Checkbox handler
+        const checkbox = item.querySelector('.context-result-checkbox');
+        checkbox.addEventListener('change', () => {
+          toggleSlackMessage(msg, item);
+        });
+
+        slackResults.appendChild(item);
+      });
+
+      slackResults.style.display = 'block';
+      updateSelectedCount();
+    }
+
+    function renderNotionResults(pages) {
+      notionResults.innerHTML = '';
+      
+      pages.forEach(page => {
+        const isSelected = selectedNotionPages.some(p => p.id === page.id);
+        const item = document.createElement('div');
+        item.className = 'context-result-item' + (isSelected ? ' selected' : '');
+        item.dataset.pageId = page.id;
+
+        const date = new Date(page.lastEditedTime);
+        const timeStr = date.toLocaleString('ko-KR', { 
+          month: 'short', 
+          day: 'numeric', 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        });
+
+        const icon = page.icon || '📄';
+        const displayTitle = page.title.length > 60 ? page.title.substring(0, 60) + '...' : page.title;
+
+        item.innerHTML = `
+          <input type="checkbox" class="context-result-checkbox" ${isSelected ? 'checked' : ''}>
+          <div class="context-result-content">
+            <div class="context-result-meta">
+              <span>${icon}</span>
+              <span>${timeStr}</span>
+            </div>
+            <div class="context-result-text">${escapeHtml(displayTitle)}</div>
+          </div>
+        `;
+
+        item.addEventListener('click', (e) => {
+          if (e.target.type === 'checkbox') return;
+          toggleNotionPage(page, item);
+        });
+
+        const checkbox = item.querySelector('.context-result-checkbox');
+        checkbox.addEventListener('change', () => {
+          toggleNotionPage(page, item);
+        });
+
+        notionResults.appendChild(item);
+      });
+
+      notionResults.style.display = 'block';
+      updateNotionSelectedCount();
+    }
+
+    async function toggleNotionPage(page, itemElement) {
+      const idx = selectedNotionPages.findIndex(p => p.id === page.id);
+      const checkbox = itemElement.querySelector('.context-result-checkbox');
+
+      if (idx === -1) {
+        itemElement.classList.add('selected');
+        checkbox.checked = true;
+        
+        const pageWithContent = { ...page, content: null, contentLoading: true };
+        selectedNotionPages.push(pageWithContent);
+        updateNotionSelectedCount();
+        updateContextBadge();
+
+        try {
+          console.log('[Notion] Loading content for page:', page.id);
+          const result = await ipcRenderer.invoke('notion-get-content', { pageId: page.id });
+          console.log('[Notion] Content result:', result);
+          const pageIdx = selectedNotionPages.findIndex(p => p.id === page.id);
+          if (pageIdx !== -1 && result.success) {
+            selectedNotionPages[pageIdx].content = result.content;
+            selectedNotionPages[pageIdx].truncated = result.truncated;
+            console.log('[Notion] Content loaded, length:', result.content?.length);
+          } else {
+            console.log('[Notion] Failed to load content:', result.error);
+          }
+          if (pageIdx !== -1) {
+            selectedNotionPages[pageIdx].contentLoading = false;
+          }
+        } catch (err) {
+          console.error('[Notion] Failed to load page content:', err);
+          const pageIdx = selectedNotionPages.findIndex(p => p.id === page.id);
+          if (pageIdx !== -1) {
+            selectedNotionPages[pageIdx].contentLoading = false;
+          }
+        }
+      } else {
+        selectedNotionPages.splice(idx, 1);
+        itemElement.classList.remove('selected');
+        checkbox.checked = false;
+        updateNotionSelectedCount();
+        updateContextBadge();
+      }
+    }
+
+    function updateNotionSelectedCount() {
+      if (selectedNotionPages.length > 0) {
+        notionSelectedCount.textContent = `${selectedNotionPages.length}개 선택됨`;
+        notionSelectedCount.style.display = 'block';
+      } else {
+        notionSelectedCount.style.display = 'none';
+      }
+    }
+
+    // 6. Toggle Slack Message Selection
+    function toggleSlackMessage(msg, itemElement) {
+      const idx = selectedSlackMessages.findIndex(m => m.ts === msg.ts && m.channel.id === msg.channel.id);
+      const checkbox = itemElement.querySelector('.context-result-checkbox');
+
+      if (idx === -1) {
+        // Add to selection
+        selectedSlackMessages.push(msg);
+        itemElement.classList.add('selected');
+        checkbox.checked = true;
+      } else {
+        // Remove from selection
+        selectedSlackMessages.splice(idx, 1);
+        itemElement.classList.remove('selected');
+        checkbox.checked = false;
+      }
+
+      updateSelectedCount();
+      updateContextBadge();
+    }
+
+    // 7. Update Selected Count
+    function updateSelectedCount() {
+      if (selectedSlackMessages.length > 0) {
+        slackSelectedCount.textContent = `${selectedSlackMessages.length}개 선택됨`;
+        slackSelectedCount.style.display = 'block';
+      } else {
+        slackSelectedCount.style.display = 'none';
+      }
+    }
+
+    function updateContextBadge() {
+      const totalSelected = selectedSlackMessages.length + selectedNotionPages.length;
+      if (totalSelected > 0) {
+        contextBadge.textContent = totalSelected;
+        contextBadge.style.display = 'inline';
+      } else {
+        contextBadge.style.display = 'none';
+      }
+    }
+
+    // 9. Helper: Escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function buildContextSection() {
+      if (selectedSlackMessages.length === 0 && selectedNotionPages.length === 0) {
+        return '';
+      }
+
+      let contextText = '\n\n---\n## Context\n\n';
+
+      if (selectedSlackMessages.length > 0) {
+        contextText += '### Slack Messages\n\n';
+        selectedSlackMessages.forEach(msg => {
+          const date = new Date(msg.timestamp);
+          const timeStr = date.toLocaleString('ko-KR', { 
+            year: 'numeric',
+            month: 'short', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          });
+          contextText += `> **#${msg.channel.name}** - ${msg.username || msg.user} (${timeStr})\n`;
+          contextText += `> ${msg.text.replace(/\n/g, '\n> ')}\n`;
+          if (msg.permalink) {
+            contextText += `> [View in Slack](${msg.permalink})\n`;
+          }
+          contextText += '\n';
+        });
+      }
+
+      if (selectedNotionPages.length > 0) {
+        console.log('[Context] Building with Notion pages:', selectedNotionPages.map(p => ({ id: p.id, hasContent: !!p.content, contentLength: p.content?.length })));
+        contextText += '### Notion Pages\n\n';
+        selectedNotionPages.forEach(page => {
+          const date = new Date(page.lastEditedTime);
+          const timeStr = date.toLocaleString('ko-KR', { 
+            year: 'numeric',
+            month: 'short', 
+            day: 'numeric'
+          });
+          const icon = page.icon || '📄';
+          contextText += `#### ${icon} ${page.title} (${timeStr})\n\n`;
+          
+          if (page.content) {
+            contextText += page.content;
+            if (page.truncated) {
+              contextText += '\n\n*(...content truncated)*';
+            }
+            contextText += '\n\n';
+          }
+          
+          if (page.url) {
+            contextText += `[View in Notion](${page.url})\n\n`;
+          }
+          contextText += '---\n\n';
+        });
+      }
+
+      return contextText;
+    }
+
+    ipcRenderer.on('settings-updated', () => {
+      checkSlackStatus();
+      checkNotionStatus();
+    });
+
+    // 12. Modify form submission to include context
+    const originalSubmitHandler = form.onsubmit;
+    form.addEventListener('submit', (e) => {
+      // Append context to description before submission
+      const contextSection = buildContextSection();
+      if (contextSection) {
+        descInput.value = descInput.value + contextSection;
+      }
+    }, true); // Use capture phase to run before the existing handler
   </script>
 </body>
 </html>

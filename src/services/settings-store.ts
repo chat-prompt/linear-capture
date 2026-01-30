@@ -6,6 +6,7 @@
  */
 
 import Store from 'electron-store';
+import * as crypto from 'crypto';
 
 export interface UserInfo {
   id: string;

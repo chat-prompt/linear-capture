@@ -324,6 +324,96 @@ Settings 완성했으니 온보딩도 개선하고 버전 올리자
 
 ---
 
+## 2026-01-29 (Day 6)
+
+> **배경**: Linear 이슈를 생성할 때 Slack 대화나 Notion 문서 등 관련 맥락이 함께 링크되면, 나중에 이슈를 봤을 때 "왜 이 작업을 했지?"라는 맥락을 잃지 않게 된다. Linear가 진정한 SSOT(Single Source of Truth)가 되도록, 캡처 시점에 관련 문서를 검색해서 함께 첨부하는 기능을 구현했다.
+
+### 19. Slack OAuth 연동 및 검색 기능
+
+```
+이슈 생성할 때 Slack 메시지를 검색해서 컨텍스트로 첨부할 수 있게 해줘
+```
+
+**OpenCode 작업:**
+- Cloudflare Worker에 Slack OAuth 엔드포인트 추가
+  - `GET /slack/auth` - OAuth 시작
+  - `POST /slack/callback` - 토큰 교환
+  - `GET /slack/channels` - 채널 목록
+  - `GET /slack/status` - 연결 상태 확인
+  - `DELETE /slack/disconnect` - 연결 해제
+  - `GET /slack/search` - 메시지 검색
+  - `GET /slack/oauth-redirect` - HTTPS → deep link 리다이렉트
+- `src/services/slack-client.ts` - Slack OAuth + 검색 서비스
+- `src/renderer/settings.html` - Slack 연결 섹션 추가
+- `src/main/index.ts` - deep link 핸들러 및 IPC 추가
+- **UI**: Context Search 섹션 (접이식) 추가, Slack 탭에서 메시지 검색 및 선택 가능
+
+---
+
+### 20. Notion OAuth 연동 및 검색 기능
+
+```
+Notion 페이지도 검색해서 이슈에 링크 첨부할 수 있으면 좋겠어
+```
+
+**OpenCode 작업:**
+- Cloudflare Worker에 Notion OAuth 엔드포인트 추가
+  - `GET /notion/auth` - OAuth 시작
+  - `POST /notion/callback` - 토큰 교환
+  - `GET /notion/status` - 연결 상태 확인
+  - `DELETE /notion/disconnect` - 연결 해제
+  - `GET /notion/search` - 페이지 검색
+  - `GET /notion/oauth-redirect` - HTTPS → deep link 리다이렉트
+- `src/services/notion-client.ts` - Notion OAuth + 검색 서비스
+- `src/renderer/settings.html` - Notion 연결 섹션 추가
+- **UI**: Notion 탭 활성화, 페이지 검색 및 선택 기능
+
+---
+
+### 21. Notion 페이지 본문 콘텐츠 추출
+
+```
+Notion 페이지 제목만 보여주지 말고 본문 내용도 Context에 포함해줘
+```
+
+**OpenCode 작업:**
+- Cloudflare Worker에 `GET /notion/blocks` 엔드포인트 추가
+  - 페이지 블록 조회 (`GET /v1/blocks/{page_id}/children`)
+  - 텍스트 블록만 필터링 (paragraph, heading, list, quote, code 등)
+  - 최대 2000자로 truncate
+- `src/services/notion-client.ts` - `getPageContent()` 메서드 추가
+- `src/main/index.ts` - `notion-get-content` IPC 핸들러 추가
+- **UI**: 페이지 선택 시 본문 로딩 및 Context 섹션에 표시
+
+---
+
+### 22. Context 통합 및 이슈 생성 연동
+
+```
+선택한 Slack 메시지랑 Notion 페이지가 이슈 설명에 자동으로 들어가게 해줘
+```
+
+**OpenCode 작업:**
+- `buildContextSection()` 함수로 마크다운 형식 Context 생성
+- form submit 시 Description에 자동 추가
+- **출력 형식**:
+  ```markdown
+  ## Related Context
+
+  ### Slack Messages
+  **#channel** - @user (2026-01-29)
+  > 메시지 내용...
+  [View in Slack](link)
+
+  ### Notion Pages
+  📄 **페이지 제목** (2026-01-29)
+  페이지 본문 내용...
+  [View in Notion](link)
+  ```
+- 선택 개수 배지 표시, 체크박스로 선택/해제
+
+---
+
 ## 커밋 히스토리
 
 | 날짜 | 커밋 | 설명 |
@@ -364,6 +454,8 @@ Settings 완성했으니 온보딩도 개선하고 버전 올리자
 | 01/19 | `c698a87` | chore: Bump version to 1.2.3 |
 | 01/19 | `ca7cfe2` | feat(ui): Dynamic hotkey hint and larger settings modal |
 | 01/19 | `c419b4d` | chore: Bump version to 1.2.4 |
+| 01/21 | `47911ca` | feat(slack): add Slack OAuth flow and settings UI |
+| 01/21 | `18368d0` | feat(app): add device_id generation for OAuth |
 
 ---
 
@@ -411,7 +503,13 @@ Settings 완성했으니 온보딩도 개선하고 버전 올리자
    - 새 버전 다운로드 및 설치 안내
    - TCC 권한 리셋 필요 시 안내
 
-7. **macOS 네이티브 앱 배포**
+7. **Slack/Notion Context 통합**
+   - Slack OAuth 연결 및 메시지 검색
+   - Notion OAuth 연결 및 페이지 검색
+   - 선택한 메시지/페이지를 이슈 설명에 자동 포함
+   - 페이지 본문 콘텐츠 추출 (최대 2000자)
+
+8. **macOS 네이티브 앱 배포**
    - DMG 패키징 (Universal binary)
    - Ad-hoc 서명 지원
    - Gatekeeper 우회 안내

@@ -2,13 +2,14 @@ import { shell } from 'electron';
 import { getDeviceId } from './settings-store';
 
 const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
-const SLACK_REDIRECT_URI = 'https://linear-capture-ai.ny-4f1.workers.dev/slack/oauth-redirect';
+const NOTION_REDIRECT_URI = 'https://linear-capture-ai.ny-4f1.workers.dev/notion/oauth-redirect';
 
-export interface SlackConnectionStatus {
+export interface NotionConnectionStatus {
   connected: boolean;
   workspace?: {
     id: string;
     name: string;
+    icon?: string;
   };
   user?: {
     id: string;
@@ -16,57 +17,48 @@ export interface SlackConnectionStatus {
   };
 }
 
-export interface SlackChannel {
+export interface NotionCallbackResult {
+  success: boolean;
+  workspace?: {
+    id: string;
+    name: string;
+    icon?: string;
+  };
+  user?: {
+    id: string;
+    name: string;
+  };
+  error?: string;
+}
+
+export interface NotionPage {
   id: string;
-  name: string;
-  is_private: boolean;
-  num_members?: number;
+  title: string;
+  icon?: string;
+  url: string;
+  lastEditedTime: string;
+  parentType: string;
 }
 
-export interface SlackChannelsResult {
+export interface NotionSearchResult {
   success: boolean;
-  channels?: SlackChannel[];
-  workspace?: {
-    id: string;
-    name: string;
-  };
-  error?: string;
-}
-
-export interface SlackMessage {
-  ts: string;
-  text: string;
-  user: string;
-  username?: string;
-  channel: {
-    id: string;
-    name: string;
-  };
-  permalink: string;
-  timestamp: string;
-}
-
-export interface SlackSearchResult {
-  success: boolean;
-  messages?: SlackMessage[];
+  pages?: NotionPage[];
   total?: number;
+  hasMore?: boolean;
+  nextCursor?: string | null;
   error?: string;
 }
 
-export interface SlackCallbackResult {
+export interface NotionPageContent {
   success: boolean;
-  workspace?: {
-    id: string;
-    name: string;
-  };
-  user?: {
-    id: string;
-    name: string;
-  };
+  pageId?: string;
+  content?: string;
+  blockCount?: number;
+  truncated?: boolean;
   error?: string;
 }
 
-export class SlackService {
+export class NotionService {
   private deviceId: string;
 
   constructor() {
@@ -75,9 +67,9 @@ export class SlackService {
 
   async startOAuthFlow(): Promise<{ success: boolean; error?: string }> {
     try {
-      const url = new URL(`${WORKER_URL}/slack/auth`);
+      const url = new URL(`${WORKER_URL}/notion/auth`);
       url.searchParams.set('device_id', this.deviceId);
-      url.searchParams.set('redirect_uri', SLACK_REDIRECT_URI);
+      url.searchParams.set('redirect_uri', NOTION_REDIRECT_URI);
 
       const response = await fetch(url.toString());
       const data = await response.json() as { success: boolean; auth_url?: string; error?: string };
@@ -89,49 +81,49 @@ export class SlackService {
       await shell.openExternal(data.auth_url);
       return { success: true };
     } catch (error) {
-      console.error('Slack OAuth start error:', error);
+      console.error('Notion OAuth start error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
-  async handleCallback(code: string, state: string): Promise<SlackCallbackResult> {
+  async handleCallback(code: string, state: string): Promise<NotionCallbackResult> {
     try {
-      const response = await fetch(`${WORKER_URL}/slack/callback`, {
+      const response = await fetch(`${WORKER_URL}/notion/callback`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           code,
-          redirect_uri: SLACK_REDIRECT_URI,
+          redirect_uri: NOTION_REDIRECT_URI,
           state,
         }),
       });
 
-      const data = await response.json() as SlackCallbackResult;
+      const data = await response.json() as NotionCallbackResult;
       return data;
     } catch (error) {
-      console.error('Slack callback error:', error);
+      console.error('Notion callback error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
-  async getConnectionStatus(): Promise<SlackConnectionStatus> {
+  async getConnectionStatus(): Promise<NotionConnectionStatus> {
     try {
-      const url = new URL(`${WORKER_URL}/slack/status`);
+      const url = new URL(`${WORKER_URL}/notion/status`);
       url.searchParams.set('device_id', this.deviceId);
 
       const response = await fetch(url.toString());
       const data = await response.json() as {
         success: boolean;
         connected?: boolean;
-        workspace?: { id: string; name: string };
+        workspace?: { id: string; name: string; icon?: string };
         user?: { id: string; name: string };
         error?: string;
       };
 
       if (!data.success) {
-        console.error('Slack status error:', data.error);
+        console.error('Notion status error:', data.error);
         return { connected: false };
       }
 
@@ -141,66 +133,65 @@ export class SlackService {
         user: data.user,
       };
     } catch (error) {
-      console.error('Slack status error:', error);
+      console.error('Notion status error:', error);
       return { connected: false };
-    }
-  }
-
-  async getChannels(): Promise<SlackChannelsResult> {
-    try {
-      const url = new URL(`${WORKER_URL}/slack/channels`);
-      url.searchParams.set('device_id', this.deviceId);
-
-      const response = await fetch(url.toString());
-      const data = await response.json() as SlackChannelsResult;
-      return data;
-    } catch (error) {
-      console.error('Slack channels error:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
   async disconnect(): Promise<{ success: boolean; error?: string }> {
     try {
-      const url = new URL(`${WORKER_URL}/slack/disconnect`);
+      const url = new URL(`${WORKER_URL}/notion/disconnect`);
       url.searchParams.set('device_id', this.deviceId);
 
       const response = await fetch(url.toString(), { method: 'DELETE' });
       const data = await response.json() as { success: boolean; error?: string };
       return data;
     } catch (error) {
-      console.error('Slack disconnect error:', error);
+      console.error('Notion disconnect error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
-  async searchMessages(query: string, channels?: string[], count?: number): Promise<SlackSearchResult> {
+  async searchPages(query: string, pageSize?: number): Promise<NotionSearchResult> {
     try {
-      const url = new URL(`${WORKER_URL}/slack/search`);
+      const url = new URL(`${WORKER_URL}/notion/search`);
       url.searchParams.set('device_id', this.deviceId);
       url.searchParams.set('query', query);
-      if (channels && channels.length > 0) {
-        url.searchParams.set('channels', channels.join(','));
-      }
-      if (count) {
-        url.searchParams.set('count', count.toString());
+      url.searchParams.set('filter', 'page');
+      if (pageSize) {
+        url.searchParams.set('page_size', pageSize.toString());
       }
 
       const response = await fetch(url.toString());
-      const data = await response.json() as SlackSearchResult;
+      const data = await response.json() as NotionSearchResult;
       return data;
     } catch (error) {
-      console.error('Slack search error:', error);
+      console.error('Notion search error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  async getPageContent(pageId: string): Promise<NotionPageContent> {
+    try {
+      const url = new URL(`${WORKER_URL}/notion/blocks`);
+      url.searchParams.set('device_id', this.deviceId);
+      url.searchParams.set('page_id', pageId);
+
+      const response = await fetch(url.toString());
+      const data = await response.json() as NotionPageContent;
+      return data;
+    } catch (error) {
+      console.error('Notion get content error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 }
 
-let slackService: SlackService | null = null;
+let notionService: NotionService | null = null;
 
-export function createSlackService(): SlackService {
-  if (!slackService) {
-    slackService = new SlackService();
+export function createNotionService(): NotionService {
+  if (!notionService) {
+    notionService = new NotionService();
   }
-  return slackService;
+  return notionService;
 }

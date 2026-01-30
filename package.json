@@ -1,6 +1,6 @@
 {
   "name": "linear-capture",
-  "version": "1.2.8",
+  "version": "1.2.9",
   "description": "Capture screen and create Linear issues instantly",
   "main": "dist/main/index.js",
   "author": "GPTers",
@@ -34,7 +34,9 @@
     "protocols": [
       {
         "name": "Linear Capture",
-        "schemes": ["linear-capture"]
+        "schemes": [
+          "linear-capture"
+        ]
       }
     ],
     "mac": {
