@@ -1,6 +1,6 @@
 # Linear Capture
 
-macOS/Windows 화면 캡처 → Linear 이슈 자동 생성 앱 (v1.2.7)
+macOS/Windows 화면 캡처 → Linear 이슈 자동 생성 앱 (v1.2.9)
 
 ## 실행 방법
 
@@ -80,6 +80,7 @@ npm run start        # 빌드 후 실행 (개발 모드 - 권한 문제 있음)
 npm run start:clean  # 클린 환경 테스트 (Electron 종료 + TCC 리셋 + dist 삭제 + 빌드 + 실행)
 npm run build        # TypeScript 컴파일
 npm run pack         # .app만 빌드 (서명O, 공증X - 빠름)
+npm run pack:clean   # ⭐ 클린 빌드 + 실행 (기존 프로세스 종료 + dist/release 삭제 + 빌드 + 앱 실행)
 npm run dist:mac     # DMG 패키징 (서명 + 공증 - 배포용)
 npm run reinstall    # 완전 클린 재설치 (권한 리셋 포함)
 ```
@@ -94,13 +95,36 @@ npm run reinstall    # 완전 클린 재설치 (권한 리셋 포함)
 ### 빠른 테스트 방법 (권장)
 
 ```bash
-# 서명만 하고 공증은 생략 → 빠르게 .app 생성 (~30초)
-npm run pack && open 'release/mac-arm64/Linear Capture.app'
+# ⭐ 코드 수정 후 테스트 시 반드시 이 명령어 사용 (가장 확실한 방법)
+npm run pack:clean
 ```
 
-- 이미 시스템에 "Linear Capture" 권한이 있으면 바로 테스트 가능
-- DMG 빌드보다 훨씬 빠름
-- 코드 수정 → `npm run pack` → 앱 실행 사이클로 개발
+이 명령어가 수행하는 작업:
+1. 기존 Linear Capture/Electron 프로세스 종료
+2. `dist/` 및 `release/` 폴더 삭제 (캐시 문제 방지)
+3. TypeScript 컴파일 + HTML 복사
+4. .app 패키징 (서명 포함)
+5. 앱 자동 실행
+
+### ⚠️ 변경사항이 반영 안 되는 경우
+
+**증상**: `npm run pack` 후 앱을 열었는데 코드 변경이 반영 안 됨
+
+**원인**:
+- 기존 앱 프로세스가 여전히 실행 중
+- `dist/` 폴더에 이전 빌드 결과가 캐시됨
+- macOS Launch Services가 이전 앱 번들을 캐시함
+
+**해결**: `npm run pack:clean` 사용 (위의 모든 문제를 한 번에 해결)
+
+```bash
+# 수동으로 해결하려면:
+pkill -f 'Linear Capture'  # 기존 앱 종료
+pkill -f Electron          # Electron 프로세스 종료
+rm -rf dist release        # 빌드 결과 삭제
+npm run pack               # 재빌드
+open 'release/mac-arm64/Linear Capture.app'
+```
 
 ### 온보딩 화면 테스트
 
