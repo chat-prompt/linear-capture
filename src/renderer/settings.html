@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Settings - Linear Capture</title>
+  <title data-i18n="settings.title">Settings</title>
   <style>
     * {
       box-sizing: border-box;
@@ -609,49 +609,49 @@
 </head>
 <body>
   <div class="container">
-    <h1>Settings</h1>
+    <h1 data-i18n="settings.title">Settings</h1>
 
     <div class="form-group">
-      <label for="token">Linear API Token</label>
-      <input type="password" id="token" placeholder="lin_api_xxxxxxxxxxxxx">
+      <label for="token" data-i18n="settings.linearToken">Linear API Token</label>
+      <input type="password" id="token" data-i18n-placeholder="settings.tokenPlaceholder" placeholder="lin_api_xxxxxxxxxxxxx">
       <div id="errorMessage" class="error-message" style="display: none;"></div>
-      <p class="info-text">
-        Linear Settings &gt; API &gt; Personal API keys에서 발급
+      <p class="info-text" data-i18n="settings.tokenHint">
+        Get from Linear Settings &gt; API &gt; Personal API keys
       </p>
     </div>
 
     <div class="status-box">
       <div class="status-row">
         <span class="status-icon" id="statusIcon">⏳</span>
-        <span class="status-label">Status:</span>
-        <span class="status-value" id="statusText">토큰을 입력하세요</span>
+        <span class="status-label" data-i18n="common.status">Status:</span>
+        <span class="status-value" id="statusText" data-i18n="settings.enterToken">Enter your token</span>
       </div>
       <div class="status-row" id="userInfoRow" style="display: none;">
         <span class="status-icon">👤</span>
-        <span class="status-label">User:</span>
+        <span class="status-label" data-i18n="common.user">User:</span>
         <span class="status-value" id="userInfo"></span>
       </div>
     </div>
 
     <div class="buttons">
-      <button class="btn-danger" id="clearBtn" style="display: none;">삭제</button>
-      <button class="btn-secondary" id="validateBtn">검증</button>
-      <button class="btn-primary" id="saveBtn" disabled>저장</button>
-      <button class="btn-close" id="closeBtn">닫기</button>
+      <button class="btn-danger" id="clearBtn" style="display: none;" data-i18n="common.delete">Delete</button>
+      <button class="btn-secondary" id="validateBtn" data-i18n="common.validate">Validate</button>
+      <button class="btn-primary" id="saveBtn" disabled data-i18n="common.save">Save</button>
+      <button class="btn-close" id="closeBtn" data-i18n="common.close">Close</button>
     </div>
 
     <!-- Slack Section -->
     <div class="slack-section">
       <h2>
         <span style="font-size:20px;">💬</span>
-        Slack
+        <span data-i18n="slack.title">Slack</span>
       </h2>
       <div class="slack-status-box">
         <div class="slack-status-info">
-          <span class="slack-status-label">Status</span>
-          <span class="slack-status-value disconnected" id="slackStatusText">연결 안됨</span>
+          <span class="slack-status-label" data-i18n="common.status">Status</span>
+          <span class="slack-status-value disconnected" id="slackStatusText" data-i18n="slack.notConnected">Not connected</span>
         </div>
-        <button class="btn-slack btn-slack-connect" id="slackConnectBtn">Connect</button>
+        <button class="btn-slack btn-slack-connect" id="slackConnectBtn" data-i18n="common.connect">Connect</button>
       </div>
       <div id="slackError" class="slack-error" style="display: none;"></div>
     </div>
@@ -660,14 +660,14 @@
     <div class="notion-section">
       <h2>
         <span style="font-size:20px;">📝</span>
-        Notion
+        <span data-i18n="notion.title">Notion</span>
       </h2>
       <div class="notion-status-box">
         <div class="notion-status-info">
-          <span class="notion-status-label">Status</span>
-          <span class="notion-status-value disconnected" id="notionStatusText">연결 안됨</span>
+          <span class="notion-status-label" data-i18n="common.status">Status</span>
+          <span class="notion-status-value disconnected" id="notionStatusText" data-i18n="notion.notConnected">Not connected</span>
         </div>
-        <button class="btn-notion btn-notion-connect" id="notionConnectBtn">Connect</button>
+        <button class="btn-notion btn-notion-connect" id="notionConnectBtn" data-i18n="common.connect">Connect</button>
       </div>
       <div id="notionError" class="notion-error" style="display: none;"></div>
     </div>
@@ -676,47 +676,86 @@
     <div class="gmail-section">
       <h2>
         <span style="font-size:20px;">📧</span>
-        Gmail
+        <span data-i18n="gmail.title">Gmail</span>
       </h2>
       <div class="gmail-status-box">
         <div class="gmail-status-info">
-          <span class="gmail-status-label">Status</span>
-          <span class="gmail-status-value disconnected" id="gmailStatusText">연결 안됨</span>
+          <span class="gmail-status-label" data-i18n="common.status">Status</span>
+          <span class="gmail-status-value disconnected" id="gmailStatusText" data-i18n="gmail.notConnected">Not connected</span>
         </div>
-        <button class="btn-gmail btn-gmail-connect" id="gmailConnectBtn">Connect</button>
+        <button class="btn-gmail btn-gmail-connect" id="gmailConnectBtn" data-i18n="common.connect">Connect</button>
       </div>
       <div id="gmailError" class="gmail-error" style="display: none;"></div>
     </div>
 
     <!-- Hotkey Section -->
     <div class="hotkey-section">
-      <h2>Capture Hotkey</h2>
+      <h2 data-i18n="hotkey.title">Capture Hotkey</h2>
       <div class="hotkey-input-container">
         <input type="text" 
                id="hotkeyInput" 
                class="hotkey-input" 
                readonly 
+               data-i18n-placeholder="hotkey.placeholder"
                placeholder="Click to record...">
-        <button class="btn-reset" id="resetHotkeyBtn">Reset</button>
+        <button class="btn-reset" id="resetHotkeyBtn" data-i18n="common.reset">Reset</button>
       </div>
-      <div id="hotkeyHint" class="hotkey-hint">Click and press new key combination</div>
+      <div id="hotkeyHint" class="hotkey-hint" data-i18n="hotkey.hint">Click and press new key combination</div>
       <div id="hotkeyError" class="hotkey-error" style="display: none;"></div>
       <div id="hotkeySuccess" class="hotkey-success" style="display: none;"></div>
+    </div>
+
+    <!-- Language Section -->
+    <div class="hotkey-section">
+      <h2 data-i18n="settings.language">Language</h2>
+      <div class="form-group" style="margin-bottom: 8px;">
+        <select id="languageSelect" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; cursor: pointer;">
+          <option value="en">English</option>
+          <option value="ko">한국어</option>
+        </select>
+      </div>
+      <div class="hotkey-hint" data-i18n="settings.languageHint">Select app display language</div>
     </div>
 
     <!-- Version & Update Section -->
     <div class="version-section">
       <div class="version-info">
-        <span class="version-label">Version</span>
+        <span class="version-label" data-i18n="common.version">Version</span>
         <span class="version-value" id="appVersion">-</span>
       </div>
-      <button class="btn-update" id="checkUpdateBtn">업데이트 확인</button>
+      <button class="btn-update" id="checkUpdateBtn" data-i18n="settings.checkUpdate">Check for Updates</button>
     </div>
   </div>
 
   <script>
     const { ipcRenderer } = require('electron');
 
+    // ==================== i18n Functions ====================
+    async function t(key, options = {}) {
+      return await ipcRenderer.invoke('translate', key, options);
+    }
+
+    async function translatePage() {
+      const elements = document.querySelectorAll('[data-i18n]');
+      for (const el of elements) {
+        const key = el.getAttribute('data-i18n');
+        el.textContent = await t(key);
+      }
+      const placeholders = document.querySelectorAll('[data-i18n-placeholder]');
+      for (const el of placeholders) {
+        const key = el.getAttribute('data-i18n-placeholder');
+        el.placeholder = await t(key);
+      }
+      document.title = await t('settings.title') + ' - Linear Capture';
+    }
+
+    ipcRenderer.on('language-changed', () => {
+      translatePage();
+    });
+
+    translatePage();
+
+    // ==================== Main Code ====================
     const tokenInput = document.getElementById('token');
     const statusIcon = document.getElementById('statusIcon');
     const statusText = document.getElementById('statusText');
@@ -751,9 +790,9 @@
       }
     }
 
-    function showPending() {
+    async function showPending() {
       statusIcon.textContent = '⏳';
-      statusText.textContent = '토큰을 입력하세요';
+      statusText.textContent = await t('settings.enterToken');
       statusText.className = 'status-value status-pending';
       userInfoRow.style.display = 'none';
       errorMessage.style.display = 'none';
@@ -762,9 +801,9 @@
       saveBtn.disabled = true;
     }
 
-    function showValidating() {
+    async function showValidating() {
       statusIcon.innerHTML = '<span class="loading"></span>';
-      statusText.textContent = '검증 중...';
+      statusText.textContent = await t('settings.validating');
       statusText.className = 'status-value status-pending';
       userInfoRow.style.display = 'none';
       errorMessage.style.display = 'none';
@@ -772,9 +811,9 @@
       saveBtn.disabled = true;
     }
 
-    function showSuccess(user) {
+    async function showSuccess(user) {
       statusIcon.textContent = '✅';
-      statusText.textContent = '연결됨';
+      statusText.textContent = await t('settings.connected');
       statusText.className = 'status-value status-success';
       userInfoRow.style.display = 'flex';
       userInfo.textContent = user.name + ' (' + user.email + ')';
@@ -785,9 +824,9 @@
       saveBtn.disabled = false;
     }
 
-    function showError(message) {
+    async function showError(message) {
       statusIcon.textContent = '❌';
-      statusText.textContent = '연결 실패';
+      statusText.textContent = await t('settings.connectionFailed');
       statusText.className = 'status-value status-error';
       userInfoRow.style.display = 'none';
       errorMessage.textContent = message;
@@ -808,30 +847,28 @@
       }
     });
 
-    // Validate 버튼
     validateBtn.addEventListener('click', async () => {
       const token = tokenInput.value.trim();
       if (!token) {
-        showError('토큰을 입력하세요');
+        showError(await t('errors.tokenRequired'));
         return;
       }
 
-      showValidating();
+      await showValidating();
 
       try {
         const result = await ipcRenderer.invoke('validate-token', token);
 
         if (result.valid && result.user) {
-          showSuccess(result.user);
+          await showSuccess(result.user);
         } else {
-          showError(result.error || '유효하지 않은 토큰입니다');
+          showError(result.error || await t('settings.invalidToken'));
         }
       } catch (error) {
-        showError('검증 중 오류가 발생했습니다');
+        showError(await t('errors.validationError'));
       }
     });
 
-    // Save 버튼
     saveBtn.addEventListener('click', async () => {
       const token = tokenInput.value.trim();
       if (!token || !isValidated) {
@@ -839,7 +876,8 @@
       }
 
       saveBtn.disabled = true;
-      saveBtn.innerHTML = '<span class="loading"></span>저장 중...';
+      const savingText = await t('settings.saving');
+      saveBtn.innerHTML = '<span class="loading"></span>' + savingText;
 
       try {
         const result = await ipcRenderer.invoke('save-settings', {
@@ -848,33 +886,33 @@
         });
 
         if (result.success) {
-          saveBtn.textContent = '저장됨!';
-          setTimeout(() => {
-            saveBtn.textContent = '저장';
-            saveBtn.disabled = true; // 저장 완료 후 비활성화
+          saveBtn.textContent = await t('settings.saved');
+          setTimeout(async () => {
+            saveBtn.textContent = await t('common.save');
+            saveBtn.disabled = true;
           }, 1500);
         } else {
-          showError(result.error || '저장에 실패했습니다');
-          saveBtn.textContent = '저장';
+          showError(result.error || await t('settings.saveFailed'));
+          saveBtn.textContent = await t('common.save');
           saveBtn.disabled = false;
         }
       } catch (error) {
-        showError('저장 중 오류가 발생했습니다');
-        saveBtn.textContent = '저장';
+        showError(await t('errors.saveError'));
+        saveBtn.textContent = await t('common.save');
         saveBtn.disabled = false;
       }
     });
 
-    // Clear 버튼
     clearBtn.addEventListener('click', async () => {
-      if (confirm('토큰을 삭제하시겠습니까?')) {
+      const confirmMsg = await t('settings.deleteConfirm');
+      if (confirm(confirmMsg)) {
         try {
           await ipcRenderer.invoke('clear-settings');
           tokenInput.value = '';
           clearBtn.style.display = 'none';
-          showPending();
+          await showPending();
         } catch (error) {
-          showError('삭제 중 오류가 발생했습니다');
+          showError(await t('settings.deleteError'));
         }
       }
     });
@@ -928,13 +966,12 @@
     }
     loadHotkey();
 
-    // Start recording on focus
-    hotkeyInput.addEventListener('focus', () => {
+    hotkeyInput.addEventListener('focus', async () => {
       isRecording = true;
       recordedKeys = [];
       hotkeyInput.classList.add('recording');
-      hotkeyInput.value = 'Press keys...';
-      hotkeyHint.textContent = 'Press modifier + key (e.g., ⌘+Shift+L)';
+      hotkeyInput.value = await t('hotkey.pressKeys');
+      hotkeyHint.textContent = await t('hotkey.pressModifier');
       hotkeyError.style.display = 'none';
       hotkeySuccess.style.display = 'none';
     });
@@ -1023,16 +1060,15 @@
         return;
       }
 
-      // Need at least one modifier
       if (parts.length === 0) {
-        hotkeyError.textContent = 'Please include a modifier key (⌘, ⌃, ⌥, or ⇧)';
+        hotkeyError.textContent = await t('hotkey.needModifier');
         hotkeyError.style.display = 'block';
         hotkeySuccess.style.display = 'none';
         return;
       }
 
       if (!mainKey) {
-        hotkeyError.textContent = 'Invalid key. Use letters, numbers, or function keys.';
+        hotkeyError.textContent = await t('hotkey.invalidKeyType');
         hotkeyError.style.display = 'block';
         hotkeySuccess.style.display = 'none';
         return;
@@ -1054,50 +1090,46 @@
           return;
         }
 
-        // Save the hotkey
         const result = await ipcRenderer.invoke('save-hotkey', accelerator);
         if (result.success) {
           currentHotkey = result.hotkey;
           hotkeyInput.value = result.displayHotkey;
-          hotkeySuccess.textContent = 'Hotkey saved!';
+          hotkeySuccess.textContent = await t('hotkey.saved');
           hotkeySuccess.style.display = 'block';
           hotkeyError.style.display = 'none';
-          hotkeyHint.textContent = 'Hotkey updated successfully';
+          hotkeyHint.textContent = await t('hotkey.updated');
 
-          // Stop recording
           isRecording = false;
           hotkeyInput.classList.remove('recording');
           hotkeyInput.blur();
 
-          // Hide success message after 2 seconds
-          setTimeout(() => {
+          setTimeout(async () => {
             hotkeySuccess.style.display = 'none';
-            hotkeyHint.textContent = 'Click and press new key combination';
+            hotkeyHint.textContent = await t('hotkey.hint');
           }, 2000);
         } else {
-          hotkeyError.textContent = result.error || 'Failed to save hotkey';
+          hotkeyError.textContent = result.error || await t('hotkey.saveFailed');
           hotkeyError.style.display = 'block';
           hotkeySuccess.style.display = 'none';
         }
       } catch (error) {
         console.error('Hotkey save error:', error);
-        hotkeyError.textContent = 'Failed to save hotkey';
+        hotkeyError.textContent = await t('hotkey.saveFailed');
         hotkeyError.style.display = 'block';
         hotkeySuccess.style.display = 'none';
       }
     });
 
-    // Reset hotkey button
     resetHotkeyBtn.addEventListener('click', async () => {
       resetHotkeyBtn.disabled = true;
-      resetHotkeyBtn.textContent = 'Resetting...';
+      resetHotkeyBtn.textContent = await t('common.loading');
 
       try {
         const result = await ipcRenderer.invoke('reset-hotkey');
         if (result.success) {
           currentHotkey = result.hotkey;
           hotkeyInput.value = result.displayHotkey;
-          hotkeySuccess.textContent = 'Reset to default!';
+          hotkeySuccess.textContent = await t('hotkey.resetSuccess');
           hotkeySuccess.style.display = 'block';
           hotkeyError.style.display = 'none';
 
@@ -1105,17 +1137,17 @@
             hotkeySuccess.style.display = 'none';
           }, 2000);
         } else {
-          hotkeyError.textContent = result.error || 'Failed to reset';
+          hotkeyError.textContent = result.error || await t('hotkey.resetFailed');
           hotkeyError.style.display = 'block';
           hotkeySuccess.style.display = 'none';
         }
       } catch (error) {
         console.error('Reset hotkey error:', error);
-        hotkeyError.textContent = 'Failed to reset hotkey';
+        hotkeyError.textContent = await t('hotkey.resetFailed');
         hotkeyError.style.display = 'block';
       } finally {
         resetHotkeyBtn.disabled = false;
-        resetHotkeyBtn.textContent = 'Reset';
+        resetHotkeyBtn.textContent = await t('common.reset');
       }
     });
 
@@ -1133,17 +1165,17 @@
       }
     }
 
-    function updateSlackUI(status) {
+    async function updateSlackUI(status) {
       if (status.connected) {
         const workspaceName = status.workspace?.name || 'Workspace';
-        slackStatusText.textContent = `${workspaceName} 연결됨`;
+        slackStatusText.textContent = await t('slack.connectedTo', { workspace: workspaceName });
         slackStatusText.className = 'slack-status-value connected';
-        slackConnectBtn.textContent = 'Disconnect';
+        slackConnectBtn.textContent = await t('common.disconnect');
         slackConnectBtn.className = 'btn-slack btn-slack-disconnect';
       } else {
-        slackStatusText.textContent = '연결 안됨';
+        slackStatusText.textContent = await t('slack.notConnected');
         slackStatusText.className = 'slack-status-value disconnected';
-        slackConnectBtn.textContent = 'Connect';
+        slackConnectBtn.textContent = await t('common.connect');
         slackConnectBtn.className = 'btn-slack btn-slack-connect';
       }
       slackError.style.display = 'none';
@@ -1157,33 +1189,33 @@
 
       try {
         if (isConnected) {
-          slackConnectBtn.textContent = 'Disconnecting...';
+          slackConnectBtn.textContent = await t('slack.disconnecting');
           const result = await ipcRenderer.invoke('slack-disconnect');
           if (result.success) {
-            updateSlackUI({ connected: false });
+            await updateSlackUI({ connected: false });
           } else {
-            slackError.textContent = result.error || 'Failed to disconnect';
+            slackError.textContent = result.error || await t('slack.disconnectFailed');
             slackError.style.display = 'block';
           }
         } else {
-          slackConnectBtn.textContent = 'Connecting...';
+          slackConnectBtn.textContent = await t('slack.connecting');
           const result = await ipcRenderer.invoke('slack-connect');
           if (!result.success) {
-            slackError.textContent = result.error || 'Failed to start OAuth flow';
+            slackError.textContent = result.error || await t('slack.connectFailed');
             slackError.style.display = 'block';
-            updateSlackUI({ connected: false });
+            await updateSlackUI({ connected: false });
           }
         }
       } catch (error) {
         console.error('Slack action error:', error);
-        slackError.textContent = error.message || 'An error occurred';
+        slackError.textContent = error.message || await t('common.error');
         slackError.style.display = 'block';
       } finally {
         slackConnectBtn.disabled = false;
         if (!slackStatusText.classList.contains('connected')) {
-          slackConnectBtn.textContent = 'Connect';
+          slackConnectBtn.textContent = await t('common.connect');
         } else {
-          slackConnectBtn.textContent = 'Disconnect';
+          slackConnectBtn.textContent = await t('common.disconnect');
         }
       }
     });
@@ -1220,17 +1252,17 @@
       }
     }
 
-    function updateNotionUI(status) {
+    async function updateNotionUI(status) {
       if (status.connected) {
         const workspaceName = status.workspace?.name || 'Workspace';
-        notionStatusText.textContent = `${workspaceName} 연결됨`;
+        notionStatusText.textContent = await t('notion.connectedTo', { workspace: workspaceName });
         notionStatusText.className = 'notion-status-value connected';
-        notionConnectBtn.textContent = 'Disconnect';
+        notionConnectBtn.textContent = await t('common.disconnect');
         notionConnectBtn.className = 'btn-notion btn-notion-disconnect';
       } else {
-        notionStatusText.textContent = '연결 안됨';
+        notionStatusText.textContent = await t('notion.notConnected');
         notionStatusText.className = 'notion-status-value disconnected';
-        notionConnectBtn.textContent = 'Connect';
+        notionConnectBtn.textContent = await t('common.connect');
         notionConnectBtn.className = 'btn-notion btn-notion-connect';
       }
       notionError.style.display = 'none';
@@ -1244,33 +1276,33 @@
 
       try {
         if (isConnected) {
-          notionConnectBtn.textContent = 'Disconnecting...';
+          notionConnectBtn.textContent = await t('notion.disconnecting');
           const result = await ipcRenderer.invoke('notion-disconnect');
           if (result.success) {
-            updateNotionUI({ connected: false });
+            await updateNotionUI({ connected: false });
           } else {
-            notionError.textContent = result.error || 'Failed to disconnect';
+            notionError.textContent = result.error || await t('notion.disconnectFailed');
             notionError.style.display = 'block';
           }
         } else {
-          notionConnectBtn.textContent = 'Connecting...';
+          notionConnectBtn.textContent = await t('notion.connecting');
           const result = await ipcRenderer.invoke('notion-connect');
           if (!result.success) {
-            notionError.textContent = result.error || 'Failed to start OAuth flow';
+            notionError.textContent = result.error || await t('notion.connectFailed');
             notionError.style.display = 'block';
-            updateNotionUI({ connected: false });
+            await updateNotionUI({ connected: false });
           }
         }
       } catch (error) {
         console.error('Notion action error:', error);
-        notionError.textContent = error.message || 'An error occurred';
+        notionError.textContent = error.message || await t('common.error');
         notionError.style.display = 'block';
       } finally {
         notionConnectBtn.disabled = false;
         if (!notionStatusText.classList.contains('connected')) {
-          notionConnectBtn.textContent = 'Connect';
+          notionConnectBtn.textContent = await t('common.connect');
         } else {
-          notionConnectBtn.textContent = 'Disconnect';
+          notionConnectBtn.textContent = await t('common.disconnect');
         }
       }
     });
@@ -1307,17 +1339,17 @@
       }
     }
 
-    function updateGmailUI(status) {
+    async function updateGmailUI(status) {
       if (status.connected) {
         const email = status.user?.email || 'Connected';
-        gmailStatusText.textContent = `${email} 연결됨`;
+        gmailStatusText.textContent = await t('gmail.connectedTo', { email: email });
         gmailStatusText.className = 'gmail-status-value connected';
-        gmailConnectBtn.textContent = 'Disconnect';
+        gmailConnectBtn.textContent = await t('common.disconnect');
         gmailConnectBtn.className = 'btn-gmail btn-gmail-disconnect';
       } else {
-        gmailStatusText.textContent = '연결 안됨';
+        gmailStatusText.textContent = await t('gmail.notConnected');
         gmailStatusText.className = 'gmail-status-value disconnected';
-        gmailConnectBtn.textContent = 'Connect';
+        gmailConnectBtn.textContent = await t('common.connect');
         gmailConnectBtn.className = 'btn-gmail btn-gmail-connect';
       }
       gmailError.style.display = 'none';
@@ -1331,33 +1363,33 @@
 
       try {
         if (isConnected) {
-          gmailConnectBtn.textContent = 'Disconnecting...';
+          gmailConnectBtn.textContent = await t('gmail.disconnecting');
           const result = await ipcRenderer.invoke('gmail-disconnect');
           if (result.success) {
-            updateGmailUI({ connected: false });
+            await updateGmailUI({ connected: false });
           } else {
-            gmailError.textContent = result.error || 'Failed to disconnect';
+            gmailError.textContent = result.error || await t('gmail.disconnectFailed');
             gmailError.style.display = 'block';
           }
         } else {
-          gmailConnectBtn.textContent = 'Connecting...';
+          gmailConnectBtn.textContent = await t('gmail.connecting');
           const result = await ipcRenderer.invoke('gmail-connect');
           if (!result.success) {
-            gmailError.textContent = result.error || 'Failed to start OAuth flow';
+            gmailError.textContent = result.error || await t('gmail.connectFailed');
             gmailError.style.display = 'block';
-            updateGmailUI({ connected: false });
+            await updateGmailUI({ connected: false });
           }
         }
       } catch (error) {
         console.error('Gmail action error:', error);
-        gmailError.textContent = error.message || 'An error occurred';
+        gmailError.textContent = error.message || await t('common.error');
         gmailError.style.display = 'block';
       } finally {
         gmailConnectBtn.disabled = false;
         if (!gmailStatusText.classList.contains('connected')) {
-          gmailConnectBtn.textContent = 'Connect';
+          gmailConnectBtn.textContent = await t('common.connect');
         } else {
-          gmailConnectBtn.textContent = 'Disconnect';
+          gmailConnectBtn.textContent = await t('common.disconnect');
         }
       }
     });
@@ -1379,6 +1411,28 @@
 
     loadGmailStatus();
 
+    // ==================== Language Settings ====================
+    const languageSelect = document.getElementById('languageSelect');
+
+    async function loadLanguage() {
+      try {
+        const currentLang = await ipcRenderer.invoke('get-language');
+        languageSelect.value = currentLang || 'en';
+      } catch (error) {
+        console.error('Failed to load language:', error);
+      }
+    }
+    loadLanguage();
+
+    languageSelect.addEventListener('change', async () => {
+      const newLang = languageSelect.value;
+      try {
+        await ipcRenderer.invoke('set-language', newLang);
+      } catch (error) {
+        console.error('Failed to set language:', error);
+      }
+    });
+
     async function loadVersion() {
       try {
         const version = await ipcRenderer.invoke('get-app-version');
@@ -1389,24 +1443,23 @@
     }
     loadVersion();
 
-    // 업데이트 확인 버튼
     const checkUpdateBtn = document.getElementById('checkUpdateBtn');
     checkUpdateBtn.addEventListener('click', async () => {
       checkUpdateBtn.disabled = true;
-      checkUpdateBtn.innerHTML = '<span class="loading"></span>확인 중...';
+      const checkingText = await t('settings.checking');
+      checkUpdateBtn.innerHTML = '<span class="loading"></span>' + checkingText;
 
       try {
         const result = await ipcRenderer.invoke('check-for-updates');
         if (!result.success && result.error) {
           alert(result.error);
         }
-        // 성공 시 메인 프로세스에서 다이얼로그 표시
       } catch (error) {
         console.error('Update check failed:', error);
-        alert('업데이트 확인에 실패했습니다');
+        alert(await t('settings.updateCheckFailed'));
       } finally {
         checkUpdateBtn.disabled = false;
-        checkUpdateBtn.textContent = '업데이트 확인';
+        checkUpdateBtn.textContent = await t('settings.checkUpdate');
       }
     });
   </script>
