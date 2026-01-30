@@ -41,6 +41,7 @@
     "analyzing": "AI is analyzing the screenshot...",
     "analysisFailed": "Analysis failed",
     "reanalyze": "Re-analyze",
+    "reanalyzing": "Re-analyzing with {{model}}...",
     "noResults": "No results found"
   },
   "form": {

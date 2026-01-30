@@ -41,6 +41,7 @@
     "analyzing": "AI가 스크린샷을 분석 중...",
     "analysisFailed": "분석 실패",
     "reanalyze": "다시 분석",
+    "reanalyzing": "{{model}}로 재분석 중...",
     "noResults": "검색 결과가 없습니다"
   },
   "form": {
