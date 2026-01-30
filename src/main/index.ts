@@ -1054,7 +1054,10 @@ app.whenReady().then(async () => {
     return getSupportedLanguages();
   });
 
-  geminiAnalyzer = createGeminiAnalyzer();
+  ipcMain.handle('translate', (_event, key: string, options?: Record<string, unknown>) => {
+    return t(key, options as Record<string, any>);
+  });
+
   geminiAnalyzer = createGeminiAnalyzer();
   if (geminiAnalyzer) {
     console.log('Gemini AI analysis enabled (default)');
