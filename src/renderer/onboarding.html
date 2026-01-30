@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Linear Capture</title>
+  <title data-i18n="app.name">Linear Capture</title>
   <style>
     * {
       box-sizing: border-box;
@@ -262,7 +262,7 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>Linear Capture</h1>
+      <h1 data-i18n="onboarding.step1Title">Linear Capture</h1>
       <div class="step-indicator">
         <span class="step-dot active" id="dot1"></span>
         <span class="step-dot" id="dot2"></span>
@@ -276,35 +276,35 @@
         <div class="shortcut">
           <kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd>
         </div>
-        <p class="description">
-          단축키로 화면을 캡처하고 바로 Linear 이슈를 생성하세요
+        <p class="description" data-i18n="onboarding.shortcutDescription">
+          Use the shortcut to capture your screen and instantly create a Linear issue
         </p>
       </div>
 
       <div class="warning">
         <span>⚠️</span>
-        <span>화면 녹화 권한이 필요합니다</span>
+        <span data-i18n="onboarding.permissionWarning">Screen recording permission required</span>
       </div>
 
       <div class="buttons">
-        <button class="btn-secondary" id="openSettings">권한 설정</button>
-        <button class="btn-primary" id="nextStep">다음</button>
+        <button class="btn-secondary" id="openSettings" data-i18n="onboarding.permissionButton">Permission Settings</button>
+        <button class="btn-primary" id="nextStep" data-i18n="common.next">Next</button>
       </div>
     </div>
 
     <!-- Step 2: Linear API Token -->
     <div class="step-content" id="step2">
       <div class="form-group">
-        <label for="token">Linear API Token</label>
-        <input type="password" id="token" placeholder="lin_api_xxxxxxxxxxxxx">
-        <p class="info-text">
-          Linear Settings &gt; API &gt; Personal API keys에서 발급
+        <label for="token" data-i18n="onboarding.step2Title">Linear API Token</label>
+        <input type="password" id="token" data-i18n-placeholder="settings.tokenPlaceholder" placeholder="lin_api_xxxxxxxxxxxxx">
+        <p class="info-text" data-i18n="onboarding.tokenDescription">
+          Get from Linear Settings &gt; API &gt; Personal API keys
         </p>
       </div>
 
       <div class="status-box">
         <span class="status-icon" id="statusIcon">⏳</span>
-        <span class="status-text" id="statusText">토큰을 입력하세요</span>
+        <span class="status-text" id="statusText" data-i18n="settings.enterToken">Enter your token</span>
       </div>
 
       <div class="user-info hidden" id="userInfo">
@@ -313,9 +313,9 @@
       </div>
 
       <div class="buttons">
-        <button class="btn-secondary" id="prevStep">이전</button>
-        <button class="btn-secondary" id="validateBtn">검증</button>
-        <button class="btn-primary" id="startBtn" disabled>시작</button>
+        <button class="btn-secondary" id="prevStep" data-i18n="common.previous">Previous</button>
+        <button class="btn-secondary" id="validateBtn" data-i18n="common.validate">Validate</button>
+        <button class="btn-primary" id="startBtn" disabled data-i18n="common.start">Start</button>
       </div>
     </div>
   </div>
@@ -323,7 +323,31 @@
   <script>
     const { ipcRenderer } = require('electron');
 
-    // Elements
+    // ==================== i18n Functions ====================
+    async function t(key, options = {}) {
+      return await ipcRenderer.invoke('translate', key, options);
+    }
+
+    async function translatePage() {
+      const elements = document.querySelectorAll('[data-i18n]');
+      for (const el of elements) {
+        const key = el.getAttribute('data-i18n');
+        el.textContent = await t(key);
+      }
+      const placeholders = document.querySelectorAll('[data-i18n-placeholder]');
+      for (const el of placeholders) {
+        const key = el.getAttribute('data-i18n-placeholder');
+        el.placeholder = await t(key);
+      }
+    }
+
+    ipcRenderer.on('language-changed', () => {
+      translatePage();
+    });
+
+    translatePage();
+
+    // ==================== Main Code ====================
     const step1 = document.getElementById('step1');
     const step2 = document.getElementById('step2');
     const dot1 = document.getElementById('dot1');
@@ -365,10 +389,9 @@
       }
     }
 
-    // Status display
-    function showPending() {
+    async function showPending() {
       statusIcon.textContent = '⏳';
-      statusText.textContent = '토큰을 입력하세요';
+      statusText.textContent = await t('settings.enterToken');
       statusText.className = 'status-text';
       userInfoDiv.classList.add('hidden');
       isValidated = false;
@@ -376,16 +399,16 @@
       startBtn.disabled = true;
     }
 
-    function showValidating() {
+    async function showValidating() {
       statusIcon.innerHTML = '<span class="loading"></span>';
-      statusText.textContent = '검증 중...';
+      statusText.textContent = await t('settings.validating');
       statusText.className = 'status-text';
       validateBtn.disabled = true;
     }
 
-    function showSuccess(user) {
+    async function showSuccess(user) {
       statusIcon.textContent = '✅';
-      statusText.textContent = '연결 성공!';
+      statusText.textContent = await t('onboarding.validationSuccess');
       statusText.className = 'status-text success';
       userInfoDiv.classList.remove('hidden');
       userName.textContent = `${user.name} (${user.email})`;
@@ -395,9 +418,9 @@
       startBtn.disabled = false;
     }
 
-    function showError(message) {
+    async function showError(message) {
       statusIcon.textContent = '❌';
-      statusText.textContent = message || '유효하지 않은 토큰입니다';
+      statusText.textContent = message || await t('onboarding.validationError');
       statusText.className = 'status-text error';
       userInfoDiv.classList.add('hidden');
       validateBtn.disabled = false;
@@ -426,22 +449,22 @@
     validateBtn.addEventListener('click', async () => {
       const token = tokenInput.value.trim();
       if (!token) {
-        showError('토큰을 입력하세요');
+        showError(await t('errors.tokenRequired'));
         return;
       }
 
-      showValidating();
+      await showValidating();
 
       try {
         const result = await ipcRenderer.invoke('validate-token', token);
 
         if (result.valid && result.user) {
-          showSuccess(result.user);
+          await showSuccess(result.user);
         } else {
-          showError(result.error || '유효하지 않은 토큰입니다');
+          showError(result.error || await t('onboarding.validationError'));
         }
       } catch (error) {
-        showError('검증 중 오류가 발생했습니다');
+        showError(await t('errors.validationError'));
       }
     });
 
@@ -449,27 +472,25 @@
       if (!isValidated || !validatedUser) return;
 
       startBtn.disabled = true;
-      startBtn.textContent = '저장 중...';
+      startBtn.textContent = await t('settings.saving');
 
       try {
-        // Save token and user info
         const result = await ipcRenderer.invoke('save-settings', {
           linearApiToken: tokenInput.value.trim(),
           userInfo: validatedUser
         });
 
         if (result.success) {
-          // Close onboarding and signal completion
           ipcRenderer.send('onboarding-complete');
         } else {
-          showError(result.error || '저장에 실패했습니다');
+          showError(result.error || await t('settings.saveFailed'));
           startBtn.disabled = false;
-          startBtn.textContent = '시작';
+          startBtn.textContent = await t('common.start');
         }
       } catch (error) {
-        showError('저장 중 오류가 발생했습니다');
+        showError(await t('errors.saveError'));
         startBtn.disabled = false;
-        startBtn.textContent = '시작';
+        startBtn.textContent = await t('common.start');
       }
     });
 
