@@ -1,5 +1,6 @@
 import { autoUpdater, UpdateInfo, ProgressInfo } from 'electron-updater';
 import { app, BrowserWindow, dialog } from 'electron';
+import { t } from '../main/i18n';
 
 // 로깅 설정 (electron-log 없이 console 사용)
 autoUpdater.logger = {
@@ -63,18 +64,18 @@ export function initAutoUpdater(window: BrowserWindow): void {
       if (isNoRelease) {
         dialog.showMessageBox({
           type: 'info',
-          title: '업데이트 확인',
-          message: '아직 배포된 버전이 없습니다',
-          detail: `현재 버전: ${app.getVersion()}\n\n새 버전이 배포되면 여기서 업데이트할 수 있습니다.`,
-          buttons: ['확인'],
+          title: t('update.checkTitle'),
+          message: t('update.noReleases'),
+          detail: t('update.noReleasesDetail', { version: app.getVersion() }),
+          buttons: [t('common.ok')],
         });
       } else {
         dialog.showMessageBox({
           type: 'warning',
-          title: '업데이트 확인 실패',
-          message: '업데이트를 확인할 수 없습니다',
-          detail: '네트워크 연결을 확인하고 다시 시도해주세요.',
-          buttons: ['확인'],
+          title: t('update.checkTitle'),
+          message: t('update.checkFailed'),
+          detail: t('update.checkFailedDetail'),
+          buttons: [t('common.ok')],
         });
       }
     }
@@ -113,7 +114,7 @@ export async function checkForUpdates(silent = true): Promise<void> {
     updateCheckInProgress = false;
     if (!silent) {
       manualCheckMode = false;
-      dialog.showErrorBox('Update Check Failed', 'Could not check for updates. Please try again later.');
+      dialog.showErrorBox(t('update.checkTitle'), t('update.checkFailedDetail'));
     }
   }
 }
@@ -122,13 +123,12 @@ export async function checkForUpdates(silent = true): Promise<void> {
  * 최신 버전일 때 다이얼로그 (수동 확인 시에만)
  */
 function showUpToDateDialog(): void {
-  const currentVersion = app.getVersion();
   dialog.showMessageBox({
     type: 'info',
-    title: 'No Updates Available',
-    message: 'You\'re up to date!',
-    detail: `Linear Capture ${currentVersion} is the latest version.`,
-    buttons: ['OK'],
+    title: t('update.upToDateTitle'),
+    message: t('update.upToDateMessage'),
+    detail: t('update.upToDateDetail', { version: app.getVersion() }),
+    buttons: [t('common.ok')],
   });
 }
 
@@ -136,15 +136,13 @@ function showUpToDateDialog(): void {
  * 업데이트 발견 시 다이얼로그
  */
 function showUpdateAvailableDialog(info: UpdateInfo): void {
-  const currentVersion = app.getVersion();
-
   dialog
     .showMessageBox({
       type: 'info',
-      title: 'Update Available',
-      message: `A new version of Linear Capture is available!`,
-      detail: `Current version: ${currentVersion}\nNew version: ${info.version}\n\nWould you like to download it now?`,
-      buttons: ['Download', 'Later'],
+      title: t('update.availableTitle'),
+      message: t('update.availableMessage'),
+      detail: t('update.availableDetail', { current: app.getVersion(), new: info.version }),
+      buttons: [t('common.download'), t('common.later')],
       defaultId: 0,
       cancelId: 1,
     })
@@ -160,19 +158,18 @@ function showUpdateAvailableDialog(info: UpdateInfo): void {
  */
 async function downloadUpdate(): Promise<void> {
   try {
-    // 다운로드 진행 알림
     dialog.showMessageBox({
       type: 'info',
-      title: 'Downloading Update',
-      message: 'Downloading update in the background...',
-      detail: 'You can continue using the app. We\'ll notify you when the download is complete.',
-      buttons: ['OK'],
+      title: t('update.downloadingTitle'),
+      message: t('update.downloadingMessage'),
+      detail: t('update.downloadingDetail'),
+      buttons: [t('common.ok')],
     });
 
     await autoUpdater.downloadUpdate();
   } catch (error) {
     console.error('[AutoUpdater] Download failed:', error);
-    dialog.showErrorBox('Download Failed', 'Failed to download the update. Please try again later.');
+    dialog.showErrorBox(t('update.downloadFailed'), t('update.downloadFailedDetail'));
   }
 }
 
@@ -183,13 +180,10 @@ function showRestartDialog(info: UpdateInfo): void {
   dialog
     .showMessageBox({
       type: 'info',
-      title: '업데이트 준비 완료',
-      message: `버전 ${info.version} 다운로드 완료`,
-      detail: '앱을 재시작하면 업데이트가 설치됩니다.\n\n' +
-              '⚠️ 재시작 후 핫키(⌘+Shift+L)가 작동하지 않으면:\n' +
-              '시스템 환경설정 → 개인 정보 보호 및 보안 → 화면 녹화에서\n' +
-              'Linear Capture를 다시 활성화해주세요.',
-      buttons: ['지금 재시작', '나중에'],
+      title: t('update.readyTitle'),
+      message: t('update.readyMessage', { version: info.version }),
+      detail: t('update.readyDetail'),
+      buttons: [t('update.restartNow'), t('common.later')],
       defaultId: 0,
       cancelId: 1,
     })
