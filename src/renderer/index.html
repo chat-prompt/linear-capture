@@ -1033,7 +1033,7 @@
     <div id="aiAnalysisSection">
       <!-- User Hint Input -->
       <div class="form-group" style="margin-bottom: 14px;">
-        <textarea id="userHint" data-i18n-placeholder="form.userHintPlaceholder" placeholder="(옵션) 리니어 이슈 생성 시 가장 집중해야할 내용이 있다면 작성해주세요" style="min-height: 60px; height: 60px; resize: none; font-size: 13px; padding: 8px 12px;"></textarea>
+        <textarea id="userHint" data-i18n-placeholder="form.userHintPlaceholder" placeholder="(Optional) Write what the AI should focus on when creating the Linear issue" style="min-height: 60px; height: 60px; resize: none; font-size: 13px; padding: 8px 12px;"></textarea>
       </div>
 
       <!-- Legacy single preview (hidden) -->
@@ -1043,19 +1043,19 @@
         <div class="form-group" style="flex: 2;">
           <label for="aiModel" data-i18n="form.aiModel">AI Model</label>
           <select id="aiModel" name="aiModel">
-            <option value="gemini" selected>Gemini 3 Flash (기본)</option>
+            <option value="gemini" selected>Gemini 3 Flash (Default)</option>
             <option value="haiku">Claude Haiku 4.5</option>
           </select>
         </div>
         <div class="form-group" style="flex: 1; display: flex; align-items: flex-end;">
-          <button type="button" id="reanalyzeBtn" class="btn-submit" style="width: 100%; padding: 10px;">분석 시작</button>
+          <button type="button" id="reanalyzeBtn" class="btn-submit" style="width: 100%; padding: 10px;">Start Analysis</button>
         </div>
       </div>
     </div>
 
     <div id="aiLoading" class="ai-loading hidden">
       <div class="spinner"></div>
-      <span id="aiLoadingText" data-i18n="capture.analyzing">AI가 스크린샷을 분석 중...</span>
+      <span id="aiLoadingText" data-i18n="capture.analyzing">AI is analyzing the screenshot...</span>
     </div>
 
     <div id="contextSection" class="context-section">
@@ -1081,46 +1081,46 @@
         
         <div id="slackContent">
           <div id="slackNotConnected" class="context-not-connected">
-            <p id="slackNotConnectedText" style="color: #888; margin-bottom: 12px;">Slack에 연결되지 않았습니다</p>
+            <p id="slackNotConnectedText" style="color: #888; margin-bottom: 12px;">Not connected to Slack</p>
             <button type="button" class="context-connect-btn" id="slackConnectFromMain">
-              <span>💬</span> <span id="slackConnectBtnText">Slack 연결하기</span>
+              <span>💬</span> <span id="slackConnectBtnText">Connect Slack</span>
             </button>
           </div>
           
           <div id="slackConnected" style="display: none;">
             <div class="context-search-row">
-              <input type="text" class="context-search-input" id="slackSearchInput" data-i18n-placeholder="context.slackPlaceholder" placeholder="Slack 메시지 검색...">
-              <button type="button" class="context-search-btn" id="slackSearchBtn" data-i18n="common.search">검색</button>
+              <input type="text" class="context-search-input" id="slackSearchInput" data-i18n-placeholder="context.slackPlaceholder" placeholder="Search Slack messages...">
+              <button type="button" class="context-search-btn" id="slackSearchBtn" data-i18n="common.search">Search</button>
             </div>
             <div id="slackLoading" class="context-loading" style="display: none;">
               <div class="spinner"></div>
-              <span data-i18n="context.searching">검색 중...</span>
+              <span data-i18n="context.searching">Searching...</span>
             </div>
             <div id="slackResults" class="context-results" style="display: none;"></div>
-            <div id="slackEmpty" class="context-empty" style="display: none;">검색 결과가 없습니다</div>
+            <div id="slackEmpty" class="context-empty" style="display: none;">No results found</div>
             <div id="slackSelectedCount" class="context-selected-count" style="display: none;"></div>
           </div>
         </div>
 
         <div id="notionContent" style="display: none;">
           <div id="notionNotConnected" class="context-not-connected">
-            <p id="notionNotConnectedText" style="color: #888; margin-bottom: 12px;">Notion에 연결되지 않았습니다</p>
+            <p id="notionNotConnectedText" style="color: #888; margin-bottom: 12px;">Not connected to Notion</p>
             <button type="button" class="context-connect-btn" id="notionConnectFromMain">
-              <span>📝</span> <span id="notionConnectBtnText">Notion 연결하기</span>
+              <span>📝</span> <span id="notionConnectBtnText">Connect Notion</span>
             </button>
           </div>
           
           <div id="notionConnected" style="display: none;">
             <div class="context-search-row">
-              <input type="text" class="context-search-input" id="notionSearchInput" data-i18n-placeholder="context.notionPlaceholder" placeholder="Notion 페이지 검색...">
-              <button type="button" class="context-search-btn" id="notionSearchBtn" data-i18n="common.search">검색</button>
+              <input type="text" class="context-search-input" id="notionSearchInput" data-i18n-placeholder="context.notionPlaceholder" placeholder="Search Notion pages...">
+              <button type="button" class="context-search-btn" id="notionSearchBtn" data-i18n="common.search">Search</button>
             </div>
             <div id="notionLoading" class="context-loading" style="display: none;">
               <div class="spinner"></div>
-              <span data-i18n="context.searching">검색 중...</span>
+              <span data-i18n="context.searching">Searching...</span>
             </div>
             <div id="notionResults" class="context-results" style="display: none;"></div>
-            <div id="notionEmpty" class="context-empty" style="display: none;">검색 결과가 없습니다</div>
+            <div id="notionEmpty" class="context-empty" style="display: none;">No results found</div>
             <div id="notionSelectedCount" class="context-selected-count" style="display: none;"></div>
           </div>
         </div>
@@ -1130,7 +1130,7 @@
     <form id="issueForm">
       <div class="form-group">
         <label for="title" data-i18n="form.titleRequired">Title *</label>
-        <input type="text" id="title" name="title" required data-i18n-placeholder="form.titlePlaceholder" placeholder="대상 - 구체적 내용 (예: 로그인 - 세션 만료 오류 수정)" />
+        <input type="text" id="title" name="title" required data-i18n-placeholder="form.titlePlaceholder" placeholder="Target - Specific content (e.g., Login - Fix session expiry error)" />
       </div>
 
       <div class="form-group">
@@ -1140,20 +1140,20 @@
 
       <div class="row">
         <div class="form-group">
-          <label for="team" data-i18n="form.teamRequired">Team *</label>
+          <label for="team">Team *</label>
           <select id="team" name="team" required>
-            <option value="" data-i18n="form.teamPlaceholder">Select team...</option>
+<option value="">Select team...</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label for="project" data-i18n="form.project">Project</label>
+          <label for="project">Project</label>
           <div class="searchable-select" id="projectContainer">
             <button type="button" class="select-trigger" id="projectTrigger">
-              <span data-i18n="common.none">None</span>
+              <span>None</span>
             </button>
             <div class="dropdown" id="projectDropdown">
-              <input type="text" class="search-input" id="projectSearch" data-i18n-placeholder="form.projectPlaceholder" placeholder="Search projects...">
+              <input type="text" class="search-input" id="projectSearch" placeholder="Search projects...">
               <div class="options" id="projectOptions"></div>
             </div>
             <input type="hidden" id="project" name="project" value="">
@@ -1163,16 +1163,16 @@
 
       <div class="row">
         <div class="form-group">
-          <label for="status" data-i18n="form.status">Status</label>
+          <label for="status">Status</label>
           <select id="status" name="status">
-            <option value="" data-i18n="common.default">Default</option>
+            <option value="">Default</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label for="priority" data-i18n="form.priority">Priority</label>
+          <label for="priority">Priority</label>
           <select id="priority" name="priority">
-            <option value="" data-i18n="form.priorityNone">No priority</option>
+            <option value="">No priority</option>
             <option value="1">🔴 Urgent</option>
             <option value="2">🟠 High</option>
             <option value="3">🟡 Medium</option>
@@ -1183,13 +1183,13 @@
 
       <div class="row">
         <div class="form-group">
-          <label for="assignee" data-i18n="form.assignee">Assignee</label>
+          <label for="assignee">Assignee</label>
           <div class="searchable-select" id="assigneeContainer">
             <button type="button" class="select-trigger" id="assigneeTrigger">
-              <span data-i18n="form.unassigned">Unassigned</span>
+              <span>Unassigned</span>
             </button>
             <div class="dropdown" id="assigneeDropdown">
-              <input type="text" class="search-input" id="assigneeSearch" data-i18n-placeholder="form.assigneePlaceholder" placeholder="Search assignees...">
+              <input type="text" class="search-input" id="assigneeSearch" placeholder="Search assignees...">
               <div class="options" id="assigneeOptions"></div>
             </div>
             <input type="hidden" id="assignee" name="assignee" value="">
@@ -1197,29 +1197,29 @@
         </div>
 
         <div class="form-group">
-          <label for="estimate" data-i18n="form.estimate">Estimate</label>
+          <label for="estimate">Estimate</label>
           <select id="estimate" name="estimate">
-            <option value="" data-i18n="common.none">None</option>
+            <option value="">None</option>
           </select>
         </div>
       </div>
 
       <div class="row">
         <div class="form-group">
-          <label for="cycle" data-i18n="form.cycle">Cycle</label>
+          <label for="cycle">Cycle</label>
           <select id="cycle" name="cycle">
-            <option value="" data-i18n="common.none">None</option>
+            <option value="">None</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label data-i18n="form.labels">Labels</label>
+          <label>Labels</label>
           <div class="label-select" id="labelSelect">
             <div class="label-chips-container" id="labelChipsContainer">
-              <span class="label-empty-hint" id="labelEmptyHint" data-i18n="form.labelsAdd">+ Add labels...</span>
+              <span class="label-empty-hint" id="labelEmptyHint">+ Add labels...</span>
             </div>
             <div class="label-dropdown" id="labelDropdown">
-              <input type="text" class="label-search-input" id="labelSearchInput" data-i18n-placeholder="form.labelsPlaceholder" placeholder="Search labels...">
+              <input type="text" class="label-search-input" id="labelSearchInput" placeholder="Search labels...">
               <div class="label-options" id="labelOptions"></div>
             </div>
           </div>
@@ -1242,13 +1242,13 @@
     <!-- Success Screen -->
     <div id="successScreen" class="success-screen hidden">
       <div class="success-icon">✅</div>
-      <div class="success-title" data-i18n="success.title">이슈가 생성되었습니다!</div>
+      <div class="success-title" data-i18n="success.title">Issue created!</div>
       <div class="success-issue-id" id="successIssueId"></div>
       <div class="success-buttons">
-        <button type="button" class="btn-submit" id="viewIssueBtn" data-i18n="success.viewInLinear">Linear에서 보기</button>
-        <button type="button" class="btn-cancel" id="closeSuccessBtn" data-i18n="common.close">닫기</button>
+        <button type="button" class="btn-submit" id="viewIssueBtn" data-i18n="success.viewInLinear">View in Linear</button>
+        <button type="button" class="btn-cancel" id="closeSuccessBtn" data-i18n="common.close">Close</button>
       </div>
-      <div class="success-hint" data-i18n="success.urlCopied">URL이 클립보드에 복사되었습니다</div>
+      <div class="success-hint" data-i18n="success.urlCopied">URL copied to clipboard</div>
     </div>
   </div>
 
@@ -1262,6 +1262,7 @@
   </div>
 
   <script>
+    console.log('[index.html] Script loading...');
     const { ipcRenderer } = require('electron');
 
     // ==================== i18n Functions ====================
@@ -1283,11 +1284,44 @@
       document.title = await t('capture.title') + ' - Linear Capture';
     }
 
-    ipcRenderer.on('language-changed', () => {
-      translatePage();
+    async function autoTranslate() {
+      const reverseMap = await ipcRenderer.invoke('get-reverse-translation-map');
+      
+      const walker = document.createTreeWalker(
+        document.body, NodeFilter.SHOW_TEXT, null, false
+      );
+      
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        const text = node.textContent.trim();
+        if (text && reverseMap[text]) {
+          node.textContent = await t(reverseMap[text]);
+        }
+      }
+      
+      for (const el of document.querySelectorAll('[placeholder]')) {
+        const placeholder = el.getAttribute('placeholder');
+        if (placeholder && reverseMap[placeholder]) {
+          el.placeholder = await t(reverseMap[placeholder]);
+        }
+      }
+    }
+
+    ipcRenderer.on('language-changed', async () => {
+      try {
+        await translatePage();
+        await autoTranslate();
+        if (typeof renderGallery === 'function') await renderGallery();
+        if (typeof updateShortcutHint === 'function') await updateShortcutHint();
+        if (typeof updateSlackUI === 'function' && slackConnectedStatus) await updateSlackUI({ connected: true });
+        if (typeof updateNotionUI === 'function' && notionConnectedStatus) await updateNotionUI({ connected: true });
+      } catch (e) {
+        console.error('Language change handler error:', e);
+      }
     });
 
     translatePage();
+    document.addEventListener('DOMContentLoaded', autoTranslate);
 
     // Settings button
     const settingsBtn = document.getElementById('settingsBtn');
@@ -1872,7 +1906,7 @@
     }
 
     // Receive capture data from main process
-    ipcRenderer.on('capture-ready', (event, data) => {
+    ipcRenderer.on('capture-ready', async (event, data) => {
       console.log('Capture ready:', data);
 
       try {
@@ -2005,7 +2039,7 @@
     });
 
     // Handle AI analysis results (received after window is shown)
-    ipcRenderer.on('ai-analysis-ready', (event, data) => {
+    ipcRenderer.on('ai-analysis-ready', async (event, data) => {
       console.log('AI analysis ready:', data);
 
       // Hide AI loading spinner
@@ -2456,7 +2490,7 @@
     });
 
     // 5. Render Slack Search Results
-    function renderSlackResults(messages) {
+    async function renderSlackResults(messages) {
       slackResults.innerHTML = '';
       
       messages.forEach(msg => {
@@ -2509,7 +2543,7 @@
       await updateSelectedCount();
     }
 
-    function renderNotionResults(pages) {
+    async function renderNotionResults(pages) {
       notionResults.innerHTML = '';
       
       pages.forEach(page => {

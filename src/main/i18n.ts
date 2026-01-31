@@ -19,7 +19,7 @@ export async function initI18n(language?: string): Promise<typeof i18next> {
   const isDev = !app.isPackaged;
   const localesPath = isDev
     ? path.join(__dirname, '../../locales')
-    : path.join(process.resourcesPath!, 'locales');
+    : path.join(app.getAppPath(), 'locales');
 
   await i18next.use(Backend).init({
     lng,
@@ -38,11 +38,18 @@ export async function initI18n(language?: string): Promise<typeof i18next> {
 }
 
 export function t(key: string, options?: Record<string, any>): string {
-  return i18next.t(key, options || {}) as string;
+  const result = i18next.t(key, options || {}) as string;
+  // Debug: log language on first few calls
+  if (key === 'capture.title' || key === 'settings.title') {
+    console.log(`[i18n] t('${key}') lang=${i18next.language} => '${result}'`);
+  }
+  return result;
 }
 
 export async function changeLanguage(lng: string): Promise<void> {
+  console.log(`[i18n] changeLanguage called: ${lng}, current: ${i18next.language}`);
   await i18next.changeLanguage(lng);
+  console.log(`[i18n] changeLanguage done: now ${i18next.language}`);
 }
 
 export function getCurrentLanguage(): string {

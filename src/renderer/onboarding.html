@@ -341,11 +341,36 @@
       }
     }
 
-    ipcRenderer.on('language-changed', () => {
-      translatePage();
+    async function autoTranslate() {
+      const reverseMap = await ipcRenderer.invoke('get-reverse-translation-map');
+      
+      const walker = document.createTreeWalker(
+        document.body, NodeFilter.SHOW_TEXT, null, false
+      );
+      
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        const text = node.textContent.trim();
+        if (text && reverseMap[text]) {
+          node.textContent = await t(reverseMap[text]);
+        }
+      }
+      
+      for (const el of document.querySelectorAll('[placeholder]')) {
+        const placeholder = el.getAttribute('placeholder');
+        if (placeholder && reverseMap[placeholder]) {
+          el.placeholder = await t(reverseMap[placeholder]);
+        }
+      }
+    }
+
+    ipcRenderer.on('language-changed', async () => {
+      await translatePage();
+      await autoTranslate();
     });
 
     translatePage();
+    document.addEventListener('DOMContentLoaded', autoTranslate);
 
     // ==================== Main Code ====================
     const step1 = document.getElementById('step1');

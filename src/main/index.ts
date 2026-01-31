@@ -7,7 +7,7 @@ app.disableHardwareAcceleration();
 
 import { registerHotkey, unregisterAllHotkeys, updateHotkey, validateHotkey, formatHotkeyForDisplay, getCurrentShortcut, DEFAULT_SHORTCUT } from './hotkey';
 import { createTray, destroyTray } from './tray';
-import { initI18n, t, changeLanguage } from './i18n';
+import { initI18n, t, changeLanguage, i18next } from './i18n';
 import { createCaptureService, cleanupCapture, ICaptureService } from '../services/capture';
 import { createR2UploaderFromEnv } from '../services/r2-uploader';
 import { createLinearServiceFromEnv, validateLinearToken, TeamInfo, ProjectInfo, UserInfo, WorkflowStateInfo, CycleInfo, LabelInfo } from '../services/linear-client';
@@ -1044,7 +1044,8 @@ app.whenReady().then(async () => {
   ipcMain.handle('set-language', async (_event, lang: string) => {
     setLanguage(lang);
     await changeLanguage(lang);
-    BrowserWindow.getAllWindows().forEach(win => {
+    const allWindows = BrowserWindow.getAllWindows();
+    allWindows.forEach(win => {
       win.webContents.send('language-changed', lang);
     });
     return { success: true };
@@ -1056,6 +1057,25 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('translate', (_event, key: string, options?: Record<string, unknown>) => {
     return t(key, options as Record<string, any>);
+  });
+
+  // Reverse translation map for autoTranslate
+  ipcMain.handle('get-reverse-translation-map', () => {
+    const translations = i18next.getResourceBundle('en', 'translation');
+    const reverseMap: Record<string, string> = {};
+    
+    function flatten(obj: any, prefix = '') {
+      for (const key in obj) {
+        const fullKey = prefix ? `${prefix}.${key}` : key;
+        if (typeof obj[key] === 'object' && obj[key] !== null) {
+          flatten(obj[key], fullKey);
+        } else if (typeof obj[key] === 'string') {
+          reverseMap[obj[key]] = fullKey;
+        }
+      }
+    }
+    flatten(translations);
+    return reverseMap;
   });
 
   geminiAnalyzer = createGeminiAnalyzer();
