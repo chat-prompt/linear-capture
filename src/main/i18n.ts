@@ -3,7 +3,7 @@ import Backend from 'i18next-fs-backend';
 import * as path from 'path';
 import { app } from 'electron';
 
-const SUPPORTED_LANGUAGES = ['en', 'ko'] as const;
+const SUPPORTED_LANGUAGES = ['en', 'ko', 'de', 'fr', 'es'] as const;
 type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
 
 let initialized = false;
