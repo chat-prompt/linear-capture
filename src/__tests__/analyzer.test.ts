@@ -7,6 +7,7 @@ describe('Analyzer Services - instruction field', () => {
       projects: [{ id: '1', name: 'Test Project' }],
       users: [{ id: 'user1', name: 'John Doe' }],
       instruction: 'Custom instruction for analysis',
+      language: 'ko',
     };
 
     expect(context.instruction).toBe('Custom instruction for analysis');
@@ -16,6 +17,7 @@ describe('Analyzer Services - instruction field', () => {
     const context: AnalysisContext = {
       projects: [{ id: '1', name: 'Test Project' }],
       users: [{ id: 'user1', name: 'John Doe' }],
+      language: 'en',
     };
 
     expect(context.instruction).toBeUndefined();
@@ -26,6 +28,7 @@ describe('Analyzer Services - instruction field', () => {
       projects: [{ id: '1', name: 'Test Project' }],
       users: [{ id: 'user1', name: 'John Doe' }],
       instruction: 'Analyze this screenshot carefully',
+      language: 'ko',
     };
 
     expect(context).toHaveProperty('instruction');
@@ -36,6 +39,7 @@ describe('Analyzer Services - instruction field', () => {
     const context: AnalysisContext = {
       projects: [{ id: '1', name: 'Test Project' }],
       users: [{ id: 'user1', name: 'John Doe' }],
+      language: 'en',
     };
 
     expect(context.instruction).toBeUndefined();

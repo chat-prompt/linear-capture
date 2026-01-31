@@ -20,6 +20,7 @@ export interface AnalysisContext {
   users: Array<{ id: string; name: string }>;
   defaultTeamId?: string;
   instruction?: string;
+  language: string;
 }
 
 export class GeminiAnalyzer {
@@ -92,6 +93,7 @@ export class GeminiAnalyzer {
         users: context.users
       } : undefined,
       instruction: context?.instruction,
+      language: context?.language,
       model: 'gemini'
     };
 

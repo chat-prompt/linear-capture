@@ -7,7 +7,7 @@ app.disableHardwareAcceleration();
 
 import { registerHotkey, unregisterAllHotkeys, updateHotkey, validateHotkey, formatHotkeyForDisplay, getCurrentShortcut, DEFAULT_SHORTCUT } from './hotkey';
 import { createTray, destroyTray } from './tray';
-import { initI18n, t, changeLanguage, i18next } from './i18n';
+import { initI18n, t, changeLanguage, i18next, getCurrentLanguage } from './i18n';
 import { createCaptureService, cleanupCapture, ICaptureService } from '../services/capture';
 import { createR2UploaderFromEnv } from '../services/r2-uploader';
 import { createLinearServiceFromEnv, validateLinearToken, TeamInfo, ProjectInfo, UserInfo, WorkflowStateInfo, CycleInfo, LabelInfo } from '../services/linear-client';
@@ -732,6 +732,7 @@ app.whenReady().then(async () => {
       users: usersCache.map(u => ({ id: u.id, name: u.name })),
       defaultTeamId: process.env.DEFAULT_TEAM_ID,
       instruction: data.instruction,
+      language: getCurrentLanguage(),
     };
 
     try {
