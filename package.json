@@ -18,7 +18,8 @@
     "dist:win": "npm run build && electron-builder --win",
     "dist:all": "npm run build && electron-builder --mac --win",
     "reinstall": "./scripts/clean-reinstall.sh",
-    "reinstall:quick": "./scripts/quick-reinstall.sh"
+    "reinstall:quick": "./scripts/quick-reinstall.sh",
+    "validate:i18n": "node scripts/validate-i18n.js"
   },
   "build": {
     "appId": "com.gpters.linear-capture",
