@@ -111,7 +111,8 @@
     "checking": "Checking...",
     "updateCheckFailed": "Update check failed",
     "language": "Language",
-    "languageHint": "Select app display language"
+    "languageHint": "Select app display language",
+    "integrations": "Integrations"
   },
   "hotkey": {
     "title": "Capture Hotkey",

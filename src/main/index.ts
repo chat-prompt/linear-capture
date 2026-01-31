@@ -282,8 +282,8 @@ function createSettingsWindow(): void {
   }
 
   settingsWindow = new BrowserWindow({
-    width: 480,
-    height: 630,
+    width: 540,
+    height: 800,
     show: false,
     frame: true, // 신호등 버튼 표시
     resizable: false,

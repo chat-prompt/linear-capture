@@ -194,16 +194,6 @@
       text-decoration: underline;
     }
 
-    .btn-close {
-      background: #f5f5f5;
-      border: 1px solid #ddd;
-      color: #666;
-    }
-
-    .btn-close:hover:not(:disabled) {
-      background: #eee;
-    }
-
     /* Version & Update Section */
     .version-section {
       display: flex;
@@ -337,273 +327,98 @@
       margin-top: 8px;
     }
 
-    .slack-section {
+    /* Integrations Section - Unified Compact Design */
+    .integrations-section {
       margin-top: 20px;
       padding-top: 16px;
       border-top: 1px solid #eee;
     }
 
-    .slack-section h2 {
+    .integrations-section h2 {
       font-size: 14px;
       font-weight: 600;
       color: #333;
       margin-bottom: 12px;
+    }
+
+    .integration-row {
       display: flex;
       align-items: center;
-      gap: 8px;
-    }
-
-    .slack-section h2 img {
-      width: 20px;
-      height: 20px;
-    }
-
-    .slack-status-box {
+      padding: 10px 12px;
       background: #f8f9fa;
       border-radius: 8px;
-      padding: 12px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      margin-bottom: 6px;
     }
 
-    .slack-status-info {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
+    .integration-row:last-of-type {
+      margin-bottom: 0;
     }
 
-    .slack-status-label {
-      font-size: 12px;
-      color: #888;
+    .integration-logo {
+      width: 18px;
+      height: 18px;
+      margin-right: 10px;
+      flex-shrink: 0;
     }
 
-    .slack-status-value {
+    .integration-name {
       font-size: 14px;
       font-weight: 500;
       color: #333;
+      width: 60px;
+      flex-shrink: 0;
     }
 
-    .slack-status-value.disconnected {
+    .integration-status {
+      flex: 1;
+      font-size: 13px;
       color: #888;
+      text-align: right;
+      margin-right: 12px;
     }
 
-    .slack-status-value.connected {
+    .integration-status.connected {
       color: #22c55e;
     }
 
-    .btn-slack {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 16px;
+    .btn-integration {
+      padding: 6px 14px;
       border-radius: 6px;
       font-size: 13px;
       font-weight: 500;
       cursor: pointer;
       transition: all 0.2s;
-    }
-
-    .btn-slack-connect {
-      background: #4A154B;
-      color: white;
       border: none;
+      background: #5e6ad2;
+      color: white;
+      min-width: 80px;
     }
 
-    .btn-slack-connect:hover:not(:disabled) {
-      background: #611f69;
+    .btn-integration:hover:not(:disabled) {
+      background: #4c5abd;
     }
 
-    .btn-slack-disconnect {
+    .btn-integration:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-integration.disconnect {
       background: #f5f5f5;
       border: 1px solid #ddd;
       color: #666;
     }
 
-    .btn-slack-disconnect:hover:not(:disabled) {
+    .btn-integration.disconnect:hover:not(:disabled) {
       background: #eee;
     }
 
-    .slack-error {
+    .integration-error {
       font-size: 12px;
       color: #ef4444;
-      margin-top: 8px;
-    }
-
-    .notion-section {
-      margin-top: 20px;
-      padding-top: 16px;
-      border-top: 1px solid #eee;
-    }
-
-    .notion-section h2 {
-      font-size: 14px;
-      font-weight: 600;
-      color: #333;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .notion-status-box {
-      background: #f8f9fa;
-      border-radius: 8px;
-      padding: 12px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .notion-status-info {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .notion-status-label {
-      font-size: 12px;
-      color: #888;
-    }
-
-    .notion-status-value {
-      font-size: 14px;
-      font-weight: 500;
-      color: #333;
-    }
-
-    .notion-status-value.disconnected {
-      color: #888;
-    }
-
-    .notion-status-value.connected {
-      color: #22c55e;
-    }
-
-    .btn-notion {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .btn-notion-connect {
-      background: #000000;
-      color: white;
-      border: none;
-    }
-
-    .btn-notion-connect:hover:not(:disabled) {
-      background: #333333;
-    }
-
-    .btn-notion-disconnect {
-      background: #f5f5f5;
-      border: 1px solid #ddd;
-      color: #666;
-    }
-
-    .btn-notion-disconnect:hover:not(:disabled) {
-      background: #eee;
-    }
-
-    .notion-error {
-      font-size: 12px;
-      color: #ef4444;
-      margin-top: 8px;
-    }
-
-    .gmail-section {
-      margin-top: 20px;
-      padding-top: 16px;
-      border-top: 1px solid #eee;
-    }
-
-    .gmail-section h2 {
-      font-size: 14px;
-      font-weight: 600;
-      color: #333;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .gmail-status-box {
-      background: #f8f9fa;
-      border-radius: 8px;
-      padding: 12px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .gmail-status-info {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .gmail-status-label {
-      font-size: 12px;
-      color: #888;
-    }
-
-    .gmail-status-value {
-      font-size: 14px;
-      font-weight: 500;
-      color: #333;
-    }
-
-    .gmail-status-value.disconnected {
-      color: #888;
-    }
-
-    .gmail-status-value.connected {
-      color: #22c55e;
-    }
-
-    .btn-gmail {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .btn-gmail-connect {
-      background: #EA4335;
-      color: white;
-      border: none;
-    }
-
-    .btn-gmail-connect:hover:not(:disabled) {
-      background: #d33426;
-    }
-
-    .btn-gmail-disconnect {
-      background: #f5f5f5;
-      border: 1px solid #ddd;
-      color: #666;
-    }
-
-    .btn-gmail-disconnect:hover:not(:disabled) {
-      background: #eee;
-    }
-
-    .gmail-error {
-      font-size: 12px;
-      color: #ef4444;
-      margin-top: 8px;
+      margin-top: 4px;
+      margin-bottom: 6px;
+      padding-left: 28px;
     }
   </style>
 </head>
@@ -635,57 +450,49 @@
 
     <div class="buttons">
       <button class="btn-danger" id="clearBtn" style="display: none;" data-i18n="common.delete">Delete</button>
-      <button class="btn-secondary" id="validateBtn" data-i18n="common.validate">Validate</button>
-      <button class="btn-primary" id="saveBtn" disabled data-i18n="common.save">Save</button>
-      <button class="btn-close" id="closeBtn" data-i18n="common.close">Close</button>
+      <button class="btn-primary" id="validateBtn" data-i18n="common.validate">Validate</button>
+      <button class="btn-secondary" id="saveBtn" disabled data-i18n="common.save">Save</button>
     </div>
 
-    <!-- Slack Section -->
-    <div class="slack-section">
-      <h2>
-        <span style="font-size:20px;">💬</span>
-        <span data-i18n="slack.title">Slack</span>
-      </h2>
-      <div class="slack-status-box">
-        <div class="slack-status-info">
-          <span class="slack-status-label" data-i18n="common.status">Status</span>
-          <span class="slack-status-value disconnected" id="slackStatusText" data-i18n="slack.notConnected">Not connected</span>
-        </div>
-        <button class="btn-slack btn-slack-connect" id="slackConnectBtn" data-i18n="common.connect">Connect</button>
+    <!-- Integrations Section -->
+    <div class="integrations-section">
+      <h2 data-i18n="settings.integrations">Integrations</h2>
+      
+      <!-- Slack -->
+      <div class="integration-row">
+        <svg class="integration-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313z" fill="#E01E5A"/>
+          <path d="M8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312z" fill="#36C5F0"/>
+          <path d="M18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.27 0a2.528 2.528 0 0 1-2.522 2.521 2.528 2.528 0 0 1-2.52-2.521V2.522A2.528 2.528 0 0 1 15.165 0a2.528 2.528 0 0 1 2.521 2.522v6.312z" fill="#2EB67D"/>
+          <path d="M15.165 18.956a2.528 2.528 0 0 1 2.521 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.27a2.527 2.527 0 0 1-2.52-2.522 2.527 2.527 0 0 1 2.52-2.52h6.313A2.528 2.528 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.521h-6.313z" fill="#ECB22E"/>
+        </svg>
+        <span class="integration-name" data-i18n="slack.title">Slack</span>
+        <span class="integration-status" id="slackStatusText" data-i18n="slack.notConnected">Not connected</span>
+        <button class="btn-integration" id="slackConnectBtn" data-i18n="common.connect">Connect</button>
       </div>
-      <div id="slackError" class="slack-error" style="display: none;"></div>
-    </div>
-
-    <!-- Notion Section -->
-    <div class="notion-section">
-      <h2>
-        <span style="font-size:20px;">📝</span>
-        <span data-i18n="notion.title">Notion</span>
-      </h2>
-      <div class="notion-status-box">
-        <div class="notion-status-info">
-          <span class="notion-status-label" data-i18n="common.status">Status</span>
-          <span class="notion-status-value disconnected" id="notionStatusText" data-i18n="notion.notConnected">Not connected</span>
-        </div>
-        <button class="btn-notion btn-notion-connect" id="notionConnectBtn" data-i18n="common.connect">Connect</button>
+      <div id="slackError" class="integration-error" style="display: none;"></div>
+      
+      <!-- Notion -->
+      <div class="integration-row">
+        <svg class="integration-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.98-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466l1.823 1.447zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.934-.56.934-1.166V6.354c0-.606-.233-.933-.747-.886l-15.177.887c-.56.046-.747.326-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.747 0-.934-.234-1.495-.933l-4.577-7.186v6.952l1.448.327s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.886.747-.933l3.222-.186zM2.877.466L16.039.014c1.635-.14 2.055.093 2.755.606l3.596 2.521c.56.373.746.466.746 1.072v17.04c0 .72-.28 1.19-1.12 1.236L6.03 23.466c-.653.046-1.025-.046-1.4-.56l-3.5-4.624c-.374-.56-.514-.98-.514-1.493V1.906c0-.653.28-1.12.98-1.16l1.281-.28z" fill="#000"/>
+        </svg>
+        <span class="integration-name" data-i18n="notion.title">Notion</span>
+        <span class="integration-status" id="notionStatusText" data-i18n="notion.notConnected">Not connected</span>
+        <button class="btn-integration" id="notionConnectBtn" data-i18n="common.connect">Connect</button>
       </div>
-      <div id="notionError" class="notion-error" style="display: none;"></div>
-    </div>
-
-    <!-- Gmail Section -->
-    <div class="gmail-section">
-      <h2>
-        <span style="font-size:20px;">📧</span>
-        <span data-i18n="gmail.title">Gmail</span>
-      </h2>
-      <div class="gmail-status-box">
-        <div class="gmail-status-info">
-          <span class="gmail-status-label" data-i18n="common.status">Status</span>
-          <span class="gmail-status-value disconnected" id="gmailStatusText" data-i18n="gmail.notConnected">Not connected</span>
-        </div>
-        <button class="btn-gmail btn-gmail-connect" id="gmailConnectBtn" data-i18n="common.connect">Connect</button>
+      <div id="notionError" class="integration-error" style="display: none;"></div>
+      
+      <!-- Gmail -->
+      <div class="integration-row">
+        <svg class="integration-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/>
+        </svg>
+        <span class="integration-name" data-i18n="gmail.title">Gmail</span>
+        <span class="integration-status" id="gmailStatusText" data-i18n="gmail.notConnected">Not connected</span>
+        <button class="btn-integration" id="gmailConnectBtn" data-i18n="common.connect">Connect</button>
       </div>
-      <div id="gmailError" class="gmail-error" style="display: none;"></div>
+      <div id="gmailError" class="integration-error" style="display: none;"></div>
     </div>
 
     <!-- Hotkey Section -->
@@ -796,8 +603,6 @@
     const clearBtn = document.getElementById('clearBtn');
     const validateBtn = document.getElementById('validateBtn');
     const saveBtn = document.getElementById('saveBtn');
-    const closeBtn = document.getElementById('closeBtn');
-
     let isValidated = false;
     let validatedUser = null;
 
@@ -829,6 +634,8 @@
       errorMessage.style.display = 'none';
       isValidated = false;
       validatedUser = null;
+      validateBtn.className = 'btn-primary';
+      saveBtn.className = 'btn-secondary';
       saveBtn.disabled = true;
     }
 
@@ -849,9 +656,11 @@
       userInfoRow.style.display = 'flex';
       userInfo.textContent = user.name + ' (' + user.email + ')';
       errorMessage.style.display = 'none';
+      validateBtn.className = 'btn-secondary';
       validateBtn.disabled = false;
       validatedUser = user;
       isValidated = true;
+      saveBtn.className = 'btn-primary';
       saveBtn.disabled = false;
     }
 
@@ -862,9 +671,11 @@
       userInfoRow.style.display = 'none';
       errorMessage.textContent = message;
       errorMessage.style.display = 'block';
+      validateBtn.className = 'btn-primary';
       validateBtn.disabled = false;
       isValidated = false;
       validatedUser = null;
+      saveBtn.className = 'btn-secondary';
       saveBtn.disabled = true;
     }
 
@@ -964,11 +775,6 @@
           validateBtn.click();
         }
       }
-    });
-
-    // 닫기 버튼
-    closeBtn.addEventListener('click', () => {
-      ipcRenderer.invoke('close-settings');
     });
 
     // 설정 로드
@@ -1200,14 +1006,14 @@
       if (status.connected) {
         const workspaceName = status.workspace?.name || 'Workspace';
         slackStatusText.textContent = await t('slack.connectedTo', { workspace: workspaceName });
-        slackStatusText.className = 'slack-status-value connected';
+        slackStatusText.className = 'integration-status connected';
         slackConnectBtn.textContent = await t('common.disconnect');
-        slackConnectBtn.className = 'btn-slack btn-slack-disconnect';
+        slackConnectBtn.className = 'btn-integration disconnect';
       } else {
         slackStatusText.textContent = await t('slack.notConnected');
-        slackStatusText.className = 'slack-status-value disconnected';
+        slackStatusText.className = 'integration-status';
         slackConnectBtn.textContent = await t('common.connect');
-        slackConnectBtn.className = 'btn-slack btn-slack-connect';
+        slackConnectBtn.className = 'btn-integration';
       }
       slackError.style.display = 'none';
     }
@@ -1287,14 +1093,14 @@
       if (status.connected) {
         const workspaceName = status.workspace?.name || 'Workspace';
         notionStatusText.textContent = await t('notion.connectedTo', { workspace: workspaceName });
-        notionStatusText.className = 'notion-status-value connected';
+        notionStatusText.className = 'integration-status connected';
         notionConnectBtn.textContent = await t('common.disconnect');
-        notionConnectBtn.className = 'btn-notion btn-notion-disconnect';
+        notionConnectBtn.className = 'btn-integration disconnect';
       } else {
         notionStatusText.textContent = await t('notion.notConnected');
-        notionStatusText.className = 'notion-status-value disconnected';
+        notionStatusText.className = 'integration-status';
         notionConnectBtn.textContent = await t('common.connect');
-        notionConnectBtn.className = 'btn-notion btn-notion-connect';
+        notionConnectBtn.className = 'btn-integration';
       }
       notionError.style.display = 'none';
     }
@@ -1374,14 +1180,14 @@
       if (status.connected) {
         const email = status.user?.email || 'Connected';
         gmailStatusText.textContent = await t('gmail.connectedTo', { email: email });
-        gmailStatusText.className = 'gmail-status-value connected';
+        gmailStatusText.className = 'integration-status connected';
         gmailConnectBtn.textContent = await t('common.disconnect');
-        gmailConnectBtn.className = 'btn-gmail btn-gmail-disconnect';
+        gmailConnectBtn.className = 'btn-integration disconnect';
       } else {
         gmailStatusText.textContent = await t('gmail.notConnected');
-        gmailStatusText.className = 'gmail-status-value disconnected';
+        gmailStatusText.className = 'integration-status';
         gmailConnectBtn.textContent = await t('common.connect');
-        gmailConnectBtn.className = 'btn-gmail btn-gmail-connect';
+        gmailConnectBtn.className = 'btn-integration';
       }
       gmailError.style.display = 'none';
     }

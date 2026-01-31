@@ -111,7 +111,8 @@
     "checking": "Vérification...",
     "updateCheckFailed": "Échec de la vérification des mises à jour",
     "language": "Langue",
-    "languageHint": "Sélectionner la langue d'affichage de l'application"
+    "languageHint": "Sélectionner la langue d'affichage de l'application",
+    "integrations": "Intégrations"
   },
   "hotkey": {
     "title": "Raccourci de capture",
