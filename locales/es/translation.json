@@ -111,7 +111,8 @@
     "checking": "Verificando...",
     "updateCheckFailed": "Error al verificar actualizaciones",
     "language": "Idioma",
-    "languageHint": "Seleccionar idioma de la aplicación"
+    "languageHint": "Seleccionar idioma de la aplicación",
+    "integrations": "Integraciones"
   },
   "hotkey": {
     "title": "Atajo de captura",

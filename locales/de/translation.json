@@ -111,7 +111,8 @@
     "checking": "Wird überprüft...",
     "updateCheckFailed": "Update-Prüfung fehlgeschlagen",
     "language": "Sprache",
-    "languageHint": "App-Anzeigesprache auswählen"
+    "languageHint": "App-Anzeigesprache auswählen",
+    "integrations": "Integrationen"
   },
   "hotkey": {
     "title": "Erfassungs-Tastenkürzel",

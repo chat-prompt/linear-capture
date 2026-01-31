@@ -56,8 +56,8 @@ Linear Capture 앱에 German, French, Spanish 언어 지원 추가
 8. `package.json` - validate:i18n 스크립트 추가
 
 ### Definition of Done
-- [ ] `npm run validate:i18n` 실행 시 exit code 0
-- [ ] 모든 언어 파일이 동일한 키 구조 보유
+- [x] `npm run validate:i18n` 실행 시 exit code 0
+- [x] 모든 언어 파일이 동일한 키 구조 보유
 
 ### Must Have
 - 3개 번역 파일 (de/fr/es)
@@ -131,7 +131,7 @@ Parallel Speedup: ~30% faster than sequential
 
 ## TODOs
 
-- [ ] 1. 번역 파일 3개 생성 (de/fr/es)
+- [x] 1. 번역 파일 3개 생성 (de/fr/es)
 
   **What to do**:
   - `locales/en/translation.json`을 기준으로 AI 번역
@@ -179,7 +179,7 @@ Parallel Speedup: ~30% faster than sequential
 
 ---
 
-- [ ] 2. 설정 파일 3곳 업데이트
+- [x] 2. 설정 파일 3곳 업데이트
 
   **What to do**:
   - `src/main/i18n.ts:6` - SUPPORTED_LANGUAGES 배열에 'de', 'fr', 'es' 추가
@@ -229,7 +229,7 @@ Parallel Speedup: ~30% faster than sequential
 
 ---
 
-- [ ] 3. 검증 스크립트 생성 및 실행
+- [x] 3. 검증 스크립트 생성 및 실행
 
   **What to do**:
   - `scripts/validate-i18n.js` 생성
@@ -310,8 +310,8 @@ npm run build
 ```
 
 ### Final Checklist
-- [ ] 5개 언어 파일 존재 (en, ko, de, fr, es)
-- [ ] 모든 파일 동일한 키 구조
-- [ ] settings.html에 5개 언어 옵션
-- [ ] validate:i18n 스크립트 통과
-- [ ] 기존 en/ko 파일 변경 없음
+- [x] 5개 언어 파일 존재 (en, ko, de, fr, es)
+- [x] 모든 파일 동일한 키 구조
+- [x] settings.html에 5개 언어 옵션
+- [x] validate:i18n 스크립트 통과
+- [x] 기존 en/ko 파일 변경 없음
