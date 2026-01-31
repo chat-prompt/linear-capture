@@ -1138,6 +1138,8 @@
         <textarea id="description" name="description" data-i18n-placeholder="form.descriptionPlaceholder" placeholder="Optional description..."></textarea>
       </div>
 
+      <!-- Linear Section - No auto-translate -->
+      <div id="linearSection" data-no-translate>
       <div class="row">
         <div class="form-group">
           <label for="team">Team *</label>
@@ -1225,6 +1227,7 @@
           </div>
         </div>
       </div>
+      </div><!-- End linearSection -->
 
       <div id="error" class="error"></div>
 
@@ -1285,7 +1288,7 @@
     }
 
     async function updateDynamicUI() {
-      // 1. reanalyzeBtn - 현재 상태에 따라 텍스트 결정
+      // reanalyzeBtn - 현재 상태에 따라 텍스트 결정
       const hasAnalyzed = titleInput && titleInput.value.trim() !== '';
       if (aiLoadingDiv && !aiLoadingDiv.classList.contains('hidden')) {
         // 로딩 중 - 건드리지 않음
@@ -1294,25 +1297,7 @@
       } else {
         reanalyzeBtn.textContent = await t('capture.analysisStart');
       }
-
-      // 2. Searchable selects
-      if (typeof projectSearchable !== 'undefined' && projectSearchable) {
-        projectSearchable.updateDefaultLabel(await t('common.none'));
-      }
-      if (typeof assigneeSearchable !== 'undefined' && assigneeSearchable) {
-        assigneeSearchable.updateDefaultLabel(await t('form.unassigned'));
-      }
-
-      // 3. Estimate/Cycle None 옵션
-      const estimateNone = estimateSelect && estimateSelect.querySelector('option[value=""]');
-      if (estimateNone) {
-        estimateNone.textContent = await t('common.none');
-      }
-      
-      const cycleNone = cycleSelect && cycleSelect.querySelector('option[value=""]');
-      if (cycleNone) {
-        cycleNone.textContent = await t('common.none');
-      }
+      // Linear 섹션 (Team, Project, Status, Priority, Assignee, Estimate, Cycle, Labels)은 영어 고정
     }
 
     async function autoTranslate() {
@@ -1324,6 +1309,9 @@
       
       while (walker.nextNode()) {
         const node = walker.currentNode;
+        if (node.parentElement && node.parentElement.closest('[data-no-translate]')) {
+          continue;
+        }
         const text = node.textContent.trim();
         if (text && reverseMap[text]) {
           node.textContent = await t(reverseMap[text]);
@@ -1331,6 +1319,9 @@
       }
       
       for (const el of document.querySelectorAll('[placeholder]')) {
+        if (el.closest('[data-no-translate]')) {
+          continue;
+        }
         const placeholder = el.getAttribute('placeholder');
         if (placeholder && reverseMap[placeholder]) {
           el.placeholder = await t(reverseMap[placeholder]);
@@ -1389,7 +1380,7 @@
     });
 
     // Listen for Linear data updates (after token is saved)
-    ipcRenderer.on('linear-data-updated', async (event, data) => {
+    ipcRenderer.on('linear-data-updated', (event, data) => {
       console.log('Linear data updated:', data);
 
       // Update cached data
@@ -1423,7 +1414,7 @@
 
       // Update team-dependent dropdowns if team is selected
       if (teamSelect.value) {
-        await updateTeamDependentDropdowns(teamSelect.value);
+updateTeamDependentDropdowns(teamSelect.value);
         updateLabelsForTeam();
       }
 
@@ -1606,6 +1597,7 @@
     // Searchable select helper functions
     function createSearchableSelect(config) {
       const { trigger, dropdown, searchInput, optionsContainer, hiddenInput, items, defaultLabel, getValue, getLabel, onSelect } = config;
+      let currentDefaultLabel = defaultLabel;
 
       function render(filteredItems) {
         optionsContainer.innerHTML = '';
@@ -1613,9 +1605,9 @@
         // Add default option
         const defaultOpt = document.createElement('div');
         defaultOpt.className = 'option' + (hiddenInput.value === '' ? ' selected' : '');
-        defaultOpt.textContent = defaultLabel;
+        defaultOpt.textContent = currentDefaultLabel;
         defaultOpt.dataset.value = '';
-        defaultOpt.addEventListener('click', () => selectOption('', defaultLabel, null));
+        defaultOpt.addEventListener('click', () => selectOption('', currentDefaultLabel, null));
         optionsContainer.appendChild(defaultOpt);
 
         if (filteredItems.length === 0 && searchInput.value) {
@@ -1672,7 +1664,11 @@
         selectOption, 
         setItems: (newItems) => { items.length = 0; items.push(...newItems); render(items); },
         updateDefaultLabel: (newLabel) => {
-          defaultLabel = newLabel;
+          currentDefaultLabel = newLabel;
+          // Update trigger text if default option is currently selected
+          if (hiddenInput.value === '') {
+            trigger.querySelector('span').textContent = newLabel;
+          }
           render(items);
         }
       };
@@ -1882,10 +1878,9 @@
     }
 
     // Update estimate dropdown based on team
-    async function updateEstimateDropdown(teamId) {
+    function updateEstimateDropdown(teamId) {
       const team = allTeams.find(t => t.id === teamId);
-      const noneText = await t('common.none');
-      estimateSelect.innerHTML = `<option value="">${noneText}</option>`;
+      estimateSelect.innerHTML = '<option value="">None</option>';
 
       const options = getEstimateOptions(team);
       options.forEach(opt => {
@@ -1897,7 +1892,7 @@
     }
 
     // Update status, cycle, and estimate dropdowns based on selected team
-    async function updateTeamDependentDropdowns(teamId) {
+    function updateTeamDependentDropdowns(teamId) {
       // Update status dropdown (default to Todo)
       statusSelect.innerHTML = '';
       const teamStates = allStates.filter(state => state.teamId === teamId);
@@ -1915,8 +1910,7 @@
       });
 
       // Update cycle dropdown
-      const noneText = await t('common.none');
-      cycleSelect.innerHTML = `<option value="">${noneText}</option>`;
+      cycleSelect.innerHTML = '<option value="">None</option>';
       const now = new Date();
       allCycles
         .filter(cycle => cycle.teamId === teamId)
@@ -1944,7 +1938,7 @@
         });
 
       // Update estimate dropdown
-      await updateEstimateDropdown(teamId);
+      updateEstimateDropdown(teamId);
     }
 
     // Receive capture data from main process
@@ -1998,16 +1992,16 @@
         optionsContainer: projectOptions,
         hiddenInput: projectInput,
         items: allProjects,
-        defaultLabel: await t('common.none'),
+        defaultLabel: 'None',
         getValue: (p) => p.id,
         getLabel: (p) => p.name,
-        onSelect: async (value, label, project) => {
+        onSelect: (value, label, project) => {
           if (!value || !project) return;
           
           const teamIds = project.teamIds || [];
           if (teamIds.length > 0) {
             teamSelect.value = teamIds[0];
-            await updateTeamDependentDropdowns(teamIds[0]);
+            updateTeamDependentDropdowns(teamIds[0]);
             updateLabelsForTeam();
           }
         }
@@ -2022,7 +2016,7 @@
          optionsContainer: assigneeOptions,
          hiddenInput: assigneeInput,
          items: allUsers,
-         defaultLabel: await t('form.unassigned'),
+         defaultLabel: 'Unassigned',
          getValue: (u) => u.id,
          getLabel: (u) => u.name
        });
@@ -2038,7 +2032,7 @@
 
        // Initialize team-dependent dropdowns
       if (data.defaultTeamId) {
-        await updateTeamDependentDropdowns(data.defaultTeamId);
+        updateTeamDependentDropdowns(data.defaultTeamId);
       }
 
        // AI 로딩 스피너 숨김 유지 (분석 시작 버튼 클릭 시 표시)
@@ -2125,8 +2119,8 @@
     });
 
     // Update dropdowns when team changes
-    teamSelect.addEventListener('change', async () => {
-      await updateTeamDependentDropdowns(teamSelect.value);
+    teamSelect.addEventListener('change', () => {
+      updateTeamDependentDropdowns(teamSelect.value);
       updateLabelsForTeam();  // Also update labels
     });
 
