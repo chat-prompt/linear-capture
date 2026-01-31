@@ -7,6 +7,7 @@ app.disableHardwareAcceleration();
 
 import { registerHotkey, unregisterAllHotkeys, updateHotkey, validateHotkey, formatHotkeyForDisplay, getCurrentShortcut, DEFAULT_SHORTCUT } from './hotkey';
 import { createTray, destroyTray } from './tray';
+import { initI18n, t, changeLanguage, i18next, getCurrentLanguage } from './i18n';
 import { createCaptureService, cleanupCapture, ICaptureService } from '../services/capture';
 import { createR2UploaderFromEnv } from '../services/r2-uploader';
 import { createLinearServiceFromEnv, validateLinearToken, TeamInfo, ProjectInfo, UserInfo, WorkflowStateInfo, CycleInfo, LabelInfo } from '../services/linear-client';
@@ -25,6 +26,9 @@ import {
   getDefaultHotkey,
   hasToken,
   getDeviceId,
+  getLanguage,
+  setLanguage,
+  getSupportedLanguages,
   UserInfo as SettingsUserInfo,
 } from '../services/settings-store';
 import { initAutoUpdater, checkForUpdates } from '../services/auto-updater';
@@ -219,16 +223,13 @@ function openScreenCaptureSettings(): void {
   captureService.openPermissionSettings();
 }
 
-/**
- * Show permission required dialog (instead of notification)
- */
 function showPermissionNotification(): void {
   dialog.showMessageBox({
     type: 'warning',
-    title: 'Linear Capture',
-    message: '화면 녹화 권한이 필요합니다',
-    detail: '권한 설정을 누르면 캡처가 시도되고, 시스템 환경설정이 열립니다.\n앱이 목록에 표시되면 체크해주세요.',
-    buttons: ['권한 설정', '취소'],
+    title: t('dialogs.permissionTitle'),
+    message: t('dialogs.permissionMessage'),
+    detail: t('dialogs.permissionDetail'),
+    buttons: [t('dialogs.permissionButton'), t('common.cancel')],
     defaultId: 0,
     cancelId: 1,
   }).then(async (result: { response: number }) => {
@@ -443,7 +444,7 @@ async function handleCapture(): Promise<void> {
     const isAddingToSession = captureSession !== null && mainWindow?.isVisible();
 
     if (isAddingToSession && captureSession!.images.length >= MAX_IMAGES) {
-      showNotification('Maximum Images', `You can only attach up to ${MAX_IMAGES} images.`);
+      showNotification(t('capture.maxImagesReached'), t('capture.maxImagesMessage', { max: MAX_IMAGES }));
       return;
     }
 
@@ -558,6 +559,8 @@ async function loadLinearData(): Promise<void> {
 }
 
 app.whenReady().then(async () => {
+  await initI18n(getLanguage());
+  
   captureService = createCaptureService();
   
   if (process.platform === 'darwin') {
@@ -729,6 +732,7 @@ app.whenReady().then(async () => {
       users: usersCache.map(u => ({ id: u.id, name: u.name })),
       defaultTeamId: process.env.DEFAULT_TEAM_ID,
       instruction: data.instruction,
+      language: getCurrentLanguage(),
     };
 
     try {
@@ -1034,7 +1038,47 @@ app.whenReady().then(async () => {
     return getDeviceId();
   });
 
-  // Initialize AI analyzer (prefer Gemini, fallback to Anthropic)
+  ipcMain.handle('get-language', () => {
+    return getLanguage();
+  });
+
+  ipcMain.handle('set-language', async (_event, lang: string) => {
+    setLanguage(lang);
+    await changeLanguage(lang);
+    const allWindows = BrowserWindow.getAllWindows();
+    allWindows.forEach(win => {
+      win.webContents.send('language-changed', lang);
+    });
+    return { success: true };
+  });
+
+  ipcMain.handle('get-supported-languages', () => {
+    return getSupportedLanguages();
+  });
+
+  ipcMain.handle('translate', (_event, key: string, options?: Record<string, unknown>) => {
+    return t(key, options as Record<string, any>);
+  });
+
+  // Reverse translation map for autoTranslate
+  ipcMain.handle('get-reverse-translation-map', () => {
+    const translations = i18next.getResourceBundle('en', 'translation');
+    const reverseMap: Record<string, string> = {};
+    
+    function flatten(obj: any, prefix = '') {
+      for (const key in obj) {
+        const fullKey = prefix ? `${prefix}.${key}` : key;
+        if (typeof obj[key] === 'object' && obj[key] !== null) {
+          flatten(obj[key], fullKey);
+        } else if (typeof obj[key] === 'string') {
+          reverseMap[obj[key]] = fullKey;
+        }
+      }
+    }
+    flatten(translations);
+    return reverseMap;
+  });
+
   geminiAnalyzer = createGeminiAnalyzer();
   if (geminiAnalyzer) {
     console.log('Gemini AI analysis enabled (default)');

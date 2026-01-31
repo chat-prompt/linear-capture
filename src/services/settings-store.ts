@@ -7,6 +7,7 @@
 
 import Store from 'electron-store';
 import * as crypto from 'crypto';
+import { app } from 'electron';
 
 export interface UserInfo {
   id: string;
@@ -20,6 +21,7 @@ export interface Settings {
   defaultTeamId?: string;
   captureHotkey?: string;
   deviceId?: string;
+  language?: string;
 }
 
 const DEFAULT_HOTKEY = 'CommandOrControl+Shift+L';
@@ -99,6 +101,7 @@ export function getAllSettings(): Settings {
     defaultTeamId: settingsStore.get('defaultTeamId'),
     captureHotkey: settingsStore.get('captureHotkey'),
     deviceId: settingsStore.get('deviceId'),
+    language: settingsStore.get('language'),
   };
 }
 
@@ -134,4 +137,27 @@ export function getDeviceId(): string {
     settingsStore.set('deviceId', deviceId);
   }
   return deviceId;
+}
+
+const SUPPORTED_LANGUAGES = ['en', 'ko'] as const;
+type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
+
+export function getSupportedLanguages(): readonly string[] {
+  return SUPPORTED_LANGUAGES;
+}
+
+export function getLanguage(): string {
+  const stored = settingsStore.get('language') as string | undefined;
+  if (stored && SUPPORTED_LANGUAGES.includes(stored as SupportedLanguage)) {
+    return stored;
+  }
+  const locale = app.getLocale();
+  const lang = locale.split('-')[0];
+  return SUPPORTED_LANGUAGES.includes(lang as SupportedLanguage) ? lang : 'en';
+}
+
+export function setLanguage(lang: string): void {
+  if (SUPPORTED_LANGUAGES.includes(lang as SupportedLanguage)) {
+    settingsStore.set('language', lang);
+  }
 }

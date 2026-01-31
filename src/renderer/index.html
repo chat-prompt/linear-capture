@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Create Linear Issue</title>
+  <title data-i18n="capture.title">Create Linear Issue</title>
   <style>
     * {
       box-sizing: border-box;
@@ -1016,14 +1016,14 @@
     <div id="tokenWarning" class="token-warning hidden">
       <div class="token-warning-content">
         <span class="token-warning-icon">⚠️</span>
-        <span>Linear API 토큰이 설정되지 않았습니다</span>
+        <span data-i18n="dialogs.tokenWarning">Linear API token not set</span>
       </div>
-      <button class="token-warning-btn" id="tokenWarningBtn">설정하기</button>
+      <button class="token-warning-btn" id="tokenWarningBtn" data-i18n="dialogs.tokenWarningButton">Set up</button>
     </div>
 
     <div class="header">
-      <h1>Create Linear Issue</h1>
-      <div class="shortcut-hint" id="shortcutHint"><kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd> 로 캡처 (최대 10장)</div>
+      <h1 data-i18n="capture.title">Create Linear Issue</h1>
+      <div class="shortcut-hint" id="shortcutHint"></div>
     </div>
 
     <!-- Image Gallery (multiple images) -->
@@ -1033,7 +1033,7 @@
     <div id="aiAnalysisSection">
       <!-- User Hint Input -->
       <div class="form-group" style="margin-bottom: 14px;">
-        <textarea id="userHint" placeholder="(옵션) 리니어 이슈 생성 시 가장 집중해야할 내용이 있다면 작성해주세요" style="min-height: 60px; height: 60px; resize: none; font-size: 13px; padding: 8px 12px;"></textarea>
+        <textarea id="userHint" data-i18n-placeholder="form.userHintPlaceholder" placeholder="(Optional) Write what the AI should focus on when creating the Linear issue" style="min-height: 60px; height: 60px; resize: none; font-size: 13px; padding: 8px 12px;"></textarea>
       </div>
 
       <!-- Legacy single preview (hidden) -->
@@ -1041,28 +1041,28 @@
 
       <div class="row" style="margin-bottom: 14px;">
         <div class="form-group" style="flex: 2;">
-          <label for="aiModel">AI Model</label>
+          <label for="aiModel" data-i18n="form.aiModel">AI Model</label>
           <select id="aiModel" name="aiModel">
-            <option value="gemini" selected>Gemini 3 Flash (기본)</option>
+            <option value="gemini" selected>Gemini 3 Flash (Default)</option>
             <option value="haiku">Claude Haiku 4.5</option>
           </select>
         </div>
         <div class="form-group" style="flex: 1; display: flex; align-items: flex-end;">
-          <button type="button" id="reanalyzeBtn" class="btn-submit" style="width: 100%; padding: 10px;">분석 시작</button>
+          <button type="button" id="reanalyzeBtn" class="btn-submit" style="width: 100%; padding: 10px;">Start Analysis</button>
         </div>
       </div>
     </div>
 
     <div id="aiLoading" class="ai-loading hidden">
       <div class="spinner"></div>
-      <span id="aiLoadingText">AI가 스크린샷을 분석 중...</span>
+      <span id="aiLoadingText" data-i18n="capture.analyzing">AI is analyzing the screenshot...</span>
     </div>
 
     <div id="contextSection" class="context-section">
       <div class="context-header" id="contextHeader">
         <div class="context-header-left">
           <span class="context-header-icon">🔍</span>
-          <span class="context-header-title">Context Search</span>
+          <span class="context-header-title" data-i18n="context.title">Context Search</span>
           <span class="context-header-badge" id="contextBadge" style="display: none;">0</span>
         </div>
         <span class="context-header-toggle">▼</span>
@@ -1081,46 +1081,46 @@
         
         <div id="slackContent">
           <div id="slackNotConnected" class="context-not-connected">
-            <p style="color: #888; margin-bottom: 12px;">Slack에 연결되지 않았습니다</p>
+            <p id="slackNotConnectedText" style="color: #888; margin-bottom: 12px;">Not connected to Slack</p>
             <button type="button" class="context-connect-btn" id="slackConnectFromMain">
-              <span>💬</span> Slack 연결하기
+              <span>💬</span> <span id="slackConnectBtnText">Connect Slack</span>
             </button>
           </div>
           
           <div id="slackConnected" style="display: none;">
             <div class="context-search-row">
-              <input type="text" class="context-search-input" id="slackSearchInput" placeholder="Slack 메시지 검색...">
-              <button type="button" class="context-search-btn" id="slackSearchBtn">검색</button>
+              <input type="text" class="context-search-input" id="slackSearchInput" data-i18n-placeholder="context.slackPlaceholder" placeholder="Search Slack messages...">
+              <button type="button" class="context-search-btn" id="slackSearchBtn" data-i18n="common.search">Search</button>
             </div>
             <div id="slackLoading" class="context-loading" style="display: none;">
               <div class="spinner"></div>
-              <span>검색 중...</span>
+              <span data-i18n="context.searching">Searching...</span>
             </div>
             <div id="slackResults" class="context-results" style="display: none;"></div>
-            <div id="slackEmpty" class="context-empty" style="display: none;">검색 결과가 없습니다</div>
+            <div id="slackEmpty" class="context-empty" style="display: none;">No results found</div>
             <div id="slackSelectedCount" class="context-selected-count" style="display: none;"></div>
           </div>
         </div>
 
         <div id="notionContent" style="display: none;">
           <div id="notionNotConnected" class="context-not-connected">
-            <p style="color: #888; margin-bottom: 12px;">Notion에 연결되지 않았습니다</p>
+            <p id="notionNotConnectedText" style="color: #888; margin-bottom: 12px;">Not connected to Notion</p>
             <button type="button" class="context-connect-btn" id="notionConnectFromMain">
-              <span>📝</span> Notion 연결하기
+              <span>📝</span> <span id="notionConnectBtnText">Connect Notion</span>
             </button>
           </div>
           
           <div id="notionConnected" style="display: none;">
             <div class="context-search-row">
-              <input type="text" class="context-search-input" id="notionSearchInput" placeholder="Notion 페이지 검색...">
-              <button type="button" class="context-search-btn" id="notionSearchBtn">검색</button>
+              <input type="text" class="context-search-input" id="notionSearchInput" data-i18n-placeholder="context.notionPlaceholder" placeholder="Search Notion pages...">
+              <button type="button" class="context-search-btn" id="notionSearchBtn" data-i18n="common.search">Search</button>
             </div>
             <div id="notionLoading" class="context-loading" style="display: none;">
               <div class="spinner"></div>
-              <span>검색 중...</span>
+              <span data-i18n="context.searching">Searching...</span>
             </div>
             <div id="notionResults" class="context-results" style="display: none;"></div>
-            <div id="notionEmpty" class="context-empty" style="display: none;">검색 결과가 없습니다</div>
+            <div id="notionEmpty" class="context-empty" style="display: none;">No results found</div>
             <div id="notionSelectedCount" class="context-selected-count" style="display: none;"></div>
           </div>
         </div>
@@ -1129,20 +1129,20 @@
 
     <form id="issueForm">
       <div class="form-group">
-        <label for="title">Title *</label>
-        <input type="text" id="title" name="title" required placeholder="대상 - 구체적 내용 (예: 로그인 - 세션 만료 오류 수정)" />
+        <label for="title" data-i18n="form.titleRequired">Title *</label>
+        <input type="text" id="title" name="title" required data-i18n-placeholder="form.titlePlaceholder" placeholder="Target - Specific content (e.g., Login - Fix session expiry error)" />
       </div>
 
       <div class="form-group">
-        <label for="description">Description</label>
-        <textarea id="description" name="description" placeholder="Optional description..."></textarea>
+        <label for="description" data-i18n="form.description">Description</label>
+        <textarea id="description" name="description" data-i18n-placeholder="form.descriptionPlaceholder" placeholder="Optional description..."></textarea>
       </div>
 
       <div class="row">
         <div class="form-group">
           <label for="team">Team *</label>
           <select id="team" name="team" required>
-            <option value="">Select team...</option>
+<option value="">Select team...</option>
           </select>
         </div>
 
@@ -1229,8 +1229,8 @@
       <div id="error" class="error"></div>
 
       <div class="buttons">
-        <button type="button" class="btn-cancel" id="cancelBtn">Cancel</button>
-        <button type="submit" class="btn-submit" id="submitBtn">Create Issue</button>
+        <button type="button" class="btn-cancel" id="cancelBtn" data-i18n="common.cancel">Cancel</button>
+        <button type="submit" class="btn-submit" id="submitBtn" data-i18n="form.createIssue">Create Issue</button>
       </div>
     </form>
 
@@ -1242,13 +1242,13 @@
     <!-- Success Screen -->
     <div id="successScreen" class="success-screen hidden">
       <div class="success-icon">✅</div>
-      <div class="success-title">이슈가 생성되었습니다!</div>
+      <div class="success-title" data-i18n="success.title">Issue created!</div>
       <div class="success-issue-id" id="successIssueId"></div>
       <div class="success-buttons">
-        <button type="button" class="btn-submit" id="viewIssueBtn">Linear에서 보기</button>
-        <button type="button" class="btn-cancel" id="closeSuccessBtn">닫기</button>
+        <button type="button" class="btn-submit" id="viewIssueBtn" data-i18n="success.viewInLinear">View in Linear</button>
+        <button type="button" class="btn-cancel" id="closeSuccessBtn" data-i18n="common.close">Close</button>
       </div>
-      <div class="success-hint">URL이 클립보드에 복사되었습니다</div>
+      <div class="success-hint" data-i18n="success.urlCopied">URL copied to clipboard</div>
     </div>
   </div>
 
@@ -1262,7 +1262,66 @@
   </div>
 
   <script>
+    console.log('[index.html] Script loading...');
     const { ipcRenderer } = require('electron');
+
+    // ==================== i18n Functions ====================
+    async function t(key, options = {}) {
+      return await ipcRenderer.invoke('translate', key, options);
+    }
+
+    async function translatePage() {
+      const elements = document.querySelectorAll('[data-i18n]');
+      for (const el of elements) {
+        const key = el.getAttribute('data-i18n');
+        el.textContent = await t(key);
+      }
+      const placeholders = document.querySelectorAll('[data-i18n-placeholder]');
+      for (const el of placeholders) {
+        const key = el.getAttribute('data-i18n-placeholder');
+        el.placeholder = await t(key);
+      }
+      document.title = await t('capture.title') + ' - Linear Capture';
+    }
+
+    async function autoTranslate() {
+      const reverseMap = await ipcRenderer.invoke('get-reverse-translation-map');
+      
+      const walker = document.createTreeWalker(
+        document.body, NodeFilter.SHOW_TEXT, null, false
+      );
+      
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        const text = node.textContent.trim();
+        if (text && reverseMap[text]) {
+          node.textContent = await t(reverseMap[text]);
+        }
+      }
+      
+      for (const el of document.querySelectorAll('[placeholder]')) {
+        const placeholder = el.getAttribute('placeholder');
+        if (placeholder && reverseMap[placeholder]) {
+          el.placeholder = await t(reverseMap[placeholder]);
+        }
+      }
+    }
+
+    ipcRenderer.on('language-changed', async () => {
+      try {
+        await translatePage();
+        await autoTranslate();
+        if (typeof renderGallery === 'function') await renderGallery();
+        if (typeof updateShortcutHint === 'function') await updateShortcutHint();
+        if (typeof updateSlackUI === 'function' && slackConnectedStatus) await updateSlackUI({ connected: true });
+        if (typeof updateNotionUI === 'function' && notionConnectedStatus) await updateNotionUI({ connected: true });
+      } catch (e) {
+        console.error('Language change handler error:', e);
+      }
+    });
+
+    translatePage();
+    document.addEventListener('DOMContentLoaded', autoTranslate);
 
     // Settings button
     const settingsBtn = document.getElementById('settingsBtn');
@@ -1311,7 +1370,7 @@
 
       // Repopulate team dropdown
       const currentTeamId = teamSelect.value;
-      teamSelect.innerHTML = '<option value="">Select team...</option>';
+      teamSelect.innerHTML = '<option value="" data-i18n="form.teamPlaceholder">Select team...</option>';
       allTeams.forEach(team => {
         const option = document.createElement('option');
         option.value = team.id;
@@ -1410,7 +1469,7 @@
     });
 
     // Render image gallery
-    function renderGallery() {
+    async function renderGallery() {
       imageGallery.innerHTML = '';
 
       // Render existing images
@@ -1438,7 +1497,9 @@
       if (images.length < maxImages && !isSubmitting) {
         const addBtn = document.createElement('div');
         addBtn.className = 'gallery-item gallery-add';
-        const labelText = images.length === 0 ? '캡처하기' : `추가 (${images.length}/${maxImages})`;
+        const labelText = images.length === 0 
+          ? await t('capture.captureButton') 
+          : await t('capture.addMore', { current: images.length, max: maxImages });
         addBtn.innerHTML = `
           <span class="gallery-add-icon">${images.length === 0 ? '📸' : '+'}</span>
           <span class="gallery-add-text">${labelText}</span>
@@ -1845,7 +1906,7 @@
     }
 
     // Receive capture data from main process
-    ipcRenderer.on('capture-ready', (event, data) => {
+    ipcRenderer.on('capture-ready', async (event, data) => {
       console.log('Capture ready:', data);
 
       try {
@@ -1876,7 +1937,7 @@
       imageUrl = data.imageUrl || '';
 
       // Populate teams
-      teamSelect.innerHTML = '<option value="">Select team...</option>';
+      teamSelect.innerHTML = '<option value="" data-i18n="form.teamPlaceholder">Select team...</option>';
       data.teams.forEach(team => {
         const option = document.createElement('option');
         option.value = team.id;
@@ -1895,7 +1956,7 @@
         optionsContainer: projectOptions,
         hiddenInput: projectInput,
         items: allProjects,
-        defaultLabel: 'None',
+        defaultLabel: await t('common.none'),
         getValue: (p) => p.id,
         getLabel: (p) => p.name,
         onSelect: (value, label, project) => {
@@ -1919,7 +1980,7 @@
          optionsContainer: assigneeOptions,
          hiddenInput: assigneeInput,
          items: allUsers,
-         defaultLabel: 'Unassigned',
+         defaultLabel: await t('form.unassigned'),
          getValue: (u) => u.id,
          getLabel: (u) => u.name
        });
@@ -1938,9 +1999,9 @@
         updateTeamDependentDropdowns(data.defaultTeamId);
       }
 
-      // AI 로딩 스피너 숨김 유지 (분석 시작 버튼 클릭 시 표시)
+       // AI 로딩 스피너 숨김 유지 (분석 시작 버튼 클릭 시 표시)
       aiLoadingDiv.classList.add('hidden');
-      reanalyzeBtn.textContent = '분석 시작';
+      reanalyzeBtn.textContent = await t('capture.analysisStart');
       reanalyzeBtn.disabled = false;
 
       // Reset form state
@@ -1978,7 +2039,7 @@
     });
 
     // Handle AI analysis results (received after window is shown)
-    ipcRenderer.on('ai-analysis-ready', (event, data) => {
+    ipcRenderer.on('ai-analysis-ready', async (event, data) => {
       console.log('AI analysis ready:', data);
 
       // Hide AI loading spinner
@@ -1991,7 +2052,7 @@
       }
 
       // 분석 성공 시 버튼 텍스트 변경
-      reanalyzeBtn.textContent = '재분석';
+      reanalyzeBtn.textContent = await t('capture.reanalyze');
 
       // Apply AI suggestions
       if (data.title) {
@@ -2059,9 +2120,7 @@
       reanalyzeBtn.disabled = true;
       form.style.display = 'none';
       loadingDiv.style.display = 'block';
-      loadingText.textContent = images.length > 1
-        ? `Uploading ${images.length} images...`
-        : 'Creating issue...';
+      loadingText.textContent = await t('form.creating');
       renderGallery(); // Re-render to hide add button
 
       try {
@@ -2138,7 +2197,7 @@
       const instruction = document.getElementById('userHint').value.trim();
 
       // Show loading
-      aiLoadingText.textContent = `${modelName}로 재분석 중...`;
+      aiLoadingText.textContent = await t('capture.reanalyzing', { model: modelName });
       aiLoadingDiv.classList.remove('hidden');
       reanalyzeBtn.disabled = true;
 
@@ -2182,7 +2241,8 @@
           // Parse display hotkey (e.g., "⌘ + ⇧ + L") into kbd elements
           const parts = result.displayHotkey.split(' + ').map(part => part.trim());
           const kbdHtml = parts.map(p => `<kbd>${p}</kbd>`).join(' + ');
-          shortcutHint.innerHTML = `${kbdHtml} 로 캡처 (최대 10장)`;
+          const hintText = await t('capture.shortcutHint', { hotkey: kbdHtml, max: 10 });
+          shortcutHint.innerHTML = hintText;
         }
       } catch (error) {
         console.error('Failed to load hotkey:', error);
@@ -2191,11 +2251,12 @@
     updateShortcutHint();
 
     // Listen for hotkey changes
-    ipcRenderer.on('hotkey-changed', (event, data) => {
+    ipcRenderer.on('hotkey-changed', async (event, data) => {
       if (data && data.displayHotkey) {
         const parts = data.displayHotkey.split(' + ').map(part => part.trim());
         const kbdHtml = parts.map(p => `<kbd>${p}</kbd>`).join(' + ');
-        shortcutHint.innerHTML = `${kbdHtml} 로 캡처 (최대 10장)`;
+        const hintText = await t('capture.shortcutHint', { hotkey: kbdHtml, max: 10 });
+        shortcutHint.innerHTML = hintText;
       }
     });
 
@@ -2260,15 +2321,15 @@
       try {
         const status = await ipcRenderer.invoke('slack-status');
         slackConnectedStatus = status.connected;
-        updateSlackUI(status);
+        await updateSlackUI(status);
       } catch (error) {
         console.error('Failed to check Slack status:', error);
         slackConnectedStatus = false;
-        updateSlackUI({ connected: false });
+        await updateSlackUI({ connected: false });
       }
     }
 
-    function updateSlackUI(status) {
+    async function updateSlackUI(status) {
       if (status.connected) {
         slackNotConnected.style.display = 'none';
         slackConnected.style.display = 'block';
@@ -2276,6 +2337,15 @@
       } else {
         slackNotConnected.style.display = 'block';
         slackConnected.style.display = 'none';
+        // Update text with translation
+        const notConnectedText = document.getElementById('slackNotConnectedText');
+        const connectBtnText = document.getElementById('slackConnectBtnText');
+        if (notConnectedText) {
+          notConnectedText.textContent = await t('context.notConnected', { service: 'Slack' });
+        }
+        if (connectBtnText) {
+          connectBtnText.textContent = await t('context.connectButton', { service: 'Slack' });
+        }
       }
     }
 
@@ -2287,15 +2357,15 @@
         const status = await ipcRenderer.invoke('notion-status');
         console.log('Notion status result:', status);
         notionConnectedStatus = status.connected;
-        updateNotionUI(status);
+        await updateNotionUI(status);
       } catch (error) {
         console.error('Failed to check Notion status:', error);
         notionConnectedStatus = false;
-        updateNotionUI({ connected: false });
+        await updateNotionUI({ connected: false });
       }
     }
 
-    function updateNotionUI(status) {
+    async function updateNotionUI(status) {
       console.log('Updating Notion UI, connected:', status.connected);
       if (status.connected) {
         notionNotConnected.style.display = 'none';
@@ -2303,6 +2373,15 @@
       } else {
         notionNotConnected.style.display = 'block';
         notionConnected.style.display = 'none';
+        // Update text with translation
+        const notConnectedText = document.getElementById('notionNotConnectedText');
+        const connectBtnText = document.getElementById('notionConnectBtnText');
+        if (notConnectedText) {
+          notConnectedText.textContent = await t('context.notConnected', { service: 'Notion' });
+        }
+        if (connectBtnText) {
+          connectBtnText.textContent = await t('context.connectButton', { service: 'Notion' });
+        }
       }
     }
 
@@ -2335,13 +2414,13 @@
 
         if (!result.success) {
           console.error('Slack search error:', result.error);
-          slackEmpty.textContent = result.error || '검색 중 오류가 발생했습니다';
+          slackEmpty.textContent = result.error || await t('capture.noResults');
           slackEmpty.style.display = 'block';
           return;
         }
 
         if (!result.messages || result.messages.length === 0) {
-          slackEmpty.textContent = '검색 결과가 없습니다';
+          slackEmpty.textContent = await t('capture.noResults');
           slackEmpty.style.display = 'block';
           return;
         }
@@ -2352,7 +2431,7 @@
         console.error('Slack search error:', error);
         slackLoading.style.display = 'none';
         slackSearchBtn.disabled = false;
-        slackEmpty.textContent = '검색 중 오류가 발생했습니다';
+        slackEmpty.textContent = await t('capture.noResults');
         slackEmpty.style.display = 'block';
       }
     }
@@ -2381,13 +2460,13 @@
 
         if (!result.success) {
           console.error('Notion search error:', result.error);
-          notionEmpty.textContent = result.error || '검색 중 오류가 발생했습니다';
+          notionEmpty.textContent = result.error || await t('capture.noResults');
           notionEmpty.style.display = 'block';
           return;
         }
 
         if (!result.pages || result.pages.length === 0) {
-          notionEmpty.textContent = query ? '검색 결과가 없습니다' : '연결된 페이지가 없습니다';
+          notionEmpty.textContent = await t('capture.noResults');
           notionEmpty.style.display = 'block';
           return;
         }
@@ -2397,7 +2476,7 @@
         console.error('Notion search error:', error);
         notionLoading.style.display = 'none';
         notionSearchBtn.disabled = false;
-        notionEmpty.textContent = '검색 중 오류가 발생했습니다';
+        notionEmpty.textContent = await t('capture.noResults');
         notionEmpty.style.display = 'block';
       }
     }
@@ -2411,7 +2490,7 @@
     });
 
     // 5. Render Slack Search Results
-    function renderSlackResults(messages) {
+    async function renderSlackResults(messages) {
       slackResults.innerHTML = '';
       
       messages.forEach(msg => {
@@ -2446,25 +2525,25 @@
         `;
 
         // Click handler
-        item.addEventListener('click', (e) => {
+        item.addEventListener('click', async (e) => {
           if (e.target.type === 'checkbox') return; // Let checkbox handle itself
-          toggleSlackMessage(msg, item);
+          await toggleSlackMessage(msg, item);
         });
 
         // Checkbox handler
         const checkbox = item.querySelector('.context-result-checkbox');
-        checkbox.addEventListener('change', () => {
-          toggleSlackMessage(msg, item);
+        checkbox.addEventListener('change', async () => {
+          await toggleSlackMessage(msg, item);
         });
 
         slackResults.appendChild(item);
       });
 
       slackResults.style.display = 'block';
-      updateSelectedCount();
+      await updateSelectedCount();
     }
 
-    function renderNotionResults(pages) {
+    async function renderNotionResults(pages) {
       notionResults.innerHTML = '';
       
       pages.forEach(page => {
@@ -2495,21 +2574,21 @@
           </div>
         `;
 
-        item.addEventListener('click', (e) => {
+        item.addEventListener('click', async (e) => {
           if (e.target.type === 'checkbox') return;
-          toggleNotionPage(page, item);
+          await toggleNotionPage(page, item);
         });
 
         const checkbox = item.querySelector('.context-result-checkbox');
-        checkbox.addEventListener('change', () => {
-          toggleNotionPage(page, item);
+        checkbox.addEventListener('change', async () => {
+          await toggleNotionPage(page, item);
         });
 
         notionResults.appendChild(item);
       });
 
       notionResults.style.display = 'block';
-      updateNotionSelectedCount();
+      await updateNotionSelectedCount();
     }
 
     async function toggleNotionPage(page, itemElement) {
@@ -2522,7 +2601,7 @@
         
         const pageWithContent = { ...page, content: null, contentLoading: true };
         selectedNotionPages.push(pageWithContent);
-        updateNotionSelectedCount();
+        await updateNotionSelectedCount();
         updateContextBadge();
 
         try {
@@ -2551,14 +2630,14 @@
         selectedNotionPages.splice(idx, 1);
         itemElement.classList.remove('selected');
         checkbox.checked = false;
-        updateNotionSelectedCount();
+        await updateNotionSelectedCount();
         updateContextBadge();
       }
     }
 
-    function updateNotionSelectedCount() {
+    async function updateNotionSelectedCount() {
       if (selectedNotionPages.length > 0) {
-        notionSelectedCount.textContent = `${selectedNotionPages.length}개 선택됨`;
+        notionSelectedCount.textContent = await t('context.selected', { count: selectedNotionPages.length });
         notionSelectedCount.style.display = 'block';
       } else {
         notionSelectedCount.style.display = 'none';
@@ -2566,7 +2645,7 @@
     }
 
     // 6. Toggle Slack Message Selection
-    function toggleSlackMessage(msg, itemElement) {
+    async function toggleSlackMessage(msg, itemElement) {
       const idx = selectedSlackMessages.findIndex(m => m.ts === msg.ts && m.channel.id === msg.channel.id);
       const checkbox = itemElement.querySelector('.context-result-checkbox');
 
@@ -2582,14 +2661,14 @@
         checkbox.checked = false;
       }
 
-      updateSelectedCount();
+      await updateSelectedCount();
       updateContextBadge();
     }
 
     // 7. Update Selected Count
-    function updateSelectedCount() {
+    async function updateSelectedCount() {
       if (selectedSlackMessages.length > 0) {
-        slackSelectedCount.textContent = `${selectedSlackMessages.length}개 선택됨`;
+        slackSelectedCount.textContent = await t('context.selected', { count: selectedSlackMessages.length });
         slackSelectedCount.style.display = 'block';
       } else {
         slackSelectedCount.style.display = 'none';

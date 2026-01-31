@@ -20,6 +20,7 @@ export interface AnalysisContext {
   users: Array<{ id: string; name: string }>;
   defaultTeamId?: string;
   instruction?: string;
+  language: string;
 }
 
 export class AnthropicAnalyzer {
@@ -89,6 +90,7 @@ export class AnthropicAnalyzer {
         users: context.users
       } : undefined,
       instruction: context?.instruction,
+      language: context?.language,
       model: 'haiku'  // Haiku 모델 사용
     };
 

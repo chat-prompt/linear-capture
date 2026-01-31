@@ -1,11 +1,9 @@
 {
-  "active_plan": "/Users/wine_ny/side-project/linear_project/linear-capture/.sisyphus/plans/user-hint-feature.md",
-  "started_at": "2026-01-27T13:43:14.399Z",
-  "completed_at": "2026-01-27T14:17:52.000Z",
+  "active_plan": "/Users/wine_ny/side-project/linear_project/linear-capture-worktrees/i18n/.sisyphus/plans/i18n.md",
+  "started_at": "2026-01-30T09:12:14.968Z",
   "session_ids": [
-    "ses_4005b8cffffeQhZaEyEPkgnHpJ",
-    "ses_4005b8cffffeQhZaEyEPkgnHpJ"
+    "ses_3f1e8fdccffeDgQAAANi8HUt1h",
+    "ses_3f12aac64ffeh339bCOGbSDEKy"
   ],
-  "plan_name": "user-hint-feature",
-  "status": "completed"
+  "plan_name": "i18n"
 }
