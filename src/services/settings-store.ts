@@ -139,7 +139,7 @@ export function getDeviceId(): string {
   return deviceId;
 }
 
-const SUPPORTED_LANGUAGES = ['en', 'ko'] as const;
+const SUPPORTED_LANGUAGES = ['en', 'ko', 'de', 'fr', 'es'] as const;
 type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
 
 export function getSupportedLanguages(): readonly string[] {
