@@ -1,5 +1,11 @@
 import { shell } from 'electron';
 import { getDeviceId } from './settings-store';
+import { 
+  getNotionLocalReader, 
+  isNotionDbAvailable, 
+  closeNotionLocalReader,
+  type LocalNotionPage 
+} from './notion-local-reader';
 
 const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
 const NOTION_REDIRECT_URI = 'https://linear-capture-ai.ny-4f1.workers.dev/notion/oauth-redirect';
@@ -38,6 +44,10 @@ export interface NotionPage {
   url: string;
   lastEditedTime: string;
   parentType: string;
+  /** Context snippet for content matches (local search only) */
+  matchContext?: string;
+  /** Whether this result is from content search vs title only */
+  isContentMatch?: boolean;
 }
 
 export interface NotionSearchResult {
@@ -47,6 +57,8 @@ export interface NotionSearchResult {
   hasMore?: boolean;
   nextCursor?: string | null;
   error?: string;
+  /** Search source: 'local' (full-text) or 'api' (title only) */
+  source?: 'local' | 'api';
 }
 
 export interface NotionPageContent {
@@ -153,22 +165,57 @@ export class NotionService {
   }
 
   async searchPages(query: string, pageSize?: number): Promise<NotionSearchResult> {
+    const limit = pageSize || 20;
+    
+    if (isNotionDbAvailable()) {
+      try {
+        const localReader = getNotionLocalReader();
+        const localResult = await localReader.searchPages(query, limit);
+        
+        if (localResult.success && localResult.pages.length > 0) {
+          console.log(`[Notion] Local search returned ${localResult.pages.length} results`);
+          return {
+            success: true,
+            pages: localResult.pages.map(this.convertLocalPage),
+            total: localResult.total,
+            source: 'local'
+          };
+        }
+      } catch (error) {
+        console.warn('[Notion] Local search failed, falling back to API:', error);
+      }
+    }
+
+    return this.searchPagesViaApi(query, limit);
+  }
+
+  private async searchPagesViaApi(query: string, pageSize: number): Promise<NotionSearchResult> {
     try {
       const url = new URL(`${WORKER_URL}/notion/search`);
       url.searchParams.set('device_id', this.deviceId);
       url.searchParams.set('query', query);
       url.searchParams.set('filter', 'page');
-      if (pageSize) {
-        url.searchParams.set('page_size', pageSize.toString());
-      }
+      url.searchParams.set('page_size', pageSize.toString());
 
       const response = await fetch(url.toString());
       const data = await response.json() as NotionSearchResult;
-      return data;
+      return { ...data, source: 'api' };
     } catch (error) {
       console.error('Notion search error:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error', source: 'api' };
     }
+  }
+
+  private convertLocalPage(localPage: LocalNotionPage): NotionPage {
+    return {
+      id: localPage.id,
+      title: localPage.title,
+      url: localPage.url,
+      lastEditedTime: localPage.lastEditedTime,
+      parentType: 'page',
+      matchContext: localPage.matchContext,
+      isContentMatch: localPage.isContentMatch
+    };
   }
 
   async getPageContent(pageId: string): Promise<NotionPageContent> {
