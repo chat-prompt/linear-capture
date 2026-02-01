@@ -33,6 +33,9 @@
       "assets/**/*",
       "locales/**/*"
     ],
+    "asarUnpack": [
+      "node_modules/sql.js/**/*"
+    ],
     "protocols": [
       {
         "name": "Linear Capture",
@@ -113,6 +116,7 @@
   "devDependencies": {
     "@electron/notarize": "^3.1.1",
     "@types/node": "^20.10.0",
+    "@types/sql.js": "^1.4.9",
     "@vitest/ui": "^4.0.18",
     "electron": "^28.3.3",
     "electron-builder": "^26.4.0",
@@ -126,6 +130,7 @@
     "electron-store": "^8.1.0",
     "electron-updater": "^6.7.3",
     "i18next": "^25.8.0",
-    "i18next-fs-backend": "^2.6.1"
+    "i18next-fs-backend": "^2.6.1",
+    "sql.js": "^1.13.0"
   }
 }

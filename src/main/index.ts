@@ -34,6 +34,7 @@ import {
 import { initAutoUpdater, checkForUpdates } from '../services/auto-updater';
 import { createSlackService, SlackService } from '../services/slack-client';
 import { createNotionService, NotionService } from '../services/notion-client';
+import { closeNotionLocalReader } from '../services/notion-local-reader';
 import { createGmailService, GmailService } from '../services/gmail-client';
 
 // Load environment variables
@@ -1139,6 +1140,7 @@ app.whenReady().then(async () => {
 app.on('will-quit', () => {
   unregisterAllHotkeys();
   destroyTray();
+  closeNotionLocalReader();
 });
 
 // macOS specific: keep app running when all windows closed

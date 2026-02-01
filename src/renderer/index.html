@@ -960,6 +960,51 @@
       -webkit-box-orient: vertical;
     }
 
+    .search-source-header {
+      padding: 6px 12px;
+      border-bottom: 1px solid #eee;
+      background: #fafafa;
+    }
+
+    .search-source-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .search-source-badge.local {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .search-source-badge.api {
+      background: #fff3e0;
+      color: #ef6c00;
+    }
+
+    .content-match-badge {
+      background: #e3f2fd;
+      color: #1565c0;
+      padding: 1px 6px;
+      border-radius: 8px;
+      font-size: 10px;
+    }
+
+    .context-result-snippet {
+      font-size: 11px;
+      color: #666;
+      font-style: italic;
+      margin-top: 4px;
+      padding: 4px 8px;
+      background: #f5f5f5;
+      border-radius: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .context-empty {
       padding: 20px;
       text-align: center;
@@ -2508,7 +2553,7 @@ updateTeamDependentDropdowns(teamSelect.value);
           return;
         }
 
-        renderNotionResults(result.pages);
+        renderNotionResults(result.pages, result.source);
       } catch (error) {
         console.error('Notion search error:', error);
         notionLoading.style.display = 'none';
@@ -2580,8 +2625,17 @@ updateTeamDependentDropdowns(teamSelect.value);
       await updateSelectedCount();
     }
 
-    async function renderNotionResults(pages) {
+    async function renderNotionResults(pages, source = 'api') {
       notionResults.innerHTML = '';
+
+      const sourceBadge = source === 'local' 
+        ? '<span class="search-source-badge local">본문 검색</span>' 
+        : '<span class="search-source-badge api">제목 검색</span>';
+      
+      const headerDiv = document.createElement('div');
+      headerDiv.className = 'search-source-header';
+      headerDiv.innerHTML = sourceBadge;
+      notionResults.appendChild(headerDiv);
       
       pages.forEach(page => {
         const isSelected = selectedNotionPages.some(p => p.id === page.id);
@@ -2599,6 +2653,9 @@ updateTeamDependentDropdowns(teamSelect.value);
 
         const icon = page.icon || '📄';
         const displayTitle = page.title.length > 60 ? page.title.substring(0, 60) + '...' : page.title;
+        const matchSnippet = page.matchContext 
+          ? `<div class="context-result-snippet">"${escapeHtml(page.matchContext)}"</div>` 
+          : '';
 
         item.innerHTML = `
           <input type="checkbox" class="context-result-checkbox" ${isSelected ? 'checked' : ''}>
@@ -2606,8 +2663,10 @@ updateTeamDependentDropdowns(teamSelect.value);
             <div class="context-result-meta">
               <span>${icon}</span>
               <span>${timeStr}</span>
+              ${page.isContentMatch ? '<span class="content-match-badge">본문</span>' : ''}
             </div>
             <div class="context-result-text">${escapeHtml(displayTitle)}</div>
+            ${matchSnippet}
           </div>
         `;
 
