@@ -36,6 +36,7 @@ import { createSlackService, SlackService } from '../services/slack-client';
 import { createNotionService, NotionService } from '../services/notion-client';
 import { closeNotionLocalReader } from '../services/notion-local-reader';
 import { createGmailService, GmailService } from '../services/gmail-client';
+import { getAiRecommendations } from '../services/ai-recommend';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
@@ -1080,6 +1081,11 @@ app.whenReady().then(async () => {
     return reverseMap;
   });
 
+  ipcMain.handle('ai-recommend', async (_event, { text, limit }: { text: string; limit?: number }) => {
+    return await getAiRecommendations(text, limit);
+  });
+
+  // Initialize AI analyzer (prefer Gemini, fallback to Anthropic)
   geminiAnalyzer = createGeminiAnalyzer();
   if (geminiAnalyzer) {
     console.log('Gemini AI analysis enabled (default)');

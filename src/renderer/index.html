@@ -1048,6 +1048,136 @@
       color: #5e6ad2;
       margin-top: 8px;
     }
+
+    /* AI Recommendation Section */
+    .ai-recommend-section {
+      margin-top: 8px;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .ai-recommend-section.visible {
+      display: block;
+    }
+
+    .ai-recommend-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: #f8f9fa;
+      cursor: pointer;
+      font-size: 12px;
+      color: #666;
+    }
+
+    .ai-recommend-header:hover {
+      background: #f0f1f3;
+    }
+
+    .ai-recommend-header-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .ai-recommend-toggle {
+      font-size: 10px;
+      transition: transform 0.2s;
+    }
+
+    .ai-recommend-section.expanded .ai-recommend-toggle {
+      transform: rotate(180deg);
+    }
+
+    .ai-recommend-body {
+      display: none;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .ai-recommend-section.expanded .ai-recommend-body {
+      display: block;
+    }
+
+    .ai-recommend-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 16px;
+      color: #666;
+      font-size: 12px;
+    }
+
+    .ai-recommend-empty {
+      padding: 16px;
+      text-align: center;
+      color: #888;
+      font-size: 12px;
+    }
+
+    .ai-recommend-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .ai-recommend-item:last-child {
+      border-bottom: none;
+    }
+
+    .ai-recommend-item:hover {
+      background: #f8f9fa;
+    }
+
+    .ai-recommend-source {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #f0f0f0;
+      color: #666;
+      flex-shrink: 0;
+    }
+
+    .ai-recommend-source.gmail { background: #fef3f2; color: #dc2626; }
+    .ai-recommend-source.slack { background: #f0fdf4; color: #16a34a; }
+    .ai-recommend-source.notion { background: #fefce8; color: #ca8a04; }
+    .ai-recommend-source.linear { background: #eff6ff; color: #2563eb; }
+
+    .ai-recommend-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .ai-recommend-title {
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ai-recommend-snippet {
+      color: #888;
+      font-size: 11px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ai-recommend-score {
+      font-size: 10px;
+      color: #999;
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
@@ -1122,6 +1252,10 @@
             <span class="context-tab-icon">📝</span>
             Notion
           </button>
+          <button type="button" class="context-tab" id="gmailTab" data-service="gmail">
+            <span class="context-tab-icon">📧</span>
+            Gmail
+          </button>
         </div>
         
         <div id="slackContent">
@@ -1169,6 +1303,29 @@
             <div id="notionSelectedCount" class="context-selected-count" style="display: none;"></div>
           </div>
         </div>
+
+        <div id="gmailContent" style="display: none;">
+          <div id="gmailNotConnected" class="context-not-connected">
+            <p style="color: #888; margin-bottom: 12px;">Gmail에 연결되지 않았습니다</p>
+            <button type="button" class="context-connect-btn" id="gmailConnectFromMain">
+              <span>📧</span> Gmail 연결하기
+            </button>
+          </div>
+          
+          <div id="gmailConnected" style="display: none;">
+            <div class="context-search-row">
+              <input type="text" class="context-search-input" id="gmailSearchInput" placeholder="이메일 검색... (예: from:user@example.com)">
+              <button type="button" class="context-search-btn" id="gmailSearchBtn">검색</button>
+            </div>
+            <div id="gmailLoading" class="context-loading" style="display: none;">
+              <div class="spinner"></div>
+              <span>검색 중...</span>
+            </div>
+            <div id="gmailResults" class="context-results" style="display: none;"></div>
+            <div id="gmailEmpty" class="context-empty" style="display: none;">검색 결과가 없습니다</div>
+            <div id="gmailSelectedCount" class="context-selected-count" style="display: none;"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1176,6 +1333,25 @@
       <div class="form-group">
         <label for="title" data-i18n="form.titleRequired">Title *</label>
         <input type="text" id="title" name="title" required data-i18n-placeholder="form.titlePlaceholder" placeholder="Target - Specific content (e.g., Login - Fix session expiry error)" />
+        <div class="ai-recommend-section" id="aiRecommendSection">
+          <div class="ai-recommend-header" id="aiRecommendHeader">
+            <div class="ai-recommend-header-left">
+              <span>✨</span>
+              <span data-i18n="ai.recommendations">AI Recommendations</span>
+              <span id="aiRecommendCount"></span>
+            </div>
+            <span class="ai-recommend-toggle">▼</span>
+          </div>
+          <div class="ai-recommend-body" id="aiRecommendBody">
+            <div class="ai-recommend-loading" id="aiRecommendLoading" style="display: none;">
+              <span>🔍</span> <span data-i18n="ai.searching">Searching related content...</span>
+            </div>
+            <div class="ai-recommend-empty" id="aiRecommendEmpty" style="display: none;" data-i18n="ai.noResults">
+              No recommendations found
+            </div>
+            <div id="aiRecommendResults"></div>
+          </div>
+        </div>
       </div>
 
       <div class="form-group">
@@ -2370,10 +2546,24 @@ updateTeamDependentDropdowns(teamSelect.value);
     const notionEmpty = document.getElementById('notionEmpty');
     const notionSelectedCount = document.getElementById('notionSelectedCount');
 
+    const gmailTab = document.getElementById('gmailTab');
+    const gmailContent = document.getElementById('gmailContent');
+    const gmailNotConnected = document.getElementById('gmailNotConnected');
+    const gmailConnected = document.getElementById('gmailConnected');
+    const gmailConnectFromMain = document.getElementById('gmailConnectFromMain');
+    const gmailSearchInput = document.getElementById('gmailSearchInput');
+    const gmailSearchBtn = document.getElementById('gmailSearchBtn');
+    const gmailLoading = document.getElementById('gmailLoading');
+    const gmailResults = document.getElementById('gmailResults');
+    const gmailEmpty = document.getElementById('gmailEmpty');
+    const gmailSelectedCount = document.getElementById('gmailSelectedCount');
+
     let slackConnectedStatus = false;
     let notionConnectedStatus = false;
+    let gmailConnectedStatus = false;
     let selectedSlackMessages = [];
     let selectedNotionPages = [];
+    let selectedGmailEmails = [];
     let activeContextTab = 'slack';
 
     contextHeader.addEventListener('click', () => {
@@ -2385,8 +2575,10 @@ updateTeamDependentDropdowns(teamSelect.value);
       activeContextTab = 'slack';
       slackTab.classList.add('active');
       notionTab.classList.remove('active');
+      gmailTab.classList.remove('active');
       slackContent.style.display = 'block';
       notionContent.style.display = 'none';
+      gmailContent.style.display = 'none';
     });
 
     notionTab.addEventListener('click', () => {
@@ -2394,8 +2586,21 @@ updateTeamDependentDropdowns(teamSelect.value);
       activeContextTab = 'notion';
       notionTab.classList.add('active');
       slackTab.classList.remove('active');
+      gmailTab.classList.remove('active');
       notionContent.style.display = 'block';
       slackContent.style.display = 'none';
+      gmailContent.style.display = 'none';
+    });
+
+    gmailTab.addEventListener('click', () => {
+      if (activeContextTab === 'gmail') return;
+      activeContextTab = 'gmail';
+      gmailTab.classList.add('active');
+      slackTab.classList.remove('active');
+      notionTab.classList.remove('active');
+      gmailContent.style.display = 'block';
+      slackContent.style.display = 'none';
+      notionContent.style.display = 'none';
     });
 
     // 2. Slack Connection Status Check
@@ -2469,11 +2674,41 @@ updateTeamDependentDropdowns(teamSelect.value);
 
     checkNotionStatus();
 
+    // Gmail Connection Status Check
+    async function checkGmailStatus() {
+      try {
+        const status = await ipcRenderer.invoke('gmail-status');
+        gmailConnectedStatus = status.connected;
+        updateGmailUI(status);
+      } catch (error) {
+        console.error('Failed to check Gmail status:', error);
+        gmailConnectedStatus = false;
+        updateGmailUI({ connected: false });
+      }
+    }
+
+    function updateGmailUI(status) {
+      if (status.connected) {
+        gmailNotConnected.style.display = 'none';
+        gmailConnected.style.display = 'block';
+        gmailTab.classList.remove('disabled');
+      } else {
+        gmailNotConnected.style.display = 'block';
+        gmailConnected.style.display = 'none';
+      }
+    }
+
+    checkGmailStatus();
+
     slackConnectFromMain.addEventListener('click', () => {
       ipcRenderer.invoke('open-settings');
     });
 
     notionConnectFromMain.addEventListener('click', () => {
+      ipcRenderer.invoke('open-settings');
+    });
+
+    gmailConnectFromMain.addEventListener('click', () => {
       ipcRenderer.invoke('open-settings');
     });
 
@@ -2568,6 +2803,53 @@ updateTeamDependentDropdowns(teamSelect.value);
       if (e.key === 'Enter') {
         e.preventDefault();
         searchNotion();
+      }
+    });
+
+    // Gmail Search
+    async function searchGmail() {
+      const query = gmailSearchInput.value.trim();
+      if (!query) return;
+
+      gmailLoading.style.display = 'flex';
+      gmailResults.style.display = 'none';
+      gmailEmpty.style.display = 'none';
+      gmailSearchBtn.disabled = true;
+
+      try {
+        const result = await ipcRenderer.invoke('gmail-search', { query, maxResults: 20 });
+        
+        gmailLoading.style.display = 'none';
+        gmailSearchBtn.disabled = false;
+
+        if (!result.success) {
+          console.error('Gmail search error:', result.error);
+          gmailEmpty.textContent = result.error || '검색 중 오류가 발생했습니다';
+          gmailEmpty.style.display = 'block';
+          return;
+        }
+
+        if (!result.messages || result.messages.length === 0) {
+          gmailEmpty.textContent = '검색 결과가 없습니다';
+          gmailEmpty.style.display = 'block';
+          return;
+        }
+
+        renderGmailResults(result.messages);
+      } catch (error) {
+        console.error('Gmail search error:', error);
+        gmailLoading.style.display = 'none';
+        gmailSearchBtn.disabled = false;
+        gmailEmpty.textContent = '검색 중 오류가 발생했습니다';
+        gmailEmpty.style.display = 'block';
+      }
+    }
+
+    gmailSearchBtn.addEventListener('click', searchGmail);
+    gmailSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        searchGmail();
       }
     });
 
@@ -2687,6 +2969,92 @@ updateTeamDependentDropdowns(teamSelect.value);
       await updateNotionSelectedCount();
     }
 
+    // Render Gmail Search Results
+    function renderGmailResults(emails) {
+      gmailResults.innerHTML = '';
+      
+      emails.forEach(email => {
+        const isSelected = selectedGmailEmails.some(e => e.id === email.id);
+        const item = document.createElement('div');
+        item.className = 'context-result-item' + (isSelected ? ' selected' : '');
+        item.dataset.emailId = email.id;
+
+        // Format timestamp
+        const date = new Date(email.date);
+        const timeStr = date.toLocaleString('ko-KR', { 
+          month: 'short', 
+          day: 'numeric', 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        });
+
+        // Sender display
+        const senderDisplay = email.from.name || email.from.email;
+
+        // Truncate subject and snippet
+        const displaySubject = email.subject.length > 60 ? email.subject.substring(0, 60) + '...' : email.subject;
+        const displaySnippet = email.snippet.length > 100 ? email.snippet.substring(0, 100) + '...' : email.snippet;
+
+        item.innerHTML = `
+          <input type="checkbox" class="context-result-checkbox" ${isSelected ? 'checked' : ''}>
+          <div class="context-result-content">
+            <div class="context-result-meta">
+              <span style="font-weight: 500;">${escapeHtml(senderDisplay)}</span>
+              <span>${timeStr}</span>
+            </div>
+            <div class="context-result-text" style="font-weight: 500; margin-bottom: 2px;">${escapeHtml(displaySubject)}</div>
+            <div class="context-result-text" style="color: #666; font-size: 12px;">${escapeHtml(displaySnippet)}</div>
+          </div>
+        `;
+
+        // Click handler
+        item.addEventListener('click', (e) => {
+          if (e.target.type === 'checkbox') return;
+          toggleGmailEmail(email, item);
+        });
+
+        // Checkbox handler
+        const checkbox = item.querySelector('.context-result-checkbox');
+        checkbox.addEventListener('change', () => {
+          toggleGmailEmail(email, item);
+        });
+
+        gmailResults.appendChild(item);
+      });
+
+      gmailResults.style.display = 'block';
+      updateGmailSelectedCount();
+    }
+
+    // Toggle Gmail Email Selection
+    function toggleGmailEmail(email, itemElement) {
+      const idx = selectedGmailEmails.findIndex(e => e.id === email.id);
+      const checkbox = itemElement.querySelector('.context-result-checkbox');
+
+      if (idx === -1) {
+        selectedGmailEmails.push(email);
+        itemElement.classList.add('selected');
+        checkbox.checked = true;
+      } else {
+        selectedGmailEmails.splice(idx, 1);
+        itemElement.classList.remove('selected');
+        checkbox.checked = false;
+      }
+
+      updateGmailSelectedCount();
+      updateContextBadge();
+    }
+
+    // Update Gmail Selected Count
+    function updateGmailSelectedCount() {
+      if (selectedGmailEmails.length > 0) {
+        gmailSelectedCount.textContent = `${selectedGmailEmails.length}개 선택됨`;
+        gmailSelectedCount.style.display = 'block';
+      } else {
+        gmailSelectedCount.style.display = 'none';
+      }
+    }
+
     async function toggleNotionPage(page, itemElement) {
       const idx = selectedNotionPages.findIndex(p => p.id === page.id);
       const checkbox = itemElement.querySelector('.context-result-checkbox');
@@ -2772,7 +3140,7 @@ updateTeamDependentDropdowns(teamSelect.value);
     }
 
     function updateContextBadge() {
-      const totalSelected = selectedSlackMessages.length + selectedNotionPages.length;
+      const totalSelected = selectedSlackMessages.length + selectedNotionPages.length + selectedGmailEmails.length;
       if (totalSelected > 0) {
         contextBadge.textContent = totalSelected;
         contextBadge.style.display = 'inline';
@@ -2789,7 +3157,7 @@ updateTeamDependentDropdowns(teamSelect.value);
     }
 
     function buildContextSection() {
-      if (selectedSlackMessages.length === 0 && selectedNotionPages.length === 0) {
+      if (selectedSlackMessages.length === 0 && selectedNotionPages.length === 0 && selectedGmailEmails.length === 0) {
         return '';
       }
 
@@ -2843,12 +3211,33 @@ updateTeamDependentDropdowns(teamSelect.value);
         });
       }
 
+      if (selectedGmailEmails.length > 0) {
+        contextText += '### Gmail Emails\n\n';
+        selectedGmailEmails.forEach(email => {
+          const date = new Date(email.date);
+          const timeStr = date.toLocaleString('ko-KR', { 
+            year: 'numeric',
+            month: 'short', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          });
+          const senderDisplay = email.from.name ? `${email.from.name} <${email.from.email}>` : email.from.email;
+          contextText += `> **From:** ${senderDisplay} (${timeStr})\n`;
+          contextText += `> **Subject:** ${email.subject}\n`;
+          contextText += `> \n`;
+          contextText += `> ${email.snippet.replace(/\n/g, '\n> ')}\n`;
+          contextText += '\n';
+        });
+      }
+
       return contextText;
     }
 
     ipcRenderer.on('settings-updated', () => {
       checkSlackStatus();
       checkNotionStatus();
+      checkGmailStatus();
     });
 
     // 12. Modify form submission to include context
@@ -2860,6 +3249,120 @@ updateTeamDependentDropdowns(teamSelect.value);
         descInput.value = descInput.value + contextSection;
       }
     }, true); // Use capture phase to run before the existing handler
+
+    // ==================== AI Recommendation Section ====================
+    const aiRecommendSection = document.getElementById('aiRecommendSection');
+    const aiRecommendHeader = document.getElementById('aiRecommendHeader');
+    const aiRecommendBody = document.getElementById('aiRecommendBody');
+    const aiRecommendLoading = document.getElementById('aiRecommendLoading');
+    const aiRecommendEmpty = document.getElementById('aiRecommendEmpty');
+    const aiRecommendResults = document.getElementById('aiRecommendResults');
+    const aiRecommendCount = document.getElementById('aiRecommendCount');
+    // titleInput is already declared above (line 1520)
+
+    let aiRecommendDebounceTimer = null;
+
+    aiRecommendHeader.addEventListener('click', () => {
+      aiRecommendSection.classList.toggle('expanded');
+    });
+
+    function debounce(func, wait) {
+      return function executedFunction(...args) {
+        clearTimeout(aiRecommendDebounceTimer);
+        aiRecommendDebounceTimer = setTimeout(() => func.apply(this, args), wait);
+      };
+    }
+
+    async function fetchAiRecommendations(text) {
+      if (!text || text.length < 3) {
+        aiRecommendSection.classList.remove('visible');
+        return;
+      }
+
+      aiRecommendSection.classList.add('visible', 'expanded');
+      aiRecommendLoading.style.display = 'flex';
+      aiRecommendEmpty.style.display = 'none';
+      aiRecommendResults.innerHTML = '';
+      aiRecommendCount.textContent = '';
+
+      try {
+        const result = await ipcRenderer.invoke('ai-recommend', { text, limit: 5 });
+        console.log('AI recommend result:', JSON.stringify(result, null, 2));
+
+        aiRecommendLoading.style.display = 'none';
+
+        if (!result.success || !result.recommendations || result.recommendations.length === 0) {
+          console.log('No recommendations - success:', result.success, 'recommendations:', result.recommendations);
+          aiRecommendEmpty.style.display = 'block';
+          aiRecommendCount.textContent = '';
+          return;
+        }
+
+        aiRecommendCount.textContent = `(${result.recommendations.length})`;
+        renderAiRecommendations(result.recommendations);
+      } catch (error) {
+        console.error('AI recommend error:', error);
+        aiRecommendLoading.style.display = 'none';
+        aiRecommendEmpty.textContent = '추천 검색 중 오류가 발생했습니다';
+        aiRecommendEmpty.style.display = 'block';
+      }
+    }
+
+    function renderAiRecommendations(recommendations) {
+      aiRecommendResults.innerHTML = '';
+
+      recommendations.forEach(rec => {
+        const item = document.createElement('div');
+        item.className = 'ai-recommend-item';
+        item.dataset.url = rec.url;
+        item.dataset.source = rec.source;
+
+        const scorePercent = Math.round(rec.score * 100);
+        const sourceLabel = {
+          gmail: '📧 Gmail',
+          slack: '💬 Slack',
+          notion: '📝 Notion',
+          linear: '🔷 Linear'
+        }[rec.source] || rec.source;
+
+        item.innerHTML = `
+          <span class="ai-recommend-source ${rec.source}">${sourceLabel}</span>
+          <div class="ai-recommend-content">
+            <div class="ai-recommend-title">${escapeHtml(rec.title)}</div>
+            <div class="ai-recommend-snippet">${escapeHtml(rec.snippet || '')}</div>
+          </div>
+          <span class="ai-recommend-score">${scorePercent}%</span>
+        `;
+
+        item.addEventListener('click', () => {
+          addRecommendationToContext(rec);
+        });
+
+        aiRecommendResults.appendChild(item);
+      });
+    }
+
+    function addRecommendationToContext(rec) {
+      const contextText = `[${rec.source.toUpperCase()}] ${rec.title}\n${rec.url}`;
+      
+      if (descInput.value) {
+        descInput.value += '\n\n---\nAI 추천:\n' + contextText;
+      } else {
+        descInput.value = '---\nAI 추천:\n' + contextText;
+      }
+
+      const item = aiRecommendResults.querySelector(`[data-url="${rec.url}"]`);
+      if (item) {
+        item.style.opacity = '0.5';
+        item.style.pointerEvents = 'none';
+      }
+    }
+
+    const debouncedFetchRecommendations = debounce(fetchAiRecommendations, 300);
+
+    titleInput.addEventListener('input', (e) => {
+      debouncedFetchRecommendations(e.target.value.trim());
+    });
   </script>
 </body>
 </html>
