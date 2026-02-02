@@ -1179,6 +1179,7 @@
       flex-shrink: 0;
     }
   </style>
+  <link rel="stylesheet" href="semantic-search.css">
 </head>
 <body>
   <!-- Top bar with Settings button (aligned with traffic lights) -->
@@ -1359,6 +1360,42 @@
         <textarea id="description" name="description" data-i18n-placeholder="form.descriptionPlaceholder" placeholder="Optional description..."></textarea>
       </div>
 
+      <!-- Semantic Search Section -->
+      <div id="semanticSearchSection" class="semantic-search-section">
+        <div class="semantic-search-header" id="semanticSearchHeader">
+          <div class="semantic-search-header-left">
+            <span class="semantic-search-header-icon">🔗</span>
+            <span class="semantic-search-header-title" data-i18n="semantic.title">Related Documents</span>
+            <span class="semantic-search-header-badge" id="semanticBadge" style="display: none;">0</span>
+          </div>
+          <span class="semantic-search-header-toggle">▼</span>
+        </div>
+        <div class="semantic-search-body">
+          <div class="semantic-auto-status" id="semanticAutoStatus">
+            <span>💡</span>
+            <span data-i18n="semantic.autoHint">Enter a title to auto-search related documents</span>
+          </div>
+          <div class="semantic-search-row">
+            <input type="text" class="semantic-search-input" id="semanticSearchInput" 
+                   data-i18n-placeholder="semantic.searchPlaceholder" placeholder="Search related documents...">
+            <button type="button" class="semantic-search-btn" id="semanticSearchBtn" data-i18n="common.search">Search</button>
+          </div>
+          <div id="semanticLoading" class="semantic-loading" style="display: none;">
+            <div class="spinner"></div>
+            <span data-i18n="semantic.searching">Searching...</span>
+          </div>
+          <div id="semanticResults" class="semantic-results"></div>
+          <div id="semanticEmpty" class="semantic-empty" style="display: none;" data-i18n="semantic.noResults">No related documents found</div>
+          <div class="semantic-actions" id="semanticActions" style="display: none;">
+            <span class="semantic-selected-count" id="semanticSelectedCount">0 selected</span>
+            <button type="button" class="semantic-insert-btn" id="semanticInsertBtn" disabled>
+              <span>📎</span>
+              <span data-i18n="semantic.insertToDescription">Insert to Description</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Linear Section - No auto-translate -->
       <div id="linearSection" data-no-translate>
       <div class="row">
@@ -1488,6 +1525,7 @@
   <script>
     console.log('[index.html] Script loading...');
     const { ipcRenderer } = require('electron');
+    window.ipcRenderer = ipcRenderer;
 
     // ==================== i18n Functions ====================
     async function t(key, options = {}) {
@@ -3363,6 +3401,303 @@ updateTeamDependentDropdowns(teamSelect.value);
     titleInput.addEventListener('input', (e) => {
       debouncedFetchRecommendations(e.target.value.trim());
     });
+
+    // ==================== Semantic Search ====================
+    let semantic_selectedResults = new Set();
+    let semantic_currentResults = [];
+    let semantic_searchDebounceTimer = null;
+
+    const SEMANTIC_DEBOUNCE_MS = 500;
+    const SEMANTIC_MIN_QUERY_LENGTH = 3;
+
+    function initSemanticSearch() {
+      const section = document.getElementById('semanticSearchSection');
+      const header = document.getElementById('semanticSearchHeader');
+      const searchInput = document.getElementById('semanticSearchInput');
+      const searchBtn = document.getElementById('semanticSearchBtn');
+      const titleInputForSemantic = document.getElementById('title');
+
+      if (!section || !header) return;
+
+      header.addEventListener('click', () => toggleSemanticSection(section));
+
+      if (searchBtn) {
+        searchBtn.addEventListener('click', () => {
+          const query = searchInput?.value?.trim();
+          if (query && query.length >= SEMANTIC_MIN_QUERY_LENGTH) {
+            performSemanticSearch(query);
+          }
+        });
+      }
+
+      if (searchInput) {
+        searchInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const query = searchInput.value.trim();
+            if (query && query.length >= SEMANTIC_MIN_QUERY_LENGTH) {
+              performSemanticSearch(query);
+            }
+          }
+        });
+      }
+
+      if (titleInputForSemantic) {
+        titleInputForSemantic.addEventListener('blur', () => {
+          const query = titleInputForSemantic.value.trim();
+          if (query && query.length >= SEMANTIC_MIN_QUERY_LENGTH) {
+            clearTimeout(semantic_searchDebounceTimer);
+            semantic_searchDebounceTimer = setTimeout(() => {
+              if (searchInput) {
+                searchInput.value = query;
+              }
+              performSemanticSearch(query);
+            }, SEMANTIC_DEBOUNCE_MS);
+          }
+        });
+      }
+
+      const insertBtn = document.getElementById('semanticInsertBtn');
+      if (insertBtn) {
+        insertBtn.addEventListener('click', insertSelectedToDescription);
+      }
+    }
+
+    function toggleSemanticSection(section) {
+      if (!section) {
+        section = document.getElementById('semanticSearchSection');
+      }
+      if (section) {
+        section.classList.toggle('expanded');
+      }
+    }
+
+    async function performSemanticSearch(query) {
+      console.log('[SemanticSearch:JS] performSemanticSearch called with query:', query);
+      
+      const loadingEl = document.getElementById('semanticLoading');
+      const resultsEl = document.getElementById('semanticResults');
+      const emptyEl = document.getElementById('semanticEmpty');
+      const actionsEl = document.getElementById('semanticActions');
+      const autoStatusEl = document.getElementById('semanticAutoStatus');
+      const badgeEl = document.getElementById('semanticBadge');
+      const section = document.getElementById('semanticSearchSection');
+
+      if (autoStatusEl) autoStatusEl.style.display = 'none';
+      if (loadingEl) loadingEl.style.display = 'flex';
+      if (resultsEl) resultsEl.style.display = 'none';
+      if (emptyEl) emptyEl.style.display = 'none';
+      if (actionsEl) actionsEl.style.display = 'none';
+
+      if (section && !section.classList.contains('expanded')) {
+        section.classList.add('expanded');
+      }
+
+      semantic_selectedResults.clear();
+      semantic_currentResults = [];
+
+      try {
+        console.log('[SemanticSearch:JS] ipcRenderer:', ipcRenderer ? 'available' : 'NOT available');
+        if (!ipcRenderer) {
+          console.error('[SemanticSearch:JS] ipcRenderer not available');
+          if (loadingEl) loadingEl.style.display = 'none';
+          if (emptyEl) {
+            emptyEl.textContent = 'IPC not available. Please restart the app.';
+            emptyEl.style.display = 'block';
+          }
+          return;
+        }
+        
+        console.log('[SemanticSearch:JS] Calling ipcRenderer.invoke...');
+        const result = await ipcRenderer.invoke('context-semantic-search', {
+          query: query,
+          source: 'slack'
+        });
+        console.log('[SemanticSearch:JS] ipcRenderer.invoke returned:', result);
+
+        if (loadingEl) loadingEl.style.display = 'none';
+
+        if (result.notConnected) {
+          if (emptyEl) {
+            emptyEl.textContent = 'Slack not connected. Connect in Settings first.';
+            emptyEl.style.display = 'block';
+          }
+          if (badgeEl) badgeEl.style.display = 'none';
+        } else if (result.success && result.results && result.results.length > 0) {
+          semantic_currentResults = result.results;
+          renderSemanticResults(result.results);
+          if (resultsEl) resultsEl.style.display = 'block';
+          if (actionsEl) actionsEl.style.display = 'flex';
+          if (badgeEl) {
+            badgeEl.textContent = result.results.length;
+            badgeEl.style.display = 'inline';
+          }
+        } else {
+          if (emptyEl) {
+            emptyEl.textContent = 'No related documents found';
+            emptyEl.style.display = 'block';
+          }
+          if (badgeEl) badgeEl.style.display = 'none';
+        }
+      } catch (error) {
+        console.error('Semantic search error:', error);
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (emptyEl) emptyEl.style.display = 'block';
+        if (badgeEl) badgeEl.style.display = 'none';
+      }
+    }
+
+    function renderSemanticResults(results) {
+      const resultsEl = document.getElementById('semanticResults');
+      if (!resultsEl) return;
+
+      resultsEl.innerHTML = '';
+
+      results.forEach((item, index) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'semantic-result-item';
+        itemEl.dataset.index = index;
+
+        const sourceIcon = getSemanticSourceIcon(item.source);
+        const scorePercent = Math.round((item.score || 0) * 100);
+        const title = item.title || '';
+        const content = item.content || '';
+        const displayText = title || content.substring(0, 100);
+
+        itemEl.innerHTML = `
+          <input type="checkbox" class="semantic-result-checkbox" data-index="${index}">
+          <div class="semantic-result-content">
+            <div class="semantic-result-meta">
+              <span class="semantic-result-source ${item.source}">${sourceIcon} ${capitalizeFirstSemantic(item.source)}</span>
+              <span class="semantic-result-score">${scorePercent}% match</span>
+            </div>
+            ${title ? `<div class="semantic-result-title">${escapeHtmlSemantic(title)}</div>` : ''}
+            <div class="semantic-result-text">${escapeHtmlSemantic(content)}</div>
+          </div>
+        `;
+
+        const checkbox = itemEl.querySelector('.semantic-result-checkbox');
+        
+        itemEl.addEventListener('click', (e) => {
+          if (e.target !== checkbox) {
+            checkbox.checked = !checkbox.checked;
+          }
+          toggleSemanticResultSelection(index, checkbox.checked, itemEl);
+        });
+
+        checkbox.addEventListener('change', (e) => {
+          e.stopPropagation();
+          toggleSemanticResultSelection(index, checkbox.checked, itemEl);
+        });
+
+        resultsEl.appendChild(itemEl);
+      });
+
+      updateSemanticSelectedCount();
+    }
+
+    function toggleSemanticResultSelection(index, isSelected, itemEl) {
+      if (isSelected) {
+        semantic_selectedResults.add(index);
+        itemEl.classList.add('selected');
+      } else {
+        semantic_selectedResults.delete(index);
+        itemEl.classList.remove('selected');
+      }
+      updateSemanticSelectedCount();
+    }
+
+    function updateSemanticSelectedCount() {
+      const countEl = document.getElementById('semanticSelectedCount');
+      const insertBtn = document.getElementById('semanticInsertBtn');
+      const count = semantic_selectedResults.size;
+
+      if (countEl) {
+        countEl.textContent = `${count} selected`;
+      }
+      if (insertBtn) {
+        insertBtn.disabled = count === 0;
+      }
+    }
+
+    function insertSelectedToDescription() {
+      if (semantic_selectedResults.size === 0) return;
+
+      const descriptionEl = document.getElementById('description');
+      if (!descriptionEl) return;
+
+      const items = Array.from(semantic_selectedResults)
+        .map(index => semantic_currentResults[index])
+        .filter(Boolean);
+
+      if (items.length === 0) return;
+
+      let markdown = '\n\n### Related Context\n';
+      
+      items.forEach(item => {
+        const sourceLabel = capitalizeFirstSemantic(item.source);
+        const displayText = (item.title || item.content || '').substring(0, 60);
+        const cleanText = displayText.replace(/\n/g, ' ').trim();
+        
+        if (item.url) {
+          markdown += `- [${sourceLabel}] ${cleanText}... ([View](${item.url}))\n`;
+        } else {
+          markdown += `- [${sourceLabel}] ${cleanText}...\n`;
+        }
+      });
+
+      const currentValue = descriptionEl.value || '';
+      descriptionEl.value = currentValue + markdown;
+
+      semantic_selectedResults.clear();
+      const resultsEl = document.getElementById('semanticResults');
+      if (resultsEl) {
+        resultsEl.querySelectorAll('.semantic-result-item').forEach(item => {
+          item.classList.remove('selected');
+          const checkbox = item.querySelector('.semantic-result-checkbox');
+          if (checkbox) checkbox.checked = false;
+        });
+      }
+      updateSemanticSelectedCount();
+
+      const section = document.getElementById('semanticSearchSection');
+      if (section) {
+        section.classList.remove('expanded');
+      }
+    }
+
+    function getSemanticSourceIcon(source) {
+      const icons = {
+        slack: '💬',
+        notion: '📝',
+        gmail: '📧'
+      };
+      return icons[source] || '📄';
+    }
+
+    function capitalizeFirstSemantic(str) {
+      if (!str) return '';
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    function escapeHtmlSemantic(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initSemanticSearch);
+    } else {
+      initSemanticSearch();
+    }
+
+    window.semanticSearch = {
+      init: initSemanticSearch,
+      toggle: toggleSemanticSection,
+      search: performSemanticSearch
+    };
   </script>
 </body>
 </html>

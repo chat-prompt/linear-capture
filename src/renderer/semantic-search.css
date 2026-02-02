@@ -1,0 +1,354 @@
+/* Semantic Search Section Styles */
+
+.semantic-search-section {
+  margin-bottom: 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+}
+
+.semantic-search-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: #f8f9fa;
+  cursor: pointer;
+  user-select: none;
+}
+
+.semantic-search-header:hover {
+  background: #f0f1f3;
+}
+
+.semantic-search-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.semantic-search-header-icon {
+  font-size: 16px;
+}
+
+.semantic-search-header-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+}
+
+.semantic-search-header-badge {
+  background: #5e6ad2;
+  color: white;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 4px;
+}
+
+.semantic-search-header-toggle {
+  font-size: 12px;
+  color: #666;
+  transition: transform 0.2s;
+}
+
+.semantic-search-section.expanded .semantic-search-header-toggle {
+  transform: rotate(180deg);
+}
+
+.semantic-search-body {
+  display: none;
+  padding: 12px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.semantic-search-section.expanded .semantic-search-body {
+  display: block;
+}
+
+.semantic-auto-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: #f0f7ff;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #1a73e8;
+  margin-bottom: 12px;
+}
+
+.semantic-search-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.semantic-search-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.semantic-search-input:focus {
+  outline: none;
+  border-color: #5e6ad2;
+}
+
+.semantic-search-btn {
+  padding: 8px 16px;
+  background: #5e6ad2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.semantic-search-btn:hover {
+  background: #4c5abd;
+}
+
+.semantic-search-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.semantic-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  color: #666;
+  font-size: 13px;
+}
+
+.semantic-results {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.semantic-result-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.semantic-result-item:last-child {
+  border-bottom: none;
+}
+
+.semantic-result-item:hover {
+  background: #f8f9fa;
+}
+
+.semantic-result-item.selected {
+  background: #e8e9f3;
+}
+
+.semantic-result-checkbox {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.semantic-result-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.semantic-result-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 4px;
+}
+
+.semantic-result-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.semantic-result-source.slack {
+  background: #4a154b;
+  color: white;
+}
+
+.semantic-result-source.notion {
+  background: #000;
+  color: white;
+}
+
+.semantic-result-source.gmail {
+  background: #ea4335;
+  color: white;
+}
+
+.semantic-result-score {
+  font-size: 10px;
+  color: #5e6ad2;
+  font-weight: 500;
+}
+
+.semantic-result-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.semantic-result-text {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.semantic-empty {
+  padding: 20px;
+  text-align: center;
+  color: #888;
+  font-size: 13px;
+}
+
+.semantic-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid #eee;
+}
+
+.semantic-selected-count {
+  font-size: 12px;
+  color: #666;
+}
+
+.semantic-insert-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #5e6ad2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.semantic-insert-btn:hover {
+  background: #4c5abd;
+}
+
+.semantic-insert-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+/* Dark mode support */
+[data-theme="dark"] .semantic-search-section {
+  border-color: #3a3a3a;
+  background: #2a2a2a;
+}
+
+[data-theme="dark"] .semantic-search-header {
+  background: #333;
+}
+
+[data-theme="dark"] .semantic-search-header:hover {
+  background: #3a3a3a;
+}
+
+[data-theme="dark"] .semantic-search-header-title {
+  color: #eee;
+}
+
+[data-theme="dark"] .semantic-search-header-toggle {
+  color: #999;
+}
+
+[data-theme="dark"] .semantic-search-body {
+  border-top-color: #3a3a3a;
+}
+
+[data-theme="dark"] .semantic-auto-status {
+  background: #1e3a5f;
+  color: #6eb5ff;
+}
+
+[data-theme="dark"] .semantic-search-input {
+  background: #333;
+  border-color: #444;
+  color: #eee;
+}
+
+[data-theme="dark"] .semantic-search-input:focus {
+  border-color: #5e6ad2;
+}
+
+[data-theme="dark"] .semantic-results {
+  border-color: #3a3a3a;
+}
+
+[data-theme="dark"] .semantic-result-item {
+  border-bottom-color: #3a3a3a;
+}
+
+[data-theme="dark"] .semantic-result-item:hover {
+  background: #333;
+}
+
+[data-theme="dark"] .semantic-result-item.selected {
+  background: #3a3a5a;
+}
+
+[data-theme="dark"] .semantic-result-title {
+  color: #eee;
+}
+
+[data-theme="dark"] .semantic-result-text {
+  color: #aaa;
+}
+
+[data-theme="dark"] .semantic-result-meta {
+  color: #888;
+}
+
+[data-theme="dark"] .semantic-empty {
+  color: #888;
+}
+
+[data-theme="dark"] .semantic-actions {
+  border-top-color: #3a3a3a;
+}
+
+[data-theme="dark"] .semantic-selected-count {
+  color: #999;
+}
