@@ -31,6 +31,7 @@ import { initAutoUpdater, checkForUpdates } from '../services/auto-updater';
 import { createSlackService, SlackService } from '../services/slack-client';
 import { createNotionService, NotionService } from '../services/notion-client';
 import { createGmailService, GmailService } from '../services/gmail-client';
+import { getAiRecommendations } from '../services/ai-recommend';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
@@ -1032,6 +1033,10 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('get-device-id', () => {
     return getDeviceId();
+  });
+
+  ipcMain.handle('ai-recommend', async (_event, { text, limit }: { text: string; limit?: number }) => {
+    return await getAiRecommendations(text, limit);
   });
 
   // Initialize AI analyzer (prefer Gemini, fallback to Anthropic)

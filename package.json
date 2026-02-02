@@ -13,6 +13,7 @@
     "clean": "rm -rf dist release",
     "test": "vitest",
     "pack": "npm run build && electron-builder --dir",
+    "pack:dev": "npm run build && electron-builder --config electron-builder.dev.js --dir",
     "pack:clean": "pkill -f 'Linear Capture' || true; pkill -f Electron || true; rm -rf dist release && npm run pack && open 'release/mac-arm64/Linear Capture.app'",
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac",
