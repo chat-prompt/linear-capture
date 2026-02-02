@@ -1088,15 +1088,49 @@ app.whenReady().then(async () => {
   });
 
   ipcMain.handle('context-semantic-search', async (_event, { query, source }: { query: string; source: string }) => {
+    const debug: string[] = [];
+    debug.push(`query="${query}", source="${source}"`);
+    console.log(`[SemanticSearch] Handler called! query="${query}", source="${source}"`);
+    
     try {
+      debug.push('Getting adapter...');
+      console.log(`[SemanticSearch] Getting adapter for ${source}...`);
       const adapter = getAdapter(source as ContextSource);
+      
+      debug.push('Checking connection...');
+      console.log(`[SemanticSearch] Got adapter, checking connection...`);
+      const isConnected = await adapter.isConnected();
+      debug.push(`isConnected=${isConnected}`);
+      console.log(`[SemanticSearch] ${source} connected: ${isConnected}`);
+      
+      if (!isConnected) {
+        debug.push('Not connected, returning early');
+        console.log(`[SemanticSearch] ${source} not connected, returning empty results`);
+        return { success: true, results: [], notConnected: true, _debug: debug };
+      }
+      
+      debug.push('Fetching items...');
       const items = await adapter.fetchItems(query);
+      debug.push(`fetchedItems=${items.length}`);
+      console.log(`[SemanticSearch] Fetched ${items.length} items from ${source}`);
+      
+      if (items.length === 0) {
+        debug.push('No items found, returning empty');
+        console.log('[SemanticSearch] No items to search, returning empty results');
+        return { success: true, results: [], _debug: debug };
+      }
+      
+      debug.push('Calling semantic search service...');
       const searchService = getSemanticSearchService();
       const results = await searchService.search(query, items);
-      return { success: true, results };
+      debug.push(`searchResults=${results.length}`);
+      console.log(`[SemanticSearch] Search returned ${results.length} results`);
+      
+      return { success: true, results, _debug: debug };
     } catch (error) {
-      console.error('Context semantic search error:', error);
-      return { success: false, error: String(error), results: [] };
+      debug.push(`ERROR: ${String(error)}`);
+      console.error('[SemanticSearch] Error:', error);
+      return { success: false, error: String(error), results: [], _debug: debug };
     }
   });
 
