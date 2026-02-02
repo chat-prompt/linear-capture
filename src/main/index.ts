@@ -37,6 +37,7 @@ import { createNotionService, NotionService } from '../services/notion-client';
 import { closeNotionLocalReader } from '../services/notion-local-reader';
 import { createGmailService, GmailService } from '../services/gmail-client';
 import { getAiRecommendations } from '../services/ai-recommend';
+import { trackAppOpen, trackIssueCreated } from '../services/analytics';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
@@ -668,11 +669,9 @@ app.whenReady().then(async () => {
     });
 
     if (result.success && result.issueUrl) {
-      // Copy URL to clipboard
       clipboard.writeText(result.issueUrl);
-
-      // Cleanup all images (but don't close window - let renderer show success screen)
       cleanupSession();
+      trackIssueCreated(imageUrls.length, false);
     }
 
     return result;
@@ -1099,6 +1098,8 @@ app.whenReady().then(async () => {
 
   // Load Linear data first (if token exists)
   await loadLinearData();
+
+  trackAppOpen();
 
   // Create tray
   createTray({
