@@ -28,12 +28,15 @@ describe('i18n settings', () => {
     vi.clearAllMocks();
   });
 
-  it('getSupportedLanguages returns en and ko', async () => {
+  it('getSupportedLanguages returns 5 languages', async () => {
     const { getSupportedLanguages } = await import('../services/settings-store');
     const langs = getSupportedLanguages();
     expect(langs).toContain('en');
     expect(langs).toContain('ko');
-    expect(langs).toHaveLength(2);
+    expect(langs).toContain('de');
+    expect(langs).toContain('fr');
+    expect(langs).toContain('es');
+    expect(langs).toHaveLength(5);
   });
 
   it('getLanguage returns stored language if valid', async () => {
@@ -58,7 +61,7 @@ describe('i18n settings', () => {
     mockStoreInstance.get.mockReturnValue(undefined);
     
     const electron = await import('electron');
-    vi.mocked(electron.app.getLocale).mockReturnValue('fr-FR');
+    vi.mocked(electron.app.getLocale).mockReturnValue('ja-JP');
     
     const { getLanguage } = await import('../services/settings-store');
     expect(getLanguage()).toBe('en');
@@ -71,7 +74,7 @@ describe('i18n settings', () => {
     expect(mockStoreInstance.set).toHaveBeenCalledWith('language', 'ko');
     
     mockStoreInstance.set.mockClear();
-    setLanguage('fr');
+    setLanguage('ja');
     expect(mockStoreInstance.set).not.toHaveBeenCalled();
   });
 });
