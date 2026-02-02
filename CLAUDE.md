@@ -83,19 +83,41 @@ npm run pack         # .app만 빌드 (서명O, 공증X - 빠름)
 npm run pack:clean   # ⭐ 클린 빌드 + 실행 (기존 프로세스 종료 + dist/release 삭제 + 빌드 + 앱 실행)
 npm run dist:mac     # DMG 패키징 (서명 + 공증 - 배포용)
 npm run reinstall    # 완전 클린 재설치 (권한 리셋 포함)
+npm run translate    # i18n 자동 번역 (누락 키 → Gemini API)
+npm run validate:i18n # i18n 검증 (누락/중복 키 확인)
 ```
 
+## i18n 자동 번역
+
+> **🚨 Claude 필수 규칙**: UI 텍스트 추가/수정 후 **반드시** `npm run translate` 실행.
+
+### 워크플로우
+
+1. `locales/en/translation.json`에 영어 키 추가
+2. `npm run translate` 실행 → ko, de, fr, es 자동 번역
+3. `npm run validate:i18n`으로 검증
+
+### 규칙
+
+- **영어(en)가 기준**: 다른 언어는 en 기준으로 자동 생성
+- **기존 번역 유지**: 이미 있는 번역은 덮어쓰지 않음
+- **`{{variable}}` 보존**: interpolation 패턴 자동 검증
+- **부분 저장**: API 에러 시 성공한 번역만 저장
+
 ## ⚠️ 테스트 원칙 (중요!)
+
+> **🚨 Claude 필수 규칙**: 앱 테스트 시 **반드시** `npm run pack:clean` 사용.
+> 다른 방법(`npm start`, `npm run pack` 등) 사용 금지.
 
 **개발 모드(`npm start`)는 화면 캡처 권한 문제로 테스트에 부적합합니다.**
 
 개발 모드에서는 앱이 "Electron"으로 인식되어 "Linear Capture"와 별도의 권한이 필요합니다.
 매번 권한 설정하기 번거로우므로, **항상 패키징된 .app으로 테스트**하세요.
 
-### 빠른 테스트 방법 (권장)
+### 빠른 테스트 방법 (유일한 방법)
 
 ```bash
-# ⭐ 코드 수정 후 테스트 시 반드시 이 명령어 사용 (가장 확실한 방법)
+# ⭐ 코드 수정 후 테스트 시 반드시 이 명령어 사용 (유일하게 허용된 방법)
 npm run pack:clean
 ```
 
