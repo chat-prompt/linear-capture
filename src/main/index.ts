@@ -38,6 +38,9 @@ import { closeNotionLocalReader } from '../services/notion-local-reader';
 import { createGmailService, GmailService } from '../services/gmail-client';
 import { getAiRecommendations } from '../services/ai-recommend';
 import { trackAppOpen, trackIssueCreated } from '../services/analytics';
+import { getAdapter } from '../services/context-adapters';
+import { getSemanticSearchService } from '../services/semantic-search';
+import type { ContextSource } from '../types/context-search';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
@@ -733,7 +736,7 @@ app.whenReady().then(async () => {
       users: usersCache.map(u => ({ id: u.id, name: u.name })),
       defaultTeamId: process.env.DEFAULT_TEAM_ID,
       instruction: data.instruction,
-      language: getCurrentLanguage(),
+      language: getLanguage(),
     };
 
     try {
@@ -1082,6 +1085,19 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('ai-recommend', async (_event, { text, limit }: { text: string; limit?: number }) => {
     return await getAiRecommendations(text, limit);
+  });
+
+  ipcMain.handle('context-semantic-search', async (_event, { query, source }: { query: string; source: string }) => {
+    try {
+      const adapter = getAdapter(source as ContextSource);
+      const items = await adapter.fetchItems(query);
+      const searchService = getSemanticSearchService();
+      const results = await searchService.search(query, items);
+      return { success: true, results };
+    } catch (error) {
+      console.error('Context semantic search error:', error);
+      return { success: false, error: String(error), results: [] };
+    }
   });
 
   // Initialize AI analyzer (prefer Gemini, fallback to Anthropic)
