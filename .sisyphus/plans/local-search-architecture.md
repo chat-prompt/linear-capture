@@ -361,7 +361,7 @@ Task 6 (UI 연동 + 싱크 상태 표시)
 
 ### Phase 4: 통합
 
-- [ ] 5. 기존 서비스 대체 및 통합
+- [x] 5. 기존 서비스 대체 및 통합
 
   **What to do**:
   - `SemanticSearchService` → `LocalSearchService` 대체

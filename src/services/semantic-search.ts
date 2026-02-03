@@ -1,40 +1,46 @@
-import type { ContextItem, SearchResult, SemanticSearchResponse } from '../types/context-search';
+import type { ContextItem, SearchResult } from '../types/context-search';
+import { getLocalSearchService } from './local-search';
 
-const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
+// OLD: Worker-based search (kept for reference)
+// const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
 
+/**
+ * SemanticSearchService - Now delegates to LocalSearchService
+ *
+ * Maintains backward compatibility with existing code while using local DB search.
+ * The Worker-based search has been replaced with hybrid local search (semantic + keyword).
+ */
 export class SemanticSearchService {
+  /**
+   * Search using local hybrid search (semantic + keyword with RRF)
+   *
+   * @param query - Search query text
+   * @param items - Ignored (local search queries DB directly)
+   * @param limit - Maximum results to return (default: 5)
+   * @returns SearchResult[] sorted by relevance
+   */
+  async search(query: string, items: ContextItem[], limit = 5): Promise<SearchResult[]> {
+    if (!query) {
+      return [];
+    }
+
+    try {
+      // Delegate to local search service
+      const localSearch = getLocalSearchService();
+      return await localSearch.search(query, items, limit);
+    } catch (error) {
+      console.error('[SemanticSearch] Local search failed:', error);
+      return [];
+    }
+  }
+
+  // OLD: Worker-based implementation (removed)
+  /*
   private maxRetries = 2;
   private baseDelay = 1000;
 
   private async sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  async search(query: string, items: ContextItem[], limit = 5): Promise<SearchResult[]> {
-    if (!query || items.length === 0) {
-      return [];
-    }
-
-    for (let attempt = 0; attempt < this.maxRetries; attempt++) {
-      try {
-        if (attempt > 0) {
-          const delay = this.baseDelay * Math.pow(2, attempt - 1);
-          await this.sleep(delay);
-        }
-
-        return await this.callWorker(query, items, limit);
-      } catch (error) {
-        console.error(`Semantic search attempt ${attempt + 1} failed:`, error);
-
-        if (attempt < this.maxRetries - 1) {
-          continue;
-        }
-
-        return [];
-      }
-    }
-
-    return [];
   }
 
   private async callWorker(query: string, items: ContextItem[], limit: number): Promise<SearchResult[]> {
@@ -57,6 +63,7 @@ export class SemanticSearchService {
 
     return result.results || [];
   }
+  */
 }
 
 let searchService: SemanticSearchService | null = null;
