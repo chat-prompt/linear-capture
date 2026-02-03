@@ -420,6 +420,150 @@
       margin-bottom: 6px;
       padding-left: 28px;
     }
+
+    /* Sync Status Section */
+    .sync-section {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #eee;
+    }
+
+    .sync-section h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 12px;
+    }
+
+    .sync-source {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
+    }
+
+    .sync-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .sync-source-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sync-status-badge {
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .sync-status-badge.idle {
+      background: #e0e0e0;
+      color: #666;
+    }
+
+    .sync-status-badge.syncing {
+      background: #2196F3;
+      color: white;
+      animation: pulse 1.5s infinite;
+    }
+
+    .sync-status-badge.error {
+      background: #f44336;
+      color: white;
+    }
+
+    .sync-info {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: #666;
+    }
+
+    .sync-info-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .sync-info-label {
+      color: #888;
+    }
+
+    .sync-info-value {
+      color: #333;
+      font-weight: 500;
+    }
+
+    .sync-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-sync {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid #ddd;
+      background: white;
+      color: #5e6ad2;
+    }
+
+    .btn-sync:hover:not(:disabled) {
+      background: #f8f8ff;
+      border-color: #5e6ad2;
+    }
+
+    .btn-sync:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .sync-progress {
+      margin-top: 8px;
+      height: 3px;
+      background: #e0e0e0;
+      border-radius: 2px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .sync-progress.active {
+      display: block;
+    }
+
+    .sync-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #5e6ad2, #2196F3);
+      animation: progress-slide 1.5s ease-in-out infinite;
+      width: 40%;
+    }
+
+    @keyframes progress-slide {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(350%); }
+    }
+
+    .sync-disabled-hint {
+      font-size: 12px;
+      color: #888;
+      margin-top: 4px;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -493,6 +637,110 @@
         <button class="btn-integration" id="gmailConnectBtn" data-i18n="common.connect">Connect</button>
       </div>
       <div id="gmailError" class="integration-error" style="display: none;"></div>
+    </div>
+
+    <!-- Sync Status Section -->
+    <div class="sync-section">
+      <h2 data-i18n="sync.title">Data Sync</h2>
+      
+      <!-- Notion Sync -->
+      <div class="sync-source">
+        <div class="sync-header">
+          <div class="sync-source-name">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.98-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466l1.823 1.447zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.934-.56.934-1.166V6.354c0-.606-.233-.933-.747-.886l-15.177.887c-.56.046-.747.326-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.747 0-.934-.234-1.495-.933l-4.577-7.186v6.952l1.448.327s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.886.747-.933l3.222-.186zM2.877.466L16.039.014c1.635-.14 2.055.093 2.755.606l3.596 2.521c.56.373.746.466.746 1.072v17.04c0 .72-.28 1.19-1.12 1.236L6.03 23.466c-.653.046-1.025-.046-1.4-.56l-3.5-4.624c-.374-.56-.514-.98-.514-1.493V1.906c0-.653.28-1.12.98-1.16l1.281-.28z" fill="#000"/>
+            </svg>
+            <span data-i18n="notion.title">Notion</span>
+          </div>
+          <span class="sync-status-badge idle" id="notion-sync-status">Idle</span>
+        </div>
+        <div class="sync-info">
+          <div class="sync-info-item">
+            <span class="sync-info-label" data-i18n="sync.lastSync">Last synced:</span>
+            <span class="sync-info-value" id="notion-last-sync">Never</span>
+          </div>
+          <div class="sync-info-item">
+            <span class="sync-info-label" data-i18n="sync.itemsSynced">Items:</span>
+            <span class="sync-info-value" id="notion-items">0</span>
+          </div>
+        </div>
+        <div class="sync-actions">
+          <button class="btn-sync" id="sync-notion-btn" data-i18n="sync.syncNow">Sync Now</button>
+        </div>
+        <div class="sync-progress" id="notion-progress">
+          <div class="sync-progress-bar"></div>
+        </div>
+        <div class="sync-disabled-hint" id="notion-sync-hint" style="display: none;" data-i18n="sync.connectFirst">
+          Connect Notion first to enable sync
+        </div>
+      </div>
+      
+      <!-- Slack Sync -->
+      <div class="sync-source">
+        <div class="sync-header">
+          <div class="sync-source-name">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313z" fill="#E01E5A"/>
+              <path d="M8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312z" fill="#36C5F0"/>
+              <path d="M18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.27 0a2.528 2.528 0 0 1-2.522 2.521 2.528 2.528 0 0 1-2.52-2.521V2.522A2.528 2.528 0 0 1 15.165 0a2.528 2.528 0 0 1 2.521 2.522v6.312z" fill="#2EB67D"/>
+              <path d="M15.165 18.956a2.528 2.528 0 0 1 2.521 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.27a2.527 2.527 0 0 1-2.52-2.522 2.527 2.527 0 0 1 2.52-2.52h6.313A2.528 2.528 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.521h-6.313z" fill="#ECB22E"/>
+            </svg>
+            <span data-i18n="slack.title">Slack</span>
+          </div>
+          <span class="sync-status-badge idle" id="slack-sync-status">Idle</span>
+        </div>
+        <div class="sync-info">
+          <div class="sync-info-item">
+            <span class="sync-info-label" data-i18n="sync.lastSync">Last synced:</span>
+            <span class="sync-info-value" id="slack-last-sync">Never</span>
+          </div>
+          <div class="sync-info-item">
+            <span class="sync-info-label" data-i18n="sync.itemsSynced">Items:</span>
+            <span class="sync-info-value" id="slack-items">0</span>
+          </div>
+        </div>
+        <div class="sync-actions">
+          <button class="btn-sync" id="sync-slack-btn" data-i18n="sync.syncNow">Sync Now</button>
+        </div>
+        <div class="sync-progress" id="slack-progress">
+          <div class="sync-progress-bar"></div>
+        </div>
+        <div class="sync-disabled-hint" id="slack-sync-hint" style="display: none;" data-i18n="sync.connectFirst">
+          Connect Slack first to enable sync
+        </div>
+      </div>
+      
+      <!-- Linear Sync -->
+      <div class="sync-source">
+        <div class="sync-header">
+          <div class="sync-source-name">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2.5 2.5L12 12L21.5 21.5M2.5 21.5L12 12L21.5 2.5" stroke="#5E6AD2" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>Linear</span>
+          </div>
+          <span class="sync-status-badge idle" id="linear-sync-status">Idle</span>
+        </div>
+        <div class="sync-info">
+          <div class="sync-info-item">
+            <span class="sync-info-label" data-i18n="sync.lastSync">Last synced:</span>
+            <span class="sync-info-value" id="linear-last-sync">Never</span>
+          </div>
+          <div class="sync-info-item">
+            <span class="sync-info-label" data-i18n="sync.itemsSynced">Items:</span>
+            <span class="sync-info-value" id="linear-items">0</span>
+          </div>
+        </div>
+        <div class="sync-actions">
+          <button class="btn-sync" id="sync-linear-btn" data-i18n="sync.syncNow">Sync Now</button>
+        </div>
+        <div class="sync-progress" id="linear-progress">
+          <div class="sync-progress-bar"></div>
+        </div>
+        <div class="sync-disabled-hint" id="linear-sync-hint" style="display: none;" data-i18n="sync.connectFirst">
+          Configure Linear API token first to enable sync
+        </div>
+      </div>
     </div>
 
     <!-- Hotkey Section -->
@@ -1298,6 +1546,100 @@
         checkUpdateBtn.disabled = false;
         checkUpdateBtn.textContent = await t('settings.checkUpdate');
       }
+    });
+
+    // ==================== Sync Status ====================
+    const syncSources = ['notion', 'slack', 'linear'];
+
+    async function loadSyncStatus() {
+      for (const source of syncSources) {
+        try {
+          const status = await ipcRenderer.invoke('sync:get-status', source);
+          updateSyncUI(source, status);
+        } catch (error) {
+          console.error(`Failed to load ${source} sync status:`, error);
+        }
+      }
+    }
+
+    function updateSyncUI(source, status) {
+      const statusBadge = document.getElementById(`${source}-sync-status`);
+      const lastSyncEl = document.getElementById(`${source}-last-sync`);
+      const itemsEl = document.getElementById(`${source}-items`);
+      const syncBtn = document.getElementById(`sync-${source}-btn`);
+      const syncHint = document.getElementById(`${source}-sync-hint`);
+
+      if (!statusBadge || !lastSyncEl || !itemsEl || !syncBtn) return;
+
+      const syncStatus = status?.status || 'idle';
+      statusBadge.className = `sync-status-badge ${syncStatus}`;
+      statusBadge.textContent = syncStatus.charAt(0).toUpperCase() + syncStatus.slice(1);
+
+      if (status?.last_synced_at) {
+        const date = new Date(status.last_synced_at);
+        lastSyncEl.textContent = date.toLocaleString();
+      } else {
+        lastSyncEl.textContent = 'Never';
+      }
+
+      itemsEl.textContent = status?.items_synced || 0;
+
+      const isConnected = status?.connected !== false;
+      syncBtn.disabled = !isConnected || syncStatus === 'syncing';
+      
+      if (syncHint) {
+        syncHint.style.display = isConnected ? 'none' : 'block';
+      }
+    }
+
+    async function triggerSync(source) {
+      const progressEl = document.getElementById(`${source}-progress`);
+      const syncBtn = document.getElementById(`sync-${source}-btn`);
+      const statusBadge = document.getElementById(`${source}-sync-status`);
+
+      if (!progressEl || !syncBtn || !statusBadge) return;
+
+      try {
+        syncBtn.disabled = true;
+        progressEl.classList.add('active');
+        statusBadge.className = 'sync-status-badge syncing';
+        statusBadge.textContent = 'Syncing';
+
+        const result = await ipcRenderer.invoke('sync:trigger', source);
+
+        if (result.success) {
+          statusBadge.className = 'sync-status-badge idle';
+          statusBadge.textContent = 'Idle';
+          await loadSyncStatus();
+        } else {
+          statusBadge.className = 'sync-status-badge error';
+          statusBadge.textContent = 'Error';
+          console.error(`Sync failed for ${source}:`, result.error);
+          alert(`Sync failed: ${result.error || 'Unknown error'}`);
+        }
+      } catch (error) {
+        statusBadge.className = 'sync-status-badge error';
+        statusBadge.textContent = 'Error';
+        console.error(`Sync error for ${source}:`, error);
+        alert(`Sync error: ${error.message || 'Unknown error'}`);
+      } finally {
+        progressEl.classList.remove('active');
+        syncBtn.disabled = false;
+      }
+    }
+
+    document.getElementById('sync-notion-btn').addEventListener('click', () => triggerSync('notion'));
+    document.getElementById('sync-slack-btn').addEventListener('click', () => triggerSync('slack'));
+    document.getElementById('sync-linear-btn').addEventListener('click', () => triggerSync('linear'));
+
+    loadSyncStatus();
+
+    ipcRenderer.on('notion-connected', () => {
+      loadSyncStatus();
+    });
+
+    ipcRenderer.on('slack-connected', () => {
+      loadSyncStatus();
     });
   </script>
 </body>

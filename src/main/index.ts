@@ -41,6 +41,10 @@ import { trackAppOpen, trackIssueCreated } from '../services/analytics';
 import { getAdapter } from '../services/context-adapters';
 import { getSemanticSearchService } from '../services/semantic-search';
 import type { ContextSource } from '../types/context-search';
+import { createNotionSyncAdapter } from '../services/sync-adapters/notion-sync';
+import { createSlackSyncAdapter } from '../services/sync-adapters/slack-sync';
+import { createLinearSyncAdapter } from '../services/sync-adapters/linear-sync';
+import { getDatabaseService } from '../services/database';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
@@ -1241,6 +1245,96 @@ app.whenReady().then(async () => {
     } catch (error) {
       debug.push(`ERROR: ${String(error)}`);
       return { success: false, error: String(error), results: [], _debug: debug };
+    }
+  });
+
+  ipcMain.handle('sync:get-status', async (_event, source: 'notion' | 'slack' | 'linear') => {
+    try {
+      const dbService = getDatabaseService();
+      await dbService.init();
+      const db = dbService.getDb();
+      
+      const result = await db.query<{
+        cursor_value?: string;
+        last_synced_at?: string;
+        items_synced?: number;
+        status?: string;
+      }>(
+        `SELECT cursor_value, last_synced_at, items_synced, status
+         FROM sync_cursors
+         WHERE source_type = $1`,
+        [source]
+      );
+      
+      let connected = false;
+      if (source === 'notion' && notionService) {
+        const status = await notionService.getConnectionStatus();
+        connected = status.connected;
+      } else if (source === 'slack' && slackService) {
+        const status = await slackService.getConnectionStatus();
+        connected = status.connected;
+      } else if (source === 'linear') {
+        connected = hasToken();
+      }
+      
+      return {
+        ...result.rows[0],
+        connected,
+        status: result.rows[0]?.status || 'idle',
+        items_synced: result.rows[0]?.items_synced || 0,
+      };
+    } catch (error) {
+      console.error(`[sync:get-status] Error for ${source}:`, error);
+      return { status: 'idle', items_synced: 0, connected: false };
+    }
+  });
+
+  ipcMain.handle('sync:trigger', async (_event, source: 'notion' | 'slack' | 'linear') => {
+    try {
+      const dbService = getDatabaseService();
+      await dbService.init();
+      
+      let adapter;
+      let connected = false;
+      
+      if (source === 'notion') {
+        if (!notionService) {
+          return { success: false, error: 'Notion not connected' };
+        }
+        const status = await notionService.getConnectionStatus();
+        if (!status.connected) {
+          return { success: false, error: 'Notion not connected' };
+        }
+        adapter = createNotionSyncAdapter();
+      } else if (source === 'slack') {
+        if (!slackService) {
+          return { success: false, error: 'Slack not connected' };
+        }
+        const status = await slackService.getConnectionStatus();
+        if (!status.connected) {
+          return { success: false, error: 'Slack not connected' };
+        }
+        adapter = createSlackSyncAdapter();
+      } else if (source === 'linear') {
+        if (!hasToken()) {
+          return { success: false, error: 'Linear API token not configured' };
+        }
+        adapter = createLinearSyncAdapter();
+      } else {
+        return { success: false, error: 'Invalid source' };
+      }
+      
+      console.log(`[sync:trigger] Starting sync for ${source}`);
+      const result = await adapter.syncIncremental();
+      console.log(`[sync:trigger] Sync complete for ${source}:`, result);
+      
+      return { success: result.success, result };
+    } catch (error) {
+      console.error(`[sync:trigger] Error for ${source}:`, error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
     }
   });
 
