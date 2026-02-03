@@ -1178,6 +1178,284 @@
       color: #999;
       flex-shrink: 0;
     }
+
+    /* Related Context Section */
+    .related-context-section {
+      margin-bottom: 16px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      overflow: hidden;
+      background: white;
+    }
+
+    .related-context-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: #f8f9fa;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .related-context-header:hover {
+      background: #f0f1f3;
+    }
+
+    .related-context-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .related-context-header-icon {
+      font-size: 16px;
+    }
+
+    .related-context-header-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .related-context-header-badge {
+      background: #5e6ad2;
+      color: white;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 10px;
+    }
+
+    .related-context-header-toggle {
+      font-size: 12px;
+      color: #666;
+      transition: transform 0.2s;
+    }
+
+    .related-context-section.expanded .related-context-header-toggle {
+      transform: rotate(180deg);
+    }
+
+    .related-context-body {
+      display: none;
+      padding: 12px;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .related-context-section.expanded .related-context-body {
+      display: block;
+    }
+
+    .related-context-search-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .related-context-search-input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .related-context-search-input:focus {
+      outline: none;
+      border-color: #5e6ad2;
+    }
+
+    .related-context-refresh-btn {
+      padding: 8px 12px;
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .related-context-refresh-btn:hover {
+      background: #e8e8e8;
+    }
+
+    .related-context-refresh-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .related-context-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: #f0f7ff;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #1a73e8;
+      margin-bottom: 12px;
+    }
+
+    .related-context-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 20px;
+      color: #666;
+      font-size: 13px;
+    }
+
+    .related-context-results {
+      max-height: 250px;
+      overflow-y: auto;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+
+    .related-context-result-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .related-context-result-item:last-child {
+      border-bottom: none;
+    }
+
+    .related-context-result-item:hover {
+      background: #f8f9fa;
+    }
+
+    .related-context-result-item.selected {
+      background: #e8e9f3;
+    }
+
+    .related-context-result-checkbox {
+      margin-top: 2px;
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    .related-context-result-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .related-context-result-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 4px;
+    }
+
+    .related-context-result-source {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    .related-context-result-source.slack {
+      background: #4a154b;
+      color: white;
+    }
+
+    .related-context-result-source.notion {
+      background: #000;
+      color: white;
+    }
+
+    .related-context-result-source.gmail {
+      background: #ea4335;
+      color: white;
+    }
+
+    .related-context-result-source.linear {
+      background: #5e6ad2;
+      color: white;
+    }
+
+    .related-context-result-source.ai {
+      background: #10b981;
+      color: white;
+    }
+
+    .related-context-result-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .related-context-result-snippet {
+      font-size: 12px;
+      color: #666;
+      line-height: 1.4;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .related-context-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 20px;
+      color: #888;
+      font-size: 13px;
+    }
+
+    .related-context-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 8px;
+      border-top: 1px solid #eee;
+    }
+
+    .related-context-selected-count {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .related-context-insert-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: #5e6ad2;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .related-context-insert-btn:hover {
+      background: #4c5abd;
+    }
+
+    .related-context-insert-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
   </style>
   <link rel="stylesheet" href="semantic-search.css">
 </head>
@@ -1234,125 +1512,10 @@
       <span id="aiLoadingText" data-i18n="capture.analyzing">AI is analyzing the screenshot...</span>
     </div>
 
-    <div id="contextSection" class="context-section">
-      <div class="context-header" id="contextHeader">
-        <div class="context-header-left">
-          <span class="context-header-icon">🔍</span>
-          <span class="context-header-title" data-i18n="context.title">Context Search</span>
-          <span class="context-header-badge" id="contextBadge" style="display: none;">0</span>
-        </div>
-        <span class="context-header-toggle">▼</span>
-      </div>
-      <div class="context-body">
-        <div class="context-tabs">
-          <button type="button" class="context-tab active" id="slackTab" data-service="slack">
-            <span class="context-tab-icon">💬</span>
-            Slack
-          </button>
-          <button type="button" class="context-tab" id="notionTab" data-service="notion">
-            <span class="context-tab-icon">📝</span>
-            Notion
-          </button>
-          <button type="button" class="context-tab" id="gmailTab" data-service="gmail">
-            <span class="context-tab-icon">📧</span>
-            Gmail
-          </button>
-        </div>
-        
-        <div id="slackContent">
-          <div id="slackNotConnected" class="context-not-connected">
-            <p id="slackNotConnectedText" style="color: #888; margin-bottom: 12px;">Not connected to Slack</p>
-            <button type="button" class="context-connect-btn" id="slackConnectFromMain">
-              <span>💬</span> <span id="slackConnectBtnText">Connect Slack</span>
-            </button>
-          </div>
-          
-          <div id="slackConnected" style="display: none;">
-            <div class="context-search-row">
-              <input type="text" class="context-search-input" id="slackSearchInput" data-i18n-placeholder="context.slackPlaceholder" placeholder="Search Slack messages...">
-              <button type="button" class="context-search-btn" id="slackSearchBtn" data-i18n="common.search">Search</button>
-            </div>
-            <div id="slackLoading" class="context-loading" style="display: none;">
-              <div class="spinner"></div>
-              <span data-i18n="context.searching">Searching...</span>
-            </div>
-            <div id="slackResults" class="context-results" style="display: none;"></div>
-            <div id="slackEmpty" class="context-empty" style="display: none;">No results found</div>
-            <div id="slackSelectedCount" class="context-selected-count" style="display: none;"></div>
-          </div>
-        </div>
-
-        <div id="notionContent" style="display: none;">
-          <div id="notionNotConnected" class="context-not-connected">
-            <p id="notionNotConnectedText" style="color: #888; margin-bottom: 12px;">Not connected to Notion</p>
-            <button type="button" class="context-connect-btn" id="notionConnectFromMain">
-              <span>📝</span> <span id="notionConnectBtnText">Connect Notion</span>
-            </button>
-          </div>
-          
-          <div id="notionConnected" style="display: none;">
-            <div class="context-search-row">
-              <input type="text" class="context-search-input" id="notionSearchInput" data-i18n-placeholder="context.notionPlaceholder" placeholder="Search Notion pages...">
-              <button type="button" class="context-search-btn" id="notionSearchBtn" data-i18n="common.search">Search</button>
-            </div>
-            <div id="notionLoading" class="context-loading" style="display: none;">
-              <div class="spinner"></div>
-              <span data-i18n="context.searching">Searching...</span>
-            </div>
-            <div id="notionResults" class="context-results" style="display: none;"></div>
-            <div id="notionEmpty" class="context-empty" style="display: none;">No results found</div>
-            <div id="notionSelectedCount" class="context-selected-count" style="display: none;"></div>
-          </div>
-        </div>
-
-        <div id="gmailContent" style="display: none;">
-          <div id="gmailNotConnected" class="context-not-connected">
-            <p style="color: #888; margin-bottom: 12px;">Gmail에 연결되지 않았습니다</p>
-            <button type="button" class="context-connect-btn" id="gmailConnectFromMain">
-              <span>📧</span> Gmail 연결하기
-            </button>
-          </div>
-          
-          <div id="gmailConnected" style="display: none;">
-            <div class="context-search-row">
-              <input type="text" class="context-search-input" id="gmailSearchInput" placeholder="이메일 검색... (예: from:user@example.com)">
-              <button type="button" class="context-search-btn" id="gmailSearchBtn">검색</button>
-            </div>
-            <div id="gmailLoading" class="context-loading" style="display: none;">
-              <div class="spinner"></div>
-              <span>검색 중...</span>
-            </div>
-            <div id="gmailResults" class="context-results" style="display: none;"></div>
-            <div id="gmailEmpty" class="context-empty" style="display: none;">검색 결과가 없습니다</div>
-            <div id="gmailSelectedCount" class="context-selected-count" style="display: none;"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <form id="issueForm">
       <div class="form-group">
         <label for="title" data-i18n="form.titleRequired">Title *</label>
         <input type="text" id="title" name="title" required data-i18n-placeholder="form.titlePlaceholder" placeholder="Target - Specific content (e.g., Login - Fix session expiry error)" />
-        <div class="ai-recommend-section" id="aiRecommendSection">
-          <div class="ai-recommend-header" id="aiRecommendHeader">
-            <div class="ai-recommend-header-left">
-              <span>✨</span>
-              <span data-i18n="ai.recommendations">AI Recommendations</span>
-              <span id="aiRecommendCount"></span>
-            </div>
-            <span class="ai-recommend-toggle">▼</span>
-          </div>
-          <div class="ai-recommend-body" id="aiRecommendBody">
-            <div class="ai-recommend-loading" id="aiRecommendLoading" style="display: none;">
-              <span>🔍</span> <span data-i18n="ai.searching">Searching related content...</span>
-            </div>
-            <div class="ai-recommend-empty" id="aiRecommendEmpty" style="display: none;" data-i18n="ai.noResults">
-              No recommendations found
-            </div>
-            <div id="aiRecommendResults"></div>
-          </div>
-        </div>
       </div>
 
       <div class="form-group">
@@ -1360,37 +1523,59 @@
         <textarea id="description" name="description" data-i18n-placeholder="form.descriptionPlaceholder" placeholder="Optional description..."></textarea>
       </div>
 
-      <!-- Semantic Search Section -->
-      <div id="semanticSearchSection" class="semantic-search-section">
-        <div class="semantic-search-header" id="semanticSearchHeader">
-          <div class="semantic-search-header-left">
-            <span class="semantic-search-header-icon">🔗</span>
-            <span class="semantic-search-header-title" data-i18n="semantic.title">Related Documents</span>
-            <span class="semantic-search-header-badge" id="semanticBadge" style="display: none;">0</span>
+      <!-- Related Context Section (unified search for Slack, Notion, AI recommendations) -->
+      <div id="relatedContextSection" class="related-context-section">
+        <div class="related-context-header" id="relatedContextHeader">
+          <div class="related-context-header-left">
+            <span class="related-context-header-icon">🔗</span>
+            <span class="related-context-header-title" data-i18n="relatedContext.title">Related Context</span>
+            <span class="related-context-header-badge" id="relatedContextBadge" style="display: none;">0</span>
           </div>
-          <span class="semantic-search-header-toggle">▼</span>
+          <span class="related-context-header-toggle">▼</span>
         </div>
-        <div class="semantic-search-body">
-          <div class="semantic-auto-status" id="semanticAutoStatus">
+        <div class="related-context-body">
+          <!-- Search Row -->
+          <div class="related-context-search-row">
+            <input type="text" 
+                   class="related-context-search-input" 
+                   id="relatedContextSearchInput" 
+                   data-i18n-placeholder="relatedContext.searchPlaceholder"
+                   placeholder="Search related context...">
+            <button type="button" 
+                    class="related-context-refresh-btn" 
+                    id="relatedContextRefreshBtn" 
+                    title="Reset to title">
+              🔄
+            </button>
+          </div>
+          
+          <!-- Status Hint -->
+          <div class="related-context-status" id="relatedContextStatus">
             <span>💡</span>
-            <span data-i18n="semantic.autoHint">Enter a title to auto-search related documents</span>
+            <span data-i18n="relatedContext.hint">Edit search to refine results</span>
           </div>
-          <div class="semantic-search-row">
-            <input type="text" class="semantic-search-input" id="semanticSearchInput" 
-                   data-i18n-placeholder="semantic.searchPlaceholder" placeholder="Search related documents...">
-            <button type="button" class="semantic-search-btn" id="semanticSearchBtn" data-i18n="common.search">Search</button>
-          </div>
-          <div id="semanticLoading" class="semantic-loading" style="display: none;">
+          
+          <!-- Loading -->
+          <div id="relatedContextLoading" class="related-context-loading" style="display: none;">
             <div class="spinner"></div>
-            <span data-i18n="semantic.searching">Searching...</span>
+            <span data-i18n="relatedContext.searching">Searching Slack, Notion...</span>
           </div>
-          <div id="semanticResults" class="semantic-results"></div>
-          <div id="semanticEmpty" class="semantic-empty" style="display: none;" data-i18n="semantic.noResults">No related documents found</div>
-          <div class="semantic-actions" id="semanticActions" style="display: none;">
-            <span class="semantic-selected-count" id="semanticSelectedCount">0 selected</span>
-            <button type="button" class="semantic-insert-btn" id="semanticInsertBtn" disabled>
+          
+          <!-- Results -->
+          <div id="relatedContextResults" class="related-context-results"></div>
+          
+          <!-- Empty State -->
+          <div id="relatedContextEmpty" class="related-context-empty" style="display: none;">
+            <span>🤷</span>
+            <span data-i18n="relatedContext.noResults">No results found. Try different keywords.</span>
+          </div>
+          
+          <!-- Actions -->
+          <div class="related-context-actions" id="relatedContextActions" style="display: none;">
+            <span class="related-context-selected-count" id="relatedContextSelectedCount">0 selected</span>
+            <button type="button" class="related-context-insert-btn" id="relatedContextInsertBtn" disabled>
               <span>📎</span>
-              <span data-i18n="semantic.insertToDescription">Insert to Description</span>
+              <span data-i18n="relatedContext.insertToDescription">Insert to Description</span>
             </button>
           </div>
         </div>
@@ -2556,8 +2741,16 @@ updateTeamDependentDropdowns(teamSelect.value);
       }
     });
 
-    // ==================== Context Search Section ====================
-    const contextSection = document.getElementById('contextSection');
+    // ==================== Shared Helper: Escape HTML ====================
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ==================== Context Search Section (LEGACY - removed) ====================
+    const contextSection_legacy = document.getElementById('contextSection');
+    if (contextSection_legacy) {
     const contextHeader = document.getElementById('contextHeader');
     const contextBadge = document.getElementById('contextBadge');
     const slackTab = document.getElementById('slackTab');
@@ -3187,13 +3380,6 @@ updateTeamDependentDropdowns(teamSelect.value);
       }
     }
 
-    // 9. Helper: Escape HTML
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
     function buildContextSection() {
       if (selectedSlackMessages.length === 0 && selectedNotionPages.length === 0 && selectedGmailEmails.length === 0) {
         return '';
@@ -3287,9 +3473,11 @@ updateTeamDependentDropdowns(teamSelect.value);
         descInput.value = descInput.value + contextSection;
       }
     }, true); // Use capture phase to run before the existing handler
+    } // End of legacy Context Search Section
 
-    // ==================== AI Recommendation Section ====================
+    // ==================== AI Recommendation Section (LEGACY - removed) ====================
     const aiRecommendSection = document.getElementById('aiRecommendSection');
+    if (aiRecommendSection) {
     const aiRecommendHeader = document.getElementById('aiRecommendHeader');
     const aiRecommendBody = document.getElementById('aiRecommendBody');
     const aiRecommendLoading = document.getElementById('aiRecommendLoading');
@@ -3698,6 +3886,241 @@ updateTeamDependentDropdowns(teamSelect.value);
       toggle: toggleSemanticSection,
       search: performSemanticSearch
     };
+    } // End of legacy AI Recommendation Section
+
+    // ==================== Related Context Section ====================
+    const relatedContextSection = document.getElementById('relatedContextSection');
+    const relatedContextHeader = document.getElementById('relatedContextHeader');
+    const relatedContextSearchInput = document.getElementById('relatedContextSearchInput');
+    const relatedContextRefreshBtn = document.getElementById('relatedContextRefreshBtn');
+    const relatedContextLoading = document.getElementById('relatedContextLoading');
+    const relatedContextResults = document.getElementById('relatedContextResults');
+    const relatedContextEmpty = document.getElementById('relatedContextEmpty');
+    const relatedContextActions = document.getElementById('relatedContextActions');
+    const relatedContextSelectedCount = document.getElementById('relatedContextSelectedCount');
+    const relatedContextInsertBtn = document.getElementById('relatedContextInsertBtn');
+    const relatedContextBadge = document.getElementById('relatedContextBadge');
+    const relatedContextStatus = document.getElementById('relatedContextStatus');
+
+    let relatedContextSelectedItems = [];
+    let userModifiedSearch = false;
+    let relatedContextDebounceTimer = null;
+    let lastRelatedQuery = '';
+
+    // Toggle section expand/collapse
+    relatedContextHeader.addEventListener('click', () => {
+      relatedContextSection.classList.toggle('expanded');
+    });
+
+    // Title → Search sync (only when user hasn't modified search)
+    titleInput.addEventListener('input', () => {
+      if (!userModifiedSearch) {
+        relatedContextSearchInput.value = titleInput.value;
+      }
+      triggerRelatedSearch();
+    });
+
+    titleInput.addEventListener('blur', () => {
+      if (!userModifiedSearch && titleInput.value.trim()) {
+        relatedContextSearchInput.value = titleInput.value;
+        triggerRelatedSearch();
+      }
+    });
+
+    // Search input change marks user modification
+    relatedContextSearchInput.addEventListener('input', () => {
+      userModifiedSearch = true;
+      triggerRelatedSearch();
+    });
+
+    // Refresh button - reset to title
+    relatedContextRefreshBtn.addEventListener('click', () => {
+      relatedContextSearchInput.value = titleInput.value;
+      userModifiedSearch = false;
+      triggerRelatedSearch();
+    });
+
+    // Debounced search trigger (300ms)
+    function triggerRelatedSearch() {
+      clearTimeout(relatedContextDebounceTimer);
+      relatedContextDebounceTimer = setTimeout(() => {
+        const query = relatedContextSearchInput.value.trim();
+        if (query === lastRelatedQuery) return;
+        lastRelatedQuery = query;
+        performRelatedSearch(query);
+      }, 300);
+    }
+
+    // Perform search via IPC
+    async function performRelatedSearch(query) {
+      if (!query || query.length < 3) {
+        relatedContextResults.innerHTML = '';
+        relatedContextResults.style.display = 'none';
+        relatedContextLoading.style.display = 'none';
+        relatedContextEmpty.style.display = 'none';
+        relatedContextStatus.innerHTML = '<span>💡</span><span>' + (await t('relatedContext.enterQuery') || 'Enter a title or search term') + '</span>';
+        return;
+      }
+
+      relatedContextLoading.style.display = 'flex';
+      relatedContextResults.style.display = 'none';
+      relatedContextEmpty.style.display = 'none';
+      relatedContextStatus.innerHTML = '<span>🔍</span><span>Searching for "' + escapeHtml(query.substring(0, 30)) + '"...</span>';
+
+      try {
+        const result = await ipcRenderer.invoke('context.getRelated', { query, limit: 20 });
+        console.log('[RelatedContext] Result:', result);
+        
+        relatedContextLoading.style.display = 'none';
+        
+        if (!result.success) {
+          console.error('[RelatedContext] Error:', result.error);
+          relatedContextEmpty.style.display = 'flex';
+          return;
+        }
+
+        if (!result.results || result.results.length === 0) {
+          relatedContextEmpty.style.display = 'flex';
+          relatedContextStatus.innerHTML = '<span>🤷</span><span>' + (await t('relatedContext.noResultsHint') || 'Try different keywords') + '</span>';
+          return;
+        }
+
+        renderRelatedResults(result.results);
+        relatedContextStatus.innerHTML = '<span>✨</span><span>' + result.results.length + ' results · Edit to refine</span>';
+        
+        // Auto-expand when results found
+        relatedContextSection.classList.add('expanded');
+      } catch (error) {
+        console.error('[RelatedContext] Error:', error);
+        relatedContextLoading.style.display = 'none';
+        relatedContextEmpty.style.display = 'flex';
+      }
+    }
+
+    // Render results list
+    function renderRelatedResults(items) {
+      relatedContextResults.innerHTML = '';
+      
+      items.forEach(item => {
+        const isSelected = relatedContextSelectedItems.some(s => s.id === item.id);
+        const div = document.createElement('div');
+        div.className = 'related-context-result-item' + (isSelected ? ' selected' : '');
+        div.dataset.id = item.id;
+
+        const sourceClass = item.source || 'ai';
+        const sourceLabel = {
+          'slack': '💬 Slack',
+          'notion': '📝 Notion',
+          'gmail': '📧 Gmail',
+          'linear': '🔵 Linear',
+          'ai': '✨ AI'
+        }[sourceClass] || sourceClass;
+
+        const timeStr = item.timestamp 
+          ? new Date(item.timestamp).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+          : '';
+
+        div.innerHTML = `
+          <input type="checkbox" class="related-context-result-checkbox" ${isSelected ? 'checked' : ''}>
+          <div class="related-context-result-content">
+            <div class="related-context-result-meta">
+              <span class="related-context-result-source ${sourceClass}">${sourceLabel}</span>
+              ${timeStr ? `<span>${timeStr}</span>` : ''}
+              ${item.confidence ? `<span>${Math.round(item.confidence * 100)}%</span>` : ''}
+            </div>
+            <div class="related-context-result-title">${escapeHtml(item.title || '')}</div>
+            <div class="related-context-result-snippet">${escapeHtml(item.snippet || '')}</div>
+          </div>
+        `;
+
+        div.addEventListener('click', (e) => {
+          if (e.target.type === 'checkbox') return;
+          toggleRelatedItem(item, div);
+        });
+
+        const checkbox = div.querySelector('.related-context-result-checkbox');
+        checkbox.addEventListener('change', () => {
+          toggleRelatedItem(item, div);
+        });
+
+        relatedContextResults.appendChild(div);
+      });
+
+      relatedContextResults.style.display = 'block';
+      updateRelatedContextActions();
+    }
+
+    // Toggle item selection
+    function toggleRelatedItem(item, element) {
+      const idx = relatedContextSelectedItems.findIndex(s => s.id === item.id);
+      const checkbox = element.querySelector('.related-context-result-checkbox');
+
+      if (idx === -1) {
+        relatedContextSelectedItems.push(item);
+        element.classList.add('selected');
+        checkbox.checked = true;
+      } else {
+        relatedContextSelectedItems.splice(idx, 1);
+        element.classList.remove('selected');
+        checkbox.checked = false;
+      }
+
+      updateRelatedContextActions();
+    }
+
+    // Update actions visibility and badge
+    async function updateRelatedContextActions() {
+      const count = relatedContextSelectedItems.length;
+      if (count > 0) {
+        relatedContextActions.style.display = 'flex';
+        relatedContextSelectedCount.textContent = (await t('relatedContext.selected', { count })) || `${count} selected`;
+        relatedContextInsertBtn.disabled = false;
+        relatedContextBadge.textContent = count;
+        relatedContextBadge.style.display = 'inline';
+      } else {
+        relatedContextActions.style.display = 'none';
+        relatedContextInsertBtn.disabled = true;
+        relatedContextBadge.style.display = 'none';
+      }
+    }
+
+    // Insert selected items to description
+    relatedContextInsertBtn.addEventListener('click', () => {
+      if (relatedContextSelectedItems.length === 0) return;
+
+      let contextText = '\n\n---\n## Related Context\n\n';
+      
+      relatedContextSelectedItems.forEach(item => {
+        const sourceLabel = {
+          'slack': 'Slack',
+          'notion': 'Notion',
+          'gmail': 'Gmail',
+          'linear': 'Linear',
+          'ai': 'Recommendation'
+        }[item.source] || item.source;
+
+        contextText += `### ${sourceLabel}: ${item.title}\n`;
+        if (item.snippet) {
+          contextText += `> ${item.snippet.replace(/\n/g, '\n> ')}\n`;
+        }
+        if (item.url) {
+          contextText += `[View](${item.url})\n`;
+        }
+        contextText += '\n';
+      });
+
+      descInput.value = (descInput.value + contextText).trim();
+      
+      // Clear selection
+      relatedContextSelectedItems = [];
+      updateRelatedContextActions();
+      
+      // Update UI
+      document.querySelectorAll('.related-context-result-item.selected').forEach(el => {
+        el.classList.remove('selected');
+        el.querySelector('.related-context-result-checkbox').checked = false;
+      });
+    });
   </script>
 </body>
 </html>

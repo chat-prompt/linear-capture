@@ -209,5 +209,16 @@
     "validationError": "Error occurred during validation",
     "saveError": "Error occurred while saving",
     "tokenRequired": "Please enter the token"
+  },
+  "relatedContext": {
+    "title": "Related Context",
+    "searchPlaceholder": "Search related context...",
+    "hint": "Edit search to refine results",
+    "searching": "Searching Slack, Notion...",
+    "noResults": "No results found. Try different keywords.",
+    "noResultsHint": "Try different keywords or check connections",
+    "enterQuery": "Enter a title or search term",
+    "insertToDescription": "Insert to Description",
+    "selected": "{{count}} selected"
   }
 }

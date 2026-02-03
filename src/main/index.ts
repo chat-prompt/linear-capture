@@ -1132,6 +1132,116 @@ app.whenReady().then(async () => {
       console.error('[SemanticSearch] Error:', error);
       return { success: false, error: String(error), results: [], _debug: debug };
     }
+   });
+
+  ipcMain.handle('context.getRelated', async (_event, { query, limit = 20 }: { query: string; limit?: number }) => {
+    const debug: string[] = [];
+    debug.push(`query="${query}", limit=${limit}`);
+    
+    if (!query || query.length < 3) {
+      return { success: true, results: [], _debug: [...debug, 'query too short'] };
+    }
+    
+    try {
+      const [slackResult, aiResult, semanticSlackResult, semanticNotionResult] = 
+        await Promise.allSettled([
+          (async () => {
+            if (!slackService) return [];
+            const status = await slackService.getConnectionStatus();
+            if (!status.connected) return [];
+            const result = await slackService.searchMessages(query, undefined, Math.floor(limit / 3));
+            return (result.messages || []).map(m => ({
+              id: `slack-${m.ts}`,
+              source: 'slack' as const,
+              title: `#${m.channel?.name || 'unknown'}`,
+              snippet: m.text?.substring(0, 200) || '',
+              url: m.permalink,
+              timestamp: m.timestamp,
+              raw: m
+            }));
+          })(),
+          
+          (async () => {
+            const result = await getAiRecommendations(query, Math.floor(limit / 3));
+            return (result.recommendations || []).map((r, idx) => ({
+              id: `ai-${idx}`,
+              source: r.source as 'slack' | 'notion' | 'gmail' | 'linear',
+              title: r.title,
+              snippet: r.snippet?.substring(0, 200) || '',
+              url: r.url,
+              confidence: r.score,
+              raw: r
+            }));
+          })(),
+          
+          (async () => {
+            const adapter = getAdapter('slack');
+            if (!await adapter.isConnected()) return [];
+            const items = await adapter.fetchItems(query);
+            if (items.length === 0) return [];
+            const searchService = getSemanticSearchService();
+            const results = await searchService.search(query, items);
+            return results.slice(0, Math.floor(limit / 3)).map(r => ({
+              id: `semantic-slack-${r.id}`,
+              source: 'slack' as const,
+              title: r.title,
+              snippet: r.content?.substring(0, 200) || '',
+              url: r.url,
+              confidence: r.score,
+              raw: r
+            }));
+          })(),
+          
+          (async () => {
+            const adapter = getAdapter('notion');
+            if (!await adapter.isConnected()) return [];
+            const items = await adapter.fetchItems(query);
+            if (items.length === 0) return [];
+            const searchService = getSemanticSearchService();
+            const results = await searchService.search(query, items);
+            return results.slice(0, Math.floor(limit / 3)).map(r => ({
+              id: `semantic-notion-${r.id}`,
+              source: 'notion' as const,
+              title: r.title,
+              snippet: r.content?.substring(0, 200) || '',
+              url: r.url,
+              confidence: r.score,
+              raw: r
+            }));
+          })()
+        ]);
+      
+      const results: any[] = [];
+      
+      [slackResult, aiResult, semanticSlackResult, semanticNotionResult].forEach((r, i) => {
+        const names = ['slack', 'ai', 'semantic-slack', 'semantic-notion'];
+        if (r.status === 'fulfilled') {
+          results.push(...r.value);
+          debug.push(`${names[i]}: ${r.value.length} results`);
+        } else {
+          debug.push(`${names[i]}: ERROR - ${r.reason}`);
+        }
+      });
+      
+      const seen = new Set<string>();
+      const deduplicated = results.filter(r => {
+        if (!r.url) return true;
+        if (seen.has(r.url)) return false;
+        seen.add(r.url);
+        return true;
+      });
+      
+      debug.push(`total: ${deduplicated.length} (deduped from ${results.length})`);
+      
+      return { 
+        success: true, 
+        results: deduplicated.slice(0, limit),
+        _debug: debug 
+      };
+    } catch (error) {
+      debug.push(`ERROR: ${String(error)}`);
+      return { success: false, error: String(error), results: [], _debug: debug };
+    }
   });
 
   // Initialize AI analyzer (prefer Gemini, fallback to Anthropic)
