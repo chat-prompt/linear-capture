@@ -337,7 +337,7 @@ Task 6 (UI 연동 + 싱크 상태 표시)
 
 ### Phase 3: 검색 서비스
 
-- [ ] 4. LocalSearchService (하이브리드 검색) 구현
+- [x] 4. LocalSearchService (하이브리드 검색) 구현
 
   **What to do**:
   - 시맨틱 검색 (pgvector cosine similarity)

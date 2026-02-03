@@ -13,6 +13,7 @@ export function getAdapter(source: ContextSource): ContextAdapter {
         break;
       case 'notion':
       case 'gmail':
+      case 'linear':
         throw new Error(`${source} adapter not implemented yet`);
     }
     adapters.set(source, adapter);

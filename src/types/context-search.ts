@@ -1,4 +1,4 @@
-export type ContextSource = 'slack' | 'notion' | 'gmail';
+export type ContextSource = 'slack' | 'notion' | 'gmail' | 'linear';
 
 export interface ContextItem {
   id: string;
