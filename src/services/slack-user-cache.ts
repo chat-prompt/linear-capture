@@ -54,23 +54,36 @@ class SlackUserCache {
   }
 
   resolve(text: string): string {
-    if (!this.loaded || this.userMap.size === 0) {
-      return text;
-    }
+    let result = text;
 
-    let resolved = 0;
-    const result = text.replace(/<@([A-Z0-9]+)>/g, (match, userId) => {
-      const displayName = this.userMap.get(userId);
-      if (displayName) {
-        resolved++;
-        return `@${displayName}`;
+    // 1. 사용자 멘션 (userMap 필요 - 조건부)
+    if (this.loaded && this.userMap.size > 0) {
+      let resolved = 0;
+      result = result.replace(/<@([A-Z0-9]+)>/g, (match, userId) => {
+        const displayName = this.userMap.get(userId);
+        if (displayName) {
+          resolved++;
+          return `@${displayName}`;
+        }
+        return match;
+      });
+      if (resolved > 0) {
+        console.log(`[SlackUserCache] Resolved ${resolved} mentions`);
       }
-      return match;
-    });
-
-    if (resolved > 0) {
-      console.log(`[SlackUserCache] Resolved ${resolved} mentions`);
     }
+
+    // 2. 채널 멘션 (이름 있는 경우만)
+    result = result.replace(/<#[A-Z0-9]+\|([^>]+)>/g, '#$1');
+
+    // 3. 특수 멘션
+    result = result.replace(/<!here>/g, '@here');
+    result = result.replace(/<!channel>/g, '@channel');
+    result = result.replace(/<!everyone>/g, '@everyone');
+
+    // 4. 링크 (텍스트 있는 경우 → 마크다운)
+    result = result.replace(/<(https?:\/\/[^|>]+)\|([^>]+)>/g, '[$2]($1)');
+    // 링크 (텍스트 없는 경우 → URL만 추출)
+    result = result.replace(/<(https?:\/\/[^>]+)>/g, '$1');
 
     return result;
   }
