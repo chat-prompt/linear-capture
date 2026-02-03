@@ -276,7 +276,7 @@ Task 6 (UI 연동 + 싱크 상태 표시)
 
 ### Phase 2: 데이터 싱크 파이프라인
 
-- [ ] 3a. NotionSyncAdapter 구현
+- [x] 3a. NotionSyncAdapter 구현
 
   **What to do**:
   - 기존 `NotionService` 활용하여 페이지 목록 가져오기
