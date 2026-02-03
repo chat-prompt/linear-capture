@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { trackAnalysisFailed } from './analytics';
 
-// Cloudflare Worker URL (API 키는 서버에서 관리)
 const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
 
 export interface AnalysisResult {
@@ -61,8 +61,11 @@ export class GeminiAnalyzer {
           continue;
         }
 
-        // 모든 시도 실패
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorType = errorMessage.includes('timeout') ? 'timeout' 
+          : errorMessage.includes('network') ? 'network' 
+          : 'gemini';
+        trackAnalysisFailed(errorType, errorMessage);
         return {
           title: '',
           description: '',

@@ -1,5 +1,6 @@
 import { LinearClient, Team, Project, User, WorkflowState, Cycle } from '@linear/sdk';
 import { getLinearToken } from './settings-store';
+import { trackApiError } from './analytics';
 
 export interface CreateIssueParams {
   title: string;
@@ -125,6 +126,11 @@ export class LinearService {
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      const errorType = message.includes('401') || message.includes('403') ? 'auth' 
+        : message.includes('429') ? 'rate_limit'
+        : message.includes('5') ? 'server' 
+        : 'unknown';
+      trackApiError(errorType, message);
       return { success: false, error: message };
     }
   }
@@ -349,6 +355,7 @@ export async function validateLinearToken(token: string): Promise<{
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Invalid token';
+    trackApiError('auth', message);
     return { valid: false, error: message };
   }
 }

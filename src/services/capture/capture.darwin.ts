@@ -5,6 +5,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ICaptureService, CaptureResult, PermissionStatus, cleanupCapture } from './index';
+import { trackCaptureFailed } from '../analytics';
 
 export class DarwinCaptureService implements ICaptureService {
   checkPermission(): PermissionStatus {
@@ -20,6 +21,7 @@ export class DarwinCaptureService implements ICaptureService {
     return new Promise((resolve) => {
       exec(`screencapture -i -s -x "${filePath}"`, (error) => {
         if (error) {
+          trackCaptureFailed('system_error', error.message);
           resolve({ success: false, error: error.message });
           return;
         }
@@ -30,9 +32,11 @@ export class DarwinCaptureService implements ICaptureService {
             resolve({ success: true, filePath });
           } else {
             fs.unlinkSync(filePath);
+            trackCaptureFailed('cancelled', 'Capture cancelled');
             resolve({ success: false, error: 'Capture cancelled' });
           }
         } else {
+          trackCaptureFailed('cancelled', 'Capture cancelled');
           resolve({ success: false, error: 'Capture cancelled' });
         }
       });

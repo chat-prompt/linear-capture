@@ -32,7 +32,7 @@ export interface ContextAdapter {
   fetchItems(query?: string, limit?: number): Promise<ContextItem[]>;
 }
 
-export type AnalyticsEvent = 'app_open' | 'issue_created' | 'search_used' | 'context_linked';
+export type AnalyticsEvent = 'app_open' | 'issue_created' | 'search_used' | 'context_linked' | 'api_error' | 'capture_failed' | 'analysis_failed';
 
 export interface TrackRequest {
   event: AnalyticsEvent;
@@ -42,6 +42,9 @@ export interface TrackRequest {
     hasContext?: boolean;
     contextSource?: string;
     version?: string;
+    errorType?: string;
+    message?: string;
+    statusCode?: number;
   };
 }
 
