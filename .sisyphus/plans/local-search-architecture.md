@@ -229,7 +229,7 @@ Task 6 (UI 연동 + 싱크 상태 표시)
   - `src/services/settings-store.ts` - Electron 데이터 저장 패턴 참고
 
   **Acceptance Criteria**:
-  - [ ] `npm install` 후 PGlite 패키지 설치 확인
+  - [x] `npm install` 후 PGlite 패키지 설치 확인
   - [ ] 앱 시작 시 `~/Library/Application Support/linear-capture/local.db` 생성
   - [ ] `documents`, `sync_cursors`, `sources` 테이블 생성 확인
   - [ ] pgvector 확장 로드 확인
