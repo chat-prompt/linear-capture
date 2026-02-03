@@ -29,6 +29,7 @@ import {
   getLanguage,
   setLanguage,
   getSupportedLanguages,
+  setOpenaiApiKey,
   UserInfo as SettingsUserInfo,
 } from '../services/settings-store';
 import { initAutoUpdater, checkForUpdates } from '../services/auto-updater';
@@ -796,10 +797,18 @@ app.whenReady().then(async () => {
     }
   });
 
-  ipcMain.handle('save-settings', async (_event, data: { linearApiToken: string; userInfo: SettingsUserInfo }) => {
+  ipcMain.handle('save-settings', async (_event, data: { linearApiToken?: string; userInfo?: SettingsUserInfo; openaiApiKey?: string }) => {
     try {
-      setLinearToken(data.linearApiToken);
-      setUserInfo(data.userInfo);
+      if (data.linearApiToken !== undefined) {
+        setLinearToken(data.linearApiToken);
+      }
+      if (data.userInfo !== undefined) {
+        setUserInfo(data.userInfo);
+      }
+      if (data.openaiApiKey !== undefined) {
+        setOpenaiApiKey(data.openaiApiKey);
+        console.log('✅ OpenAI API Key saved');
+      }
       // Reload Linear data with new token
       await loadLinearData();
       // Notify main window about settings change and send updated data
