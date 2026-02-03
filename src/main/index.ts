@@ -1143,13 +1143,26 @@ app.whenReady().then(async () => {
     }
     
     try {
-      const [slackResult, aiResult, semanticSlackResult, semanticNotionResult] = 
+      // === Dynamic distribution: only connected services share the limit ===
+      const gmailService = createGmailService();
+      const [slackConnected, notionConnected, gmailConnected] = await Promise.all([
+        slackService?.getConnectionStatus().then(s => s.connected).catch(() => false) ?? false,
+        notionService?.getConnectionStatus().then(s => s.connected).catch(() => false) ?? false,
+        gmailService?.getConnectionStatus().then(s => s.connected).catch(() => false) ?? false,
+      ]);
+      
+      // Connected services count + AI (always included)
+      const connectedServices = [slackConnected, notionConnected, gmailConnected].filter(Boolean).length;
+      const totalSources = connectedServices + 1; // +1 for AI
+      const perSourceLimit = Math.max(3, Math.floor(limit / totalSources));
+      
+      debug.push(`connected: slack=${slackConnected}, notion=${notionConnected}, gmail=${gmailConnected}, perSourceLimit=${perSourceLimit}`);
+
+      const [slackResult, aiResult, semanticSlackResult, semanticNotionResult, semanticGmailResult] = 
         await Promise.allSettled([
           (async () => {
-            if (!slackService) return [];
-            const status = await slackService.getConnectionStatus();
-            if (!status.connected) return [];
-            const result = await slackService.searchMessages(query, undefined, Math.floor(limit / 3));
+            if (!slackConnected) return [];
+            const result = await slackService!.searchMessages(query, undefined, perSourceLimit);
             return (result.messages || []).map(m => ({
               id: `slack-${m.ts}`,
               source: 'slack' as const,
@@ -1162,7 +1175,7 @@ app.whenReady().then(async () => {
           })(),
           
           (async () => {
-            const result = await getAiRecommendations(query, Math.floor(limit / 3));
+            const result = await getAiRecommendations(query, perSourceLimit);
             return (result.recommendations || []).map((r, idx) => ({
               id: `ai-${idx}`,
               source: r.source as 'slack' | 'notion' | 'gmail' | 'linear',
@@ -1175,13 +1188,13 @@ app.whenReady().then(async () => {
           })(),
           
           (async () => {
+            if (!slackConnected) return [];
             const adapter = getAdapter('slack');
-            if (!await adapter.isConnected()) return [];
             const items = await adapter.fetchItems(query);
             if (items.length === 0) return [];
             const searchService = getSemanticSearchService();
             const results = await searchService.search(query, items);
-            return results.slice(0, Math.floor(limit / 3)).map(r => ({
+            return results.slice(0, perSourceLimit).map(r => ({
               id: `semantic-slack-${r.id}`,
               source: 'slack' as const,
               title: r.title,
@@ -1193,15 +1206,33 @@ app.whenReady().then(async () => {
           })(),
           
           (async () => {
+            if (!notionConnected) return [];
             const adapter = getAdapter('notion');
-            if (!await adapter.isConnected()) return [];
             const items = await adapter.fetchItems(query);
             if (items.length === 0) return [];
             const searchService = getSemanticSearchService();
             const results = await searchService.search(query, items);
-            return results.slice(0, Math.floor(limit / 3)).map(r => ({
+            return results.slice(0, perSourceLimit).map(r => ({
               id: `semantic-notion-${r.id}`,
               source: 'notion' as const,
+              title: r.title,
+              snippet: r.content?.substring(0, 200) || '',
+              url: r.url,
+              confidence: r.score,
+              raw: r
+            }));
+          })(),
+          
+          (async () => {
+            if (!gmailConnected) return [];
+            const adapter = getAdapter('gmail');
+            const items = await adapter.fetchItems(query);
+            if (items.length === 0) return [];
+            const searchService = getSemanticSearchService();
+            const results = await searchService.search(query, items);
+            return results.slice(0, perSourceLimit).map(r => ({
+              id: `semantic-gmail-${r.id}`,
+              source: 'gmail' as const,
               title: r.title,
               snippet: r.content?.substring(0, 200) || '',
               url: r.url,
@@ -1213,8 +1244,8 @@ app.whenReady().then(async () => {
       
       const results: any[] = [];
       
-      [slackResult, aiResult, semanticSlackResult, semanticNotionResult].forEach((r, i) => {
-        const names = ['slack', 'ai', 'semantic-slack', 'semantic-notion'];
+      [slackResult, aiResult, semanticSlackResult, semanticNotionResult, semanticGmailResult].forEach((r, i) => {
+        const names = ['slack', 'ai', 'semantic-slack', 'semantic-notion', 'semantic-gmail'];
         if (r.status === 'fulfilled') {
           results.push(...r.value);
           debug.push(`${names[i]}: ${r.value.length} results`);

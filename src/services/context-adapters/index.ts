@@ -1,5 +1,7 @@
 import type { ContextAdapter, ContextSource } from '../../types/context-search';
 import { SlackAdapter } from './slack-adapter';
+import { NotionAdapter } from './notion-adapter';
+import { GmailAdapter } from './gmail-adapter';
 
 const adapters: Map<ContextSource, ContextAdapter> = new Map();
 
@@ -12,8 +14,11 @@ export function getAdapter(source: ContextSource): ContextAdapter {
         adapter = new SlackAdapter();
         break;
       case 'notion':
+        adapter = new NotionAdapter();
+        break;
       case 'gmail':
-        throw new Error(`${source} adapter not implemented yet`);
+        adapter = new GmailAdapter();
+        break;
     }
     adapters.set(source, adapter);
   }
@@ -22,7 +27,7 @@ export function getAdapter(source: ContextSource): ContextAdapter {
 }
 
 export function getAvailableAdapters(): ContextSource[] {
-  return ['slack'];
+  return ['slack', 'notion', 'gmail'];
 }
 
-export { SlackAdapter };
+export { SlackAdapter, NotionAdapter, GmailAdapter };
