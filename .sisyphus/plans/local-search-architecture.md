@@ -316,7 +316,7 @@ Task 6 (UI 연동 + 싱크 상태 표시)
 
 ---
 
-- [ ] 3c. LinearSyncAdapter 구현
+- [x] 3c. LinearSyncAdapter 구현
 
   **What to do**:
   - 기존 `LinearClient` 활용
