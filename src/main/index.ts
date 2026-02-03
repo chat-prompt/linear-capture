@@ -40,6 +40,7 @@ import { getAiRecommendations } from '../services/ai-recommend';
 import { trackAppOpen, trackIssueCreated } from '../services/analytics';
 import { getAdapter } from '../services/context-adapters';
 import { getSemanticSearchService } from '../services/semantic-search';
+import { slackUserCache } from '../services/slack-user-cache';
 import type { ContextSource } from '../types/context-search';
 
 // Load environment variables
@@ -95,6 +96,16 @@ function handleDeepLink(url: string): void {
           slackService.handleCallback(code, state).then(result => {
             if (result.success) {
               settingsWindow?.webContents.send('slack-connected', result);
+              console.log('[Main] Slack OAuth complete, triggering sync...');
+              const searchService = getSemanticSearchService();
+              searchService.initialize().then(() => {
+                searchService.syncSlack().catch(err => {
+                  console.error('[Main] Post-OAuth Slack sync failed:', err);
+                });
+                slackUserCache.load().catch(err => {
+                  console.error('[Main] Post-OAuth user cache load failed:', err);
+                });
+              });
             } else {
               settingsWindow?.webContents.send('slack-oauth-error', { error: result.error });
             }
@@ -1333,12 +1344,31 @@ app.whenReady().then(async () => {
   }
 
   console.log('Linear Capture ready! Press ⌘+Shift+L to capture.');
+
+  const searchService = getSemanticSearchService();
+  searchService.initialize().then(async (success) => {
+    if (!success) {
+      console.error('[Main] Failed to initialize local search');
+      return;
+    }
+    searchService.syncSlack().catch(error => {
+      console.error('[Main] Slack sync failed:', error);
+    });
+    
+    const slackStatus = await slackService?.getConnectionStatus();
+    if (slackStatus?.connected) {
+      slackUserCache.load().catch(error => {
+        console.error('[Main] Slack user cache load failed:', error);
+      });
+    }
+  });
 });
 
 app.on('will-quit', () => {
   unregisterAllHotkeys();
   destroyTray();
   closeNotionLocalReader();
+  getSemanticSearchService().close();
 });
 
 // macOS specific: keep app running when all windows closed
