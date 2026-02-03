@@ -112,7 +112,10 @@
     "updateCheckFailed": "Update check failed",
     "language": "Language",
     "languageHint": "Select app display language",
-    "integrations": "Integrations"
+    "integrations": "Integrations",
+    "openaiApiKey": "OpenAI API Key",
+    "openaiApiKeyPlaceholder": "sk-proj-xxxxxxxxxxxxx",
+    "openaiApiKeyHint": "Get from OpenAI Platform > API keys"
   },
   "hotkey": {
     "title": "Capture Hotkey",
