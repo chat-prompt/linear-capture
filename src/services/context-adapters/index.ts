@@ -19,6 +19,8 @@ export function getAdapter(source: ContextSource): ContextAdapter {
       case 'gmail':
         adapter = new GmailAdapter();
         break;
+      default:
+        throw new Error(`Unsupported context source: ${source}`);
     }
     adapters.set(source, adapter);
   }
