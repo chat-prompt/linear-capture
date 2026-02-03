@@ -49,7 +49,7 @@ Cloudflare Worker 기반 검색을 로컬 PostgreSQL(PGlite + pgvector) 기반�
 - [ ] `npm run pack:clean` 후 앱 실행 시 로컬 검색 동작
 - [ ] Notion/Slack/Linear 데이터 싱크 완료 후 검색 결과 반환
 - [ ] 하이브리드 검색(시맨틱 + 키워드) 결과 확인
-- [ ] Cloudflare Worker 검색 의존성 제거
+- [x] Cloudflare Worker 검색 의존성 제거
 
 ### Must Have
 - 로컬 PostgreSQL (PGlite) 번들
