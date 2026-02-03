@@ -209,5 +209,16 @@
     "validationError": "Error durante la validación",
     "saveError": "Error al guardar",
     "tokenRequired": "Por favor ingresa el token"
+  },
+  "relatedContext": {
+    "title": "Contexto relacionado",
+    "searchPlaceholder": "Buscar contexto relacionado...",
+    "hint": "Edite la búsqueda para refinar los resultados",
+    "searching": "Buscando en Slack, Notion...",
+    "noResults": "No se encontraron resultados. Intente con diferentes palabras clave.",
+    "noResultsHint": "Intente con diferentes palabras clave o verifique las conexiones",
+    "enterQuery": "Ingrese un título o término de búsqueda",
+    "insertToDescription": "Insertar en la descripción",
+    "selected": "{{count}} seleccionado(s)"
   }
 }

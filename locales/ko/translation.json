@@ -209,5 +209,16 @@
     "validationError": "검증 중 오류가 발생했습니다",
     "saveError": "저장 중 오류가 발생했습니다",
     "tokenRequired": "토큰을 입력하세요"
+  },
+  "relatedContext": {
+    "title": "관련 컨텍스트",
+    "searchPlaceholder": "관련 컨텍스트 검색...",
+    "hint": "검색어를 수정하여 결과를 구체화하세요.",
+    "searching": "Slack, Notion 검색 중...",
+    "noResults": "결과가 없습니다. 다른 키워드를 사용해 보세요.",
+    "noResultsHint": "다른 키워드를 사용하거나 연결을 확인하세요.",
+    "enterQuery": "제목 또는 검색어를 입력하세요.",
+    "insertToDescription": "설명에 삽입",
+    "selected": "{{count}}개 선택됨"
   }
 }

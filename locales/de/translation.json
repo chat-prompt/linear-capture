@@ -209,5 +209,16 @@
     "validationError": "Fehler bei der Überprüfung",
     "saveError": "Fehler beim Speichern",
     "tokenRequired": "Bitte geben Sie das Token ein"
+  },
+  "relatedContext": {
+    "title": "Zugehöriger Kontext",
+    "searchPlaceholder": "Zugehörigen Kontext suchen...",
+    "hint": "Suche bearbeiten, um Ergebnisse zu verfeinern",
+    "searching": "Slack, Notion werden durchsucht...",
+    "noResults": "Keine Ergebnisse gefunden. Verwenden Sie andere Schlüsselwörter.",
+    "noResultsHint": "Verwenden Sie andere Schlüsselwörter oder überprüfen Sie die Verbindungen",
+    "enterQuery": "Geben Sie einen Titel oder Suchbegriff ein",
+    "insertToDescription": "In Beschreibung einfügen",
+    "selected": "{{count}} ausgewählt"
   }
 }
