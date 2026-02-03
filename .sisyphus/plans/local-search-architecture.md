@@ -403,8 +403,8 @@ Task 6 (UI 연동 + 싱크 상태 표시)
 ## Success Criteria
 
 ### Final Checklist
-- [ ] 모든 "Must Have" 항목 구현됨
-- [ ] Cloudflare Worker 검색 의존성 제거됨
+- [x] 모든 "Must Have" 항목 구현됨
+- [x] Cloudflare Worker 검색 의존성 제거됨
 - [ ] 하이브리드 검색 (시맨틱 + 키워드) 동작 확인
 - [ ] 증분 싱크 동작 확인
 - [ ] 앱 시작 시 기존 인덱스 유지됨
