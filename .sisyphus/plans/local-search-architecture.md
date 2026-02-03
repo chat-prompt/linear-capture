@@ -296,7 +296,7 @@ Task 6 (UI 연동 + 싱크 상태 표시)
 
 ---
 
-- [ ] 3b. SlackSyncAdapter 구현
+- [x] 3b. SlackSyncAdapter 구현
 
   **What to do**:
   - 기존 `SlackAdapter` 확장
