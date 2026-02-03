@@ -22,6 +22,7 @@ export interface Settings {
   captureHotkey?: string;
   deviceId?: string;
   language?: string;
+  openaiApiKey?: string;
 }
 
 const DEFAULT_HOTKEY = 'CommandOrControl+Shift+L';
@@ -92,6 +93,29 @@ export function setDefaultTeamId(teamId: string): void {
 }
 
 /**
+ * OpenAI API 키 가져오기
+ * 저장된 키 우선, 없으면 .env fallback
+ */
+export function getOpenaiApiKey(): string | undefined {
+  const storedKey = settingsStore.get('openaiApiKey');
+  return storedKey || process.env.OPENAI_API_KEY;
+}
+
+/**
+ * OpenAI API 키 저장
+ */
+export function setOpenaiApiKey(key: string): void {
+  settingsStore.set('openaiApiKey', key);
+}
+
+/**
+ * OpenAI API 키 삭제
+ */
+export function clearOpenaiApiKey(): void {
+  settingsStore.delete('openaiApiKey');
+}
+
+/**
  * 모든 설정 가져오기
  */
 export function getAllSettings(): Settings {
@@ -102,6 +126,7 @@ export function getAllSettings(): Settings {
     captureHotkey: settingsStore.get('captureHotkey'),
     deviceId: settingsStore.get('deviceId'),
     language: settingsStore.get('language'),
+    openaiApiKey: settingsStore.get('openaiApiKey'),
   };
 }
 

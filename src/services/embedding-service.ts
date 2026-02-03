@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { encoding_for_model } from 'tiktoken';
+import * as SettingsStore from './settings-store';
 
 const MODEL = 'text-embedding-3-small';
 const MAX_TOKENS_PER_TEXT = 8192;
@@ -12,9 +13,9 @@ export class EmbeddingService {
   private baseDelay = 1000;
 
   constructor() {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = SettingsStore.getOpenaiApiKey();
     if (!apiKey) {
-      throw new Error('OPENAI_API_KEY environment variable is required');
+      throw new Error('OPENAI_API_KEY is required. Set it in Settings or OPENAI_API_KEY environment variable');
     }
 
     this.client = new OpenAI({ apiKey });

@@ -579,6 +579,14 @@
       </p>
     </div>
 
+    <div class="form-group">
+      <label for="openaiApiKey" data-i18n="settings.openaiApiKey">OpenAI API Key</label>
+      <input type="password" id="openaiApiKey" data-i18n-placeholder="settings.openaiApiKeyPlaceholder" placeholder="sk-...">
+      <p class="info-text" data-i18n="settings.openaiApiKeyHint">
+        Get from OpenAI Platform &gt; API keys
+      </p>
+    </div>
+
     <div class="status-box">
       <div class="status-row">
         <span class="status-icon" id="statusIcon">⏳</span>
@@ -1027,6 +1035,37 @@
 
     // 설정 로드
     loadSettings();
+
+    // ==================== OpenAI API Key Settings ====================
+    const openaiApiKeyInput = document.getElementById('openaiApiKey');
+
+    // Load OpenAI API Key
+    async function loadOpenaiApiKey() {
+      try {
+        const settings = await ipcRenderer.invoke('get-settings');
+        if (settings && settings.openaiApiKey) {
+          openaiApiKeyInput.value = settings.openaiApiKey;
+        }
+      } catch (error) {
+        console.error('Failed to load OpenAI API Key:', error);
+      }
+    }
+
+    // Save OpenAI API Key on blur
+    openaiApiKeyInput.addEventListener('blur', async () => {
+      const key = openaiApiKeyInput.value.trim();
+      if (key) {
+        try {
+          await ipcRenderer.invoke('save-settings', {
+            openaiApiKey: key
+          });
+        } catch (error) {
+          console.error('Failed to save OpenAI API Key:', error);
+        }
+      }
+    });
+
+    loadOpenaiApiKey();
 
     // ==================== Hotkey Settings ====================
     const hotkeyInput = document.getElementById('hotkeyInput');
