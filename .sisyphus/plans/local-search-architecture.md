@@ -240,7 +240,7 @@ Task 6 (UI 연동 + 싱크 상태 표시)
 
 ---
 
-- [ ] 2. 전처리 + EmbeddingService 구현
+- [x] 2. 전처리 + EmbeddingService 구현
 
   **What to do**:
   - TextPreprocessor 클래스 구현
