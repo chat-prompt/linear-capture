@@ -4,6 +4,7 @@ import { HybridSearch, HybridSearchResult } from './hybrid-search';
 import { SlackSync, SlackSyncResult } from './slack-sync';
 import { slackUserCache } from './slack-user-cache';
 import { logger } from './utils/logger';
+import { getLocalSearchService } from './local-search';
 
 const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
 
@@ -85,27 +86,45 @@ export class SemanticSearchService {
   }
 
   /**
-   * Search using local hybrid (FTS + vector) first, Worker fallback if empty.
+   * Search using LocalSearchService (PGlite) first, then HybridSearch (sql.js), then Worker.
    * @param items Context items for Worker fallback (ignored in local search)
+   * @param source Optional source filter ('slack' | 'notion' | 'linear')
    */
-  async search(query: string, items: ContextItem[], limit = 5): Promise<SearchResult[]> {
+  async search(query: string, items: ContextItem[], limit = 5, source?: string): Promise<SearchResult[]> {
     if (!query) return [];
 
+    // 1. Try LocalSearchService (PGlite + pgvector) first
+    try {
+      const localSearch = getLocalSearchService();
+      if (localSearch?.isInitialized()) {
+        const results = await localSearch.search(query, items, limit, source);
+        if (results.length > 0) {
+          console.log(`[SemanticSearch] LocalSearchService returned ${results.length} results`);
+          return results;
+        }
+        console.log('[SemanticSearch] LocalSearchService returned no results');
+      }
+    } catch (error) {
+      console.warn('[SemanticSearch] LocalSearchService failed, trying fallback:', error);
+    }
+
+    // 2. Fallback: HybridSearch (sql.js based)
     if (this.hybridSearch) {
       try {
         const localResults = await this.hybridSearch.search(query, { limit });
 
         if (localResults.length > 0) {
-          console.log(`[SemanticSearch] Local search returned ${localResults.length} results`);
+          console.log(`[SemanticSearch] HybridSearch returned ${localResults.length} results`);
           return this.convertHybridResults(localResults);
         }
 
-        console.log('[SemanticSearch] Local search returned no results');
+        console.log('[SemanticSearch] HybridSearch returned no results');
       } catch (error) {
-        console.error('[SemanticSearch] Local search failed:', error);
+        console.error('[SemanticSearch] HybridSearch failed:', error);
       }
     }
 
+    // 3. Final fallback: Worker API
     if (items.length > 0) {
       console.log('[SemanticSearch] Falling back to Worker search');
       return this.callWorker(query, items, limit);
