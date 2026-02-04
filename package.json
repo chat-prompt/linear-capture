@@ -128,12 +128,15 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.3.15",
     "@linear/sdk": "^38.0.0",
     "dotenv": "^16.3.1",
     "electron-store": "^8.1.0",
     "electron-updater": "^6.7.3",
     "i18next": "^25.8.0",
     "i18next-fs-backend": "^2.6.1",
-    "sql.js": "^1.13.0"
+    "openai": "^6.17.0",
+    "sql.js": "^1.13.0",
+    "tiktoken": "^1.0.22"
   }
 }
