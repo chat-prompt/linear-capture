@@ -228,7 +228,8 @@ export function registerIpcHandlers(): void {
       projects: state.projectsCache.map(p => ({
         id: p.id,
         name: p.name,
-        description: p.description
+        description: p.description,
+        recentIssueTitles: p.recentIssueTitles,
       })),
       users: state.usersCache.map(u => ({ id: u.id, name: u.name })),
       defaultTeamId: process.env.DEFAULT_TEAM_ID,
