@@ -1,5 +1,6 @@
 import { logger } from '../services/utils/logger';
 import { getState } from './state';
+import { getLocalSearchService } from '../services/local-search';
 
 export function handleDeepLink(url: string): void {
   const state = getState();
@@ -24,9 +25,19 @@ export function handleDeepLink(url: string): void {
         state.pendingSlackCallback = { code, state: stateParam };
         
         if (state.slackService) {
-          state.slackService.handleCallback(code, stateParam).then(result => {
+          state.slackService.handleCallback(code, stateParam).then(async result => {
             if (result.success) {
               state.settingsWindow?.webContents.send('slack-connected', result);
+              
+              try {
+                const localSearch = getLocalSearchService();
+                if (localSearch) {
+                  await localSearch.syncSource('slack');
+                  logger.log('[OAuth] Slack sync triggered after connect');
+                }
+              } catch (error) {
+                logger.warn('[OAuth] Failed to trigger Slack sync:', error);
+              }
             } else {
               state.settingsWindow?.webContents.send('slack-oauth-error', { error: result.error });
             }
@@ -57,9 +68,19 @@ export function handleDeepLink(url: string): void {
         state.pendingNotionCallback = { code, state: stateParam };
         
         if (state.notionService) {
-          state.notionService.handleCallback(code, stateParam).then(result => {
+          state.notionService.handleCallback(code, stateParam).then(async result => {
             if (result.success) {
               state.settingsWindow?.webContents.send('notion-connected', result);
+              
+              try {
+                const localSearch = getLocalSearchService();
+                if (localSearch) {
+                  await localSearch.syncSource('notion');
+                  logger.log('[OAuth] Notion sync triggered after connect');
+                }
+              } catch (error) {
+                logger.warn('[OAuth] Failed to trigger Notion sync:', error);
+              }
             } else {
               state.settingsWindow?.webContents.send('notion-oauth-error', { error: result.error });
             }
