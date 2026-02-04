@@ -54,6 +54,7 @@ class SlackUserCache {
   }
 
   resolve(text: string): string {
+    console.log('[SlackUserCache.resolve] input:', text);
     let result = text;
 
     // 1. 사용자 멘션 (userMap 필요 - 조건부)
@@ -85,6 +86,21 @@ class SlackUserCache {
     // 링크 (텍스트 없는 경우 → URL만 추출)
     result = result.replace(/<(https?:\/\/[^>]+)>/g, '$1');
 
+    // 5. DM 채널 title (# + 유저ID) → @유저명
+    // 전체 문자열이 #U... 형태인 경우만 (DM title)
+    // 일반 채널명 (#general)은 소문자 포함이므로 매칭 안 됨
+    if (this.loaded && this.userMap.size > 0) {
+      result = result.replace(/^#([A-Z][A-Z0-9]+)$/, (match, userId) => {
+        const displayName = this.userMap.get(userId);
+        if (displayName) {
+          console.log(`[SlackUserCache] Resolved DM title: ${match} → @${displayName}`);
+          return `@${displayName}`;
+        }
+        return match;
+      });
+    }
+
+    console.log('[SlackUserCache.resolve] output:', result);
     return result;
   }
 

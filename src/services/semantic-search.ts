@@ -115,22 +115,30 @@ export class SemanticSearchService {
 
   private convertHybridResults(results: HybridSearchResult[]): SearchResult[] {
     let resolvedCount = 0;
+    console.log('[SemanticSearch] convertHybridResults - slackUserCache.isLoaded():', slackUserCache.isLoaded());
 
     const converted = results.map(r => {
       let content = r.content;
+      let title = r.title || '';
 
-      if (r.source === 'slack' && slackUserCache.isLoaded()) {
-        const originalContent = content;
-        content = slackUserCache.resolve(content);
-        if (content !== originalContent) {
-          resolvedCount++;
+      if (r.source === 'slack') {
+        console.log('[SemanticSearch] Slack result - original title:', title, 'original content:', content.substring(0, 50));
+        
+        if (slackUserCache.isLoaded()) {
+          const originalContent = content;
+          const originalTitle = title;
+          content = slackUserCache.resolve(content);
+          title = slackUserCache.resolve(title);
+          if (content !== originalContent || title !== originalTitle) {
+            resolvedCount++;
+          }
         }
       }
 
       return {
         id: r.id,
         source: r.source,
-        title: r.title || '',
+        title,
         content,
         url: r.url,
         score: r.score

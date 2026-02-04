@@ -1177,8 +1177,8 @@ app.whenReady().then(async () => {
             return (result.messages || []).map(m => ({
               id: `slack-${m.ts}`,
               source: 'slack' as const,
-              title: `#${m.channel?.name || 'unknown'}`,
-              snippet: m.text?.substring(0, 200) || '',
+              title: slackUserCache.resolve(`#${m.channel?.name || 'unknown'}`),
+              snippet: slackUserCache.resolve(m.text?.substring(0, 200) || ''),
               url: m.permalink,
               timestamp: m.timestamp,
               raw: m
