@@ -43,7 +43,7 @@ export class NotionAdapter implements ContextAdapter {
   private localPageToContextItem(page: LocalNotionPage): ContextItem {
     return {
       id: page.id,
-      content: page.matchContext || page.title,
+      content: page.matchContext || '',
       title: page.title,
       url: page.url,
       source: 'notion',
@@ -58,7 +58,7 @@ export class NotionAdapter implements ContextAdapter {
   private toContextItem(page: NotionPage): ContextItem {
     return {
       id: page.id,
-      content: page.matchContext || page.title,
+      content: page.matchContext || '',
       title: page.title,
       url: page.url,
       source: 'notion',

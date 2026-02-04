@@ -298,8 +298,9 @@ export class NotionLocalReader {
         const title = extractTitle(properties);
         if (!title) continue;
 
-        // Case-insensitive title match
         if (title.toLowerCase().includes(queryLower)) {
+          const contentPreview = this.getPageContentPreview(row.id);
+          
           results.push({
             id: row.id,
             title,
@@ -307,6 +308,7 @@ export class NotionLocalReader {
             lastEditedTime: formatTimestamp(row.last_edited_time),
             spaceId: row.space_id,
             parentId: row.parent_id || undefined,
+            matchContext: contentPreview || undefined,
             isContentMatch: false
           });
 
@@ -320,6 +322,57 @@ export class NotionLocalReader {
     }
 
     return results;
+  }
+
+  private getPageContentPreview(pageId: string, maxChars: number = 200): string | null {
+    if (!this.db) return null;
+
+    try {
+      const stmt = this.db.prepare(`
+        SELECT properties
+        FROM block
+        WHERE parent_id = ?
+          AND parent_table = 'block'
+          AND type IN ('text', 'bulleted_list', 'numbered_list', 'to_do', 'toggle', 'quote', 'callout', 'header', 'sub_header', 'sub_sub_header')
+          AND alive = 1
+        LIMIT 10
+      `);
+      stmt.bind([pageId]);
+
+      const texts: string[] = [];
+      let totalLength = 0;
+
+      while (stmt.step() && totalLength < maxChars) {
+        const row = stmt.getAsObject() as { properties: string | null };
+        
+        if (row.properties) {
+          try {
+            const properties = JSON.parse(row.properties);
+            const blockText = extractBlockText(properties);
+            if (blockText) {
+              texts.push(blockText);
+              totalLength += blockText.length;
+            }
+          } catch {
+            continue;
+          }
+        }
+      }
+
+      stmt.free();
+
+      if (texts.length === 0) return null;
+
+      let preview = texts.join(' ').trim();
+      if (preview.length > maxChars) {
+        preview = preview.substring(0, maxChars).trim() + '...';
+      }
+
+      return preview || null;
+    } catch (error) {
+      console.error('[NotionLocalReader] getPageContentPreview error:', error);
+      return null;
+    }
   }
 
   /**
