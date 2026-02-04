@@ -1049,134 +1049,20 @@
       margin-top: 8px;
     }
 
-    /* AI Recommendation Section */
-    .ai-recommend-section {
-      margin-top: 8px;
-      border: 1px solid #e0e0e0;
-      border-radius: 6px;
-      overflow: hidden;
-      display: none;
-    }
-
-    .ai-recommend-section.visible {
-      display: block;
-    }
-
-    .ai-recommend-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 12px;
-      background: #f8f9fa;
-      cursor: pointer;
-      font-size: 12px;
-      color: #666;
-    }
-
-    .ai-recommend-header:hover {
-      background: #f0f1f3;
-    }
-
-    .ai-recommend-header-left {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .ai-recommend-toggle {
-      font-size: 10px;
-      transition: transform 0.2s;
-    }
-
-    .ai-recommend-section.expanded .ai-recommend-toggle {
-      transform: rotate(180deg);
-    }
-
-    .ai-recommend-body {
-      display: none;
-      max-height: 180px;
-      overflow-y: auto;
-    }
-
-    .ai-recommend-section.expanded .ai-recommend-body {
-      display: block;
-    }
-
-    .ai-recommend-loading {
-      display: flex;
+    /* Source Icon Styles */
+    .related-context-result-source .source-icon {
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      padding: 16px;
-      color: #666;
-      font-size: 12px;
+      width: 14px;
+      height: 14px;
+      margin-right: 4px;
+      vertical-align: middle;
     }
 
-    .ai-recommend-empty {
-      padding: 16px;
-      text-align: center;
-      color: #888;
-      font-size: 12px;
-    }
-
-    .ai-recommend-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 10px 12px;
-      border-bottom: 1px solid #eee;
-      cursor: pointer;
-      font-size: 12px;
-    }
-
-    .ai-recommend-item:last-child {
-      border-bottom: none;
-    }
-
-    .ai-recommend-item:hover {
-      background: #f8f9fa;
-    }
-
-    .ai-recommend-source {
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: #f0f0f0;
-      color: #666;
-      flex-shrink: 0;
-    }
-
-    .ai-recommend-source.gmail { background: #fef3f2; color: #dc2626; }
-    .ai-recommend-source.slack { background: #f0fdf4; color: #16a34a; }
-    .ai-recommend-source.notion { background: #fefce8; color: #ca8a04; }
-    .ai-recommend-source.linear { background: #eff6ff; color: #2563eb; }
-
-    .ai-recommend-content {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .ai-recommend-title {
-      font-weight: 500;
-      color: #333;
-      margin-bottom: 2px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .ai-recommend-snippet {
-      color: #888;
-      font-size: 11px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .ai-recommend-score {
-      font-size: 10px;
-      color: #999;
-      flex-shrink: 0;
+    .related-context-result-source .source-icon svg {
+      width: 12px;
+      height: 12px;
     }
 
     /* Related Context Section */
@@ -1367,28 +1253,28 @@
     }
 
     .related-context-result-source.slack {
-      background: #4a154b;
-      color: white;
+      background: #f0f4f8;
+      color: #4a154b;
     }
 
     .related-context-result-source.notion {
-      background: #000;
-      color: white;
+      background: #f5f5f5;
+      color: #000;
     }
 
     .related-context-result-source.gmail {
-      background: #ea4335;
-      color: white;
+      background: #fef3f2;
+      color: #ea4335;
     }
 
     .related-context-result-source.linear {
-      background: #5e6ad2;
-      color: white;
+      background: #f0f1ff;
+      color: #5e6ad2;
     }
 
     .related-context-result-source.ai {
-      background: #10b981;
-      color: white;
+      background: #ecfdf5;
+      color: #10b981;
     }
 
     .related-context-result-title {
@@ -3474,121 +3360,6 @@ updateTeamDependentDropdowns(teamSelect.value);
     }, true); // Use capture phase to run before the existing handler
     } // End of legacy Context Search Section
 
-    // ==================== AI Recommendation Section (LEGACY - removed) ====================
-    const aiRecommendSection = document.getElementById('aiRecommendSection');
-    if (aiRecommendSection) {
-    const aiRecommendHeader = document.getElementById('aiRecommendHeader');
-    const aiRecommendBody = document.getElementById('aiRecommendBody');
-    const aiRecommendLoading = document.getElementById('aiRecommendLoading');
-    const aiRecommendEmpty = document.getElementById('aiRecommendEmpty');
-    const aiRecommendResults = document.getElementById('aiRecommendResults');
-    const aiRecommendCount = document.getElementById('aiRecommendCount');
-    // titleInput is already declared above (line 1520)
-
-    let aiRecommendDebounceTimer = null;
-
-    aiRecommendHeader.addEventListener('click', () => {
-      aiRecommendSection.classList.toggle('expanded');
-    });
-
-    function debounce(func, wait) {
-      return function executedFunction(...args) {
-        clearTimeout(aiRecommendDebounceTimer);
-        aiRecommendDebounceTimer = setTimeout(() => func.apply(this, args), wait);
-      };
-    }
-
-    async function fetchAiRecommendations(text) {
-      if (!text || text.length < 3) {
-        aiRecommendSection.classList.remove('visible');
-        return;
-      }
-
-      aiRecommendSection.classList.add('visible', 'expanded');
-      aiRecommendLoading.style.display = 'flex';
-      aiRecommendEmpty.style.display = 'none';
-      aiRecommendResults.innerHTML = '';
-      aiRecommendCount.textContent = '';
-
-      try {
-        const result = await ipcRenderer.invoke('ai-recommend', { text, limit: 5 });
-        console.log('AI recommend result:', JSON.stringify(result, null, 2));
-
-        aiRecommendLoading.style.display = 'none';
-
-        if (!result.success || !result.recommendations || result.recommendations.length === 0) {
-          console.log('No recommendations - success:', result.success, 'recommendations:', result.recommendations);
-          aiRecommendEmpty.style.display = 'block';
-          aiRecommendCount.textContent = '';
-          return;
-        }
-
-        aiRecommendCount.textContent = `(${result.recommendations.length})`;
-        renderAiRecommendations(result.recommendations);
-      } catch (error) {
-        console.error('AI recommend error:', error);
-        aiRecommendLoading.style.display = 'none';
-        aiRecommendEmpty.textContent = '추천 검색 중 오류가 발생했습니다';
-        aiRecommendEmpty.style.display = 'block';
-      }
-    }
-
-    function renderAiRecommendations(recommendations) {
-      aiRecommendResults.innerHTML = '';
-
-      recommendations.forEach(rec => {
-        const item = document.createElement('div');
-        item.className = 'ai-recommend-item';
-        item.dataset.url = rec.url;
-        item.dataset.source = rec.source;
-
-        const scorePercent = Math.round(rec.score * 100);
-        const sourceLabel = {
-          gmail: '📧 Gmail',
-          slack: '💬 Slack',
-          notion: '📝 Notion',
-          linear: '🔷 Linear'
-        }[rec.source] || rec.source;
-
-        item.innerHTML = `
-          <span class="ai-recommend-source ${rec.source}">${sourceLabel}</span>
-          <div class="ai-recommend-content">
-            <div class="ai-recommend-title">${escapeHtml(rec.title)}</div>
-            <div class="ai-recommend-snippet">${escapeHtml(rec.snippet || '')}</div>
-          </div>
-          <span class="ai-recommend-score">${scorePercent}%</span>
-        `;
-
-        item.addEventListener('click', () => {
-          addRecommendationToContext(rec);
-        });
-
-        aiRecommendResults.appendChild(item);
-      });
-    }
-
-    function addRecommendationToContext(rec) {
-      const contextText = `[${rec.source.toUpperCase()}] ${rec.title}\n${rec.url}`;
-      
-      if (descInput.value) {
-        descInput.value += '\n\n---\nAI 추천:\n' + contextText;
-      } else {
-        descInput.value = '---\nAI 추천:\n' + contextText;
-      }
-
-      const item = aiRecommendResults.querySelector(`[data-url="${rec.url}"]`);
-      if (item) {
-        item.style.opacity = '0.5';
-        item.style.pointerEvents = 'none';
-      }
-    }
-
-    const debouncedFetchRecommendations = debounce(fetchAiRecommendations, 300);
-
-    titleInput.addEventListener('input', (e) => {
-      debouncedFetchRecommendations(e.target.value.trim());
-    });
-
     // ==================== Semantic Search ====================
     let semantic_selectedResults = new Set();
     let semantic_currentResults = [];
@@ -3885,7 +3656,6 @@ updateTeamDependentDropdowns(teamSelect.value);
       toggle: toggleSemanticSection,
       search: performSemanticSearch
     };
-    } // End of legacy AI Recommendation Section
 
     // ==================== Related Context Section ====================
     const relatedContextSection = document.getElementById('relatedContextSection');
@@ -4007,12 +3777,19 @@ updateTeamDependentDropdowns(teamSelect.value);
         div.dataset.id = item.id;
 
         const sourceClass = item.source || 'ai';
+        const sourceIcons = {
+          'gmail': '<span class="source-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/></svg></span>',
+          'slack': '<span class="source-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313z" fill="#E01E5A"/><path d="M8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312z" fill="#36C5F0"/><path d="M18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.27 0a2.528 2.528 0 0 1-2.522 2.521 2.528 2.528 0 0 1-2.52-2.521V2.522A2.528 2.528 0 0 1 15.165 0a2.528 2.528 0 0 1 2.521 2.522v6.312z" fill="#2EB67D"/><path d="M15.165 18.956a2.528 2.528 0 0 1 2.521 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.27a2.527 2.527 0 0 1-2.52-2.522 2.527 2.527 0 0 1 2.52-2.52h6.313A2.528 2.528 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.521h-6.313z" fill="#ECB22E"/></svg></span>',
+          'notion': '<span class="source-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.98-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466l1.823 1.447zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.934-.56.934-1.166V6.354c0-.606-.233-.933-.747-.886l-15.177.887c-.56.046-.747.326-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.747 0-.934-.234-1.495-.933l-4.577-7.186v6.952l1.448.327s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.886.747-.933l3.222-.186zM2.877.466L16.039.014c1.635-.14 2.055.093 2.755.606l3.596 2.521c.56.373.746.466.746 1.072v17.04c0 .72-.28 1.19-1.12 1.236L6.03 23.466c-.653.046-1.025-.046-1.4-.56l-3.5-4.624c-.374-.56-.514-.98-.514-1.493V1.906c0-.653.28-1.12.98-1.16l1.281-.28z" fill="#000"/></svg></span>',
+          'linear': '<span class="source-icon"><svg viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="50" fill="#5E6AD2"/><path d="M27 63L37 73L73 37L63 27L27 63Z" fill="white"/><path d="M26 50L36 60L50 46L40 36L26 50Z" fill="white"/><path d="M50 26L60 36L74 22L64 12L50 26Z" fill="white"/></svg></span>',
+          'ai': '<span class="source-icon">✨</span>'
+        };
         const sourceLabel = {
-          'slack': '💬 Slack',
-          'notion': '📝 Notion',
-          'gmail': '📧 Gmail',
-          'linear': '🔵 Linear',
-          'ai': '✨ AI'
+          'slack': (sourceIcons['slack'] || '') + 'Slack',
+          'notion': (sourceIcons['notion'] || '') + 'Notion',
+          'gmail': (sourceIcons['gmail'] || '') + 'Gmail',
+          'linear': (sourceIcons['linear'] || '') + 'Linear',
+          'ai': (sourceIcons['ai'] || '') + 'AI'
         }[sourceClass] || sourceClass;
 
         const timeStr = item.timestamp 
