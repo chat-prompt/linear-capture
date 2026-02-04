@@ -15,6 +15,12 @@ export interface UserInfo {
   email: string;
 }
 
+export interface SlackChannelInfo {
+  id: string;
+  name: string;
+  selected: boolean;
+}
+
 export interface Settings {
   linearApiToken?: string;
   userInfo?: UserInfo;
@@ -22,6 +28,8 @@ export interface Settings {
   captureHotkey?: string;
   deviceId?: string;
   language?: string;
+  openaiApiKey?: string;
+  selectedSlackChannels?: SlackChannelInfo[];
 }
 
 const DEFAULT_HOTKEY = 'CommandOrControl+Shift+L';
@@ -160,4 +168,46 @@ export function setLanguage(lang: string): void {
   if (SUPPORTED_LANGUAGES.includes(lang as SupportedLanguage)) {
     settingsStore.set('language', lang);
   }
+}
+
+/**
+ * OpenAI API Key 가져오기
+ */
+export function getOpenaiApiKey(): string | null {
+  return settingsStore.get('openaiApiKey') || null;
+}
+
+/**
+ * OpenAI API Key 저장
+ */
+export function setOpenaiApiKey(key: string): void {
+  settingsStore.set('openaiApiKey', key);
+}
+
+/**
+ * OpenAI API Key 삭제
+ */
+export function clearOpenaiApiKey(): void {
+  settingsStore.delete('openaiApiKey');
+}
+
+/**
+ * 선택된 Slack 채널 목록 가져오기
+ */
+export function getSelectedSlackChannels(): SlackChannelInfo[] {
+  return settingsStore.get('selectedSlackChannels') || [];
+}
+
+/**
+ * 선택된 Slack 채널 목록 저장
+ */
+export function setSelectedSlackChannels(channels: SlackChannelInfo[]): void {
+  settingsStore.set('selectedSlackChannels', channels);
+}
+
+/**
+ * 선택된 Slack 채널 목록 삭제
+ */
+export function clearSelectedSlackChannels(): void {
+  settingsStore.delete('selectedSlackChannels');
 }
