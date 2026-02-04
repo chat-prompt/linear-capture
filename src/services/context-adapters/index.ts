@@ -2,6 +2,7 @@ import type { ContextAdapter, ContextSource } from '../../types/context-search';
 import { SlackAdapter } from './slack-adapter';
 import { NotionAdapter } from './notion-adapter';
 import { GmailAdapter } from './gmail-adapter';
+import { LinearAdapter } from './linear-adapter';
 
 const adapters: Map<ContextSource, ContextAdapter> = new Map();
 
@@ -19,6 +20,9 @@ export function getAdapter(source: ContextSource): ContextAdapter {
       case 'gmail':
         adapter = new GmailAdapter();
         break;
+      case 'linear':
+        adapter = new LinearAdapter();
+        break;
     }
     adapters.set(source, adapter);
   }
@@ -27,7 +31,7 @@ export function getAdapter(source: ContextSource): ContextAdapter {
 }
 
 export function getAvailableAdapters(): ContextSource[] {
-  return ['slack', 'notion', 'gmail'];
+  return ['slack', 'notion', 'gmail', 'linear'];
 }
 
-export { SlackAdapter, NotionAdapter, GmailAdapter };
+export { SlackAdapter, NotionAdapter, GmailAdapter, LinearAdapter };

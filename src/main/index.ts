@@ -1143,114 +1143,85 @@ app.whenReady().then(async () => {
     }
     
     try {
-      // === Dynamic distribution: only connected services share the limit ===
+      const QUOTA_PER_SOURCE = 5;
+      
       const gmailService = createGmailService();
-      const [slackConnected, notionConnected, gmailConnected] = await Promise.all([
+      const linearService = createLinearServiceFromEnv();
+      
+      const [slackConnected, notionConnected, gmailConnected, linearConnected] = await Promise.all([
         slackService?.getConnectionStatus().then(s => s.connected).catch(() => false) ?? false,
         notionService?.getConnectionStatus().then(s => s.connected).catch(() => false) ?? false,
         gmailService?.getConnectionStatus().then(s => s.connected).catch(() => false) ?? false,
+        Promise.resolve(linearService !== null),
       ]);
       
-      // Connected services count + AI (always included)
-      const connectedServices = [slackConnected, notionConnected, gmailConnected].filter(Boolean).length;
-      const totalSources = connectedServices + 1; // +1 for AI
-      const perSourceLimit = Math.max(3, Math.floor(limit / totalSources));
-      
-      debug.push(`connected: slack=${slackConnected}, notion=${notionConnected}, gmail=${gmailConnected}, perSourceLimit=${perSourceLimit}`);
+      debug.push(`connected: slack=${slackConnected}, notion=${notionConnected}, gmail=${gmailConnected}, linear=${linearConnected}`);
 
-      const [slackResult, aiResult, semanticSlackResult, semanticNotionResult, semanticGmailResult] = 
-        await Promise.allSettled([
-          (async () => {
-            if (!slackConnected) return [];
-            const result = await slackService!.searchMessages(query, undefined, perSourceLimit);
-            return (result.messages || []).map(m => ({
-              id: `slack-${m.ts}`,
-              source: 'slack' as const,
-              title: `#${m.channel?.name || 'unknown'}`,
-              snippet: m.text?.substring(0, 200) || '',
-              url: m.permalink,
-              timestamp: m.timestamp,
-              raw: m
-            }));
-          })(),
-          
-          (async () => {
-            const result = await getAiRecommendations(query, perSourceLimit);
-            return (result.recommendations || []).map((r, idx) => ({
-              id: `ai-${idx}`,
-              source: r.source as 'slack' | 'notion' | 'gmail' | 'linear',
-              title: r.title,
-              snippet: r.snippet?.substring(0, 200) || '',
-              url: r.url,
-              confidence: r.score,
-              raw: r
-            }));
-          })(),
-          
-          (async () => {
-            if (!slackConnected) return [];
-            const adapter = getAdapter('slack');
-            const items = await adapter.fetchItems(query);
-            if (items.length === 0) return [];
-            const searchService = getSemanticSearchService();
-            const results = await searchService.search(query, items);
-            return results.slice(0, perSourceLimit).map(r => ({
-              id: `semantic-slack-${r.id}`,
-              source: 'slack' as const,
-              title: r.title,
-              snippet: r.content?.substring(0, 200) || '',
-              url: r.url,
-              confidence: r.score,
-              raw: r
-            }));
-          })(),
-          
-          (async () => {
-            if (!notionConnected) return [];
-            const adapter = getAdapter('notion');
-            const items = await adapter.fetchItems(query);
-            if (items.length === 0) return [];
-            const searchService = getSemanticSearchService();
-            const results = await searchService.search(query, items);
-            return results.slice(0, perSourceLimit).map(r => ({
-              id: `semantic-notion-${r.id}`,
-              source: 'notion' as const,
-              title: r.title,
-              snippet: r.content?.substring(0, 200) || '',
-              url: r.url,
-              confidence: r.score,
-              raw: r
-            }));
-          })(),
-          
-          (async () => {
-            if (!gmailConnected) return [];
-            const adapter = getAdapter('gmail');
-            const items = await adapter.fetchItems(query);
-            if (items.length === 0) return [];
-            const searchService = getSemanticSearchService();
-            const results = await searchService.search(query, items);
-            return results.slice(0, perSourceLimit).map(r => ({
-              id: `semantic-gmail-${r.id}`,
-              source: 'gmail' as const,
-              title: r.title,
-              snippet: r.content?.substring(0, 200) || '',
-              url: r.url,
-              confidence: r.score,
-              raw: r
-            }));
-          })()
-        ]);
+      const [slackResult, notionResult, gmailResult, linearResult] = await Promise.allSettled([
+        (async () => {
+          if (!slackConnected) return [];
+          const result = await slackService!.searchMessages(query, undefined, QUOTA_PER_SOURCE);
+          return (result.messages || []).map(m => ({
+            id: `slack-${m.ts}`,
+            source: 'slack' as const,
+            title: `#${m.channel?.name || 'unknown'}`,
+            snippet: m.text?.substring(0, 200) || '',
+            url: m.permalink,
+            timestamp: m.timestamp,
+          }));
+        })(),
+        
+        (async () => {
+          if (!notionConnected) return [];
+          const adapter = getAdapter('notion');
+          const items = await adapter.fetchItems(query, QUOTA_PER_SOURCE);
+          return items.map(item => ({
+            id: `notion-${item.id}`,
+            source: 'notion' as const,
+            title: item.title,
+            snippet: item.content?.substring(0, 200) || '',
+            url: item.url,
+            timestamp: item.timestamp,
+          }));
+        })(),
+        
+        (async () => {
+          if (!gmailConnected) return [];
+          const adapter = getAdapter('gmail');
+          const items = await adapter.fetchItems(query, QUOTA_PER_SOURCE);
+          return items.map(item => ({
+            id: `gmail-${item.id}`,
+            source: 'gmail' as const,
+            title: item.title,
+            snippet: item.content?.substring(0, 200) || '',
+            url: item.url,
+            timestamp: item.timestamp,
+          }));
+        })(),
+        
+        (async () => {
+          if (!linearConnected) return [];
+          const adapter = getAdapter('linear');
+          const items = await adapter.fetchItems(query, QUOTA_PER_SOURCE);
+          return items.map(item => ({
+            id: `linear-${item.id}`,
+            source: 'linear' as const,
+            title: item.title,
+            snippet: item.content?.substring(0, 200) || '',
+            url: item.url,
+          }));
+        })(),
+      ]);
       
       const results: any[] = [];
+      const sourceNames = ['slack', 'notion', 'gmail', 'linear'];
       
-      [slackResult, aiResult, semanticSlackResult, semanticNotionResult, semanticGmailResult].forEach((r, i) => {
-        const names = ['slack', 'ai', 'semantic-slack', 'semantic-notion', 'semantic-gmail'];
+      [slackResult, notionResult, gmailResult, linearResult].forEach((r, i) => {
         if (r.status === 'fulfilled') {
           results.push(...r.value);
-          debug.push(`${names[i]}: ${r.value.length} results`);
+          debug.push(`${sourceNames[i]}: ${r.value.length} results`);
         } else {
-          debug.push(`${names[i]}: ERROR - ${r.reason}`);
+          debug.push(`${sourceNames[i]}: ERROR - ${r.reason}`);
         }
       });
       
@@ -1262,11 +1233,13 @@ app.whenReady().then(async () => {
         return true;
       });
       
-      debug.push(`total: ${deduplicated.length} (deduped from ${results.length})`);
+      const sorted = deduplicated.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      
+      debug.push(`total: ${sorted.length} (deduped from ${results.length})`);
       
       return { 
         success: true, 
-        results: deduplicated.slice(0, limit),
+        results: sorted.slice(0, limit),
         _debug: debug 
       };
     } catch (error) {

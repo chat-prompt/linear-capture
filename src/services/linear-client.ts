@@ -286,6 +286,29 @@ export class LinearService {
   }
 
   /**
+   * Search issues by text query
+   */
+  async searchIssues(query: string, limit: number = 10): Promise<{
+    success: boolean;
+    issues: Array<{ id: string; identifier: string; title: string; url: string; description?: string }>;
+  }> {
+    try {
+      const result = await this.client.searchIssues(query);
+      const issues = result.nodes.slice(0, limit).map(issue => ({
+        id: issue.id,
+        identifier: issue.identifier,
+        title: issue.title,
+        url: issue.url,
+        description: issue.description || undefined,
+      }));
+      return { success: true, issues };
+    } catch (error) {
+      console.error('Failed to search issues:', error);
+      return { success: false, issues: [] };
+    }
+  }
+
+  /**
    * Get all labels (workspace + team labels)
    */
   async getLabels(): Promise<LabelInfo[]> {

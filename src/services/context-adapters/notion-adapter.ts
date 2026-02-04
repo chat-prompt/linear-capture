@@ -1,5 +1,6 @@
 import type { ContextAdapter, ContextItem, ContextSource } from '../../types/context-search';
 import { createNotionService, type NotionPage } from '../notion-client';
+import { isNotionDbAvailable, getNotionLocalReader, type LocalNotionPage } from '../notion-local-reader';
 
 export class NotionAdapter implements ContextAdapter {
   readonly source: ContextSource = 'notion';
@@ -15,6 +16,21 @@ export class NotionAdapter implements ContextAdapter {
       return [];
     }
 
+    // 로컬 캐시 우선 (Notion Desktop App의 SQLite DB)
+    if (isNotionDbAvailable()) {
+      try {
+        const localReader = getNotionLocalReader();
+        const localResult = await localReader.searchPages(query, limit);
+        if (localResult.success && localResult.pages.length > 0) {
+          console.log('[NotionAdapter] Using local cache:', localResult.pages.length, 'results');
+          return localResult.pages.map(page => this.localPageToContextItem(page));
+        }
+      } catch (error) {
+        console.error('[NotionAdapter] Local cache error, falling back to API:', error);
+      }
+    }
+
+    // API 폴백
     const result = await this.notionService.searchPages(query, limit);
 
     if (!result.success || !result.pages) {
@@ -22,6 +38,21 @@ export class NotionAdapter implements ContextAdapter {
     }
 
     return result.pages.map(page => this.toContextItem(page));
+  }
+
+  private localPageToContextItem(page: LocalNotionPage): ContextItem {
+    return {
+      id: page.id,
+      content: page.matchContext || page.title,
+      title: page.title,
+      url: page.url,
+      source: 'notion',
+      timestamp: new Date(page.lastEditedTime).getTime(),
+      metadata: {
+        isContentMatch: page.isContentMatch || false,
+        source: 'local',
+      },
+    };
   }
 
   private toContextItem(page: NotionPage): ContextItem {
@@ -34,6 +65,7 @@ export class NotionAdapter implements ContextAdapter {
       timestamp: new Date(page.lastEditedTime).getTime(),
       metadata: {
         isContentMatch: page.isContentMatch || false,
+        source: 'api',
       },
     };
   }
