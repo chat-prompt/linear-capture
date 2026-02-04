@@ -19,8 +19,14 @@ import {
   getLanguage,
   setLanguage,
   getSupportedLanguages,
+  getOpenaiApiKey,
+  setOpenaiApiKey,
+  getSelectedSlackChannels,
+  setSelectedSlackChannels,
   UserInfo as SettingsUserInfo,
+  SlackChannelInfo,
 } from '../services/settings-store';
+import { getLocalSearchService } from '../services/local-search';
 import { checkForUpdates } from '../services/auto-updater';
 import { getAiRecommendations } from '../services/ai-recommend';
 import { getAdapter } from '../services/context-adapters';
@@ -719,6 +725,51 @@ export function registerIpcHandlers(): void {
     } catch (error) {
       debug.push(`ERROR: ${String(error)}`);
       return { success: false, error: String(error), results: [], _debug: debug };
+    }
+  });
+
+  ipcMain.handle('openai:get-key', () => {
+    return getOpenaiApiKey();
+  });
+
+  ipcMain.handle('openai:set-key', (_event, key: string) => {
+    setOpenaiApiKey(key);
+    return { success: true };
+  });
+
+  ipcMain.handle('sync:get-slack-channels', () => {
+    return getSelectedSlackChannels();
+  });
+
+  ipcMain.handle('sync:set-slack-channels', (_event, channels: SlackChannelInfo[]) => {
+    setSelectedSlackChannels(channels);
+    return { success: true };
+  });
+
+  ipcMain.handle('sync:get-status', async () => {
+    try {
+      const localSearch = getLocalSearchService();
+      if (!localSearch) {
+        return { initialized: false };
+      }
+      return await localSearch.getSyncStatus();
+    } catch (error) {
+      logger.error('sync:get-status error:', error);
+      return { initialized: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('sync:trigger', async (_event, source: string) => {
+    try {
+      const localSearch = getLocalSearchService();
+      if (!localSearch) {
+        return { success: false, error: 'LocalSearchService not initialized' };
+      }
+      await localSearch.syncSource(source);
+      return { success: true };
+    } catch (error) {
+      logger.error('sync:trigger error:', error);
+      return { success: false, error: String(error) };
     }
   });
 }

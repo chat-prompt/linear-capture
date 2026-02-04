@@ -29,10 +29,65 @@ interface DatabaseRow {
   score: number;
 }
 
+export interface SyncStatus {
+  initialized: boolean;
+  slack?: { lastSync?: number; documentCount?: number };
+  notion?: { lastSync?: number; documentCount?: number };
+  linear?: { lastSync?: number; documentCount?: number };
+}
+
 export class LocalSearchService {
   private dbService = getDatabaseService();
   private embeddingService = createEmbeddingService();
   private preprocessor = new TextPreprocessor();
+
+  isInitialized(): boolean {
+    try {
+      return this.dbService?.getDb() !== null;
+    } catch {
+      return false;
+    }
+  }
+
+  async getSyncStatus(): Promise<SyncStatus> {
+    const db = this.dbService?.getDb();
+    if (!db) {
+      return { initialized: false };
+    }
+
+    try {
+      const result = await db.query<{ source_type: string; count: string }>(`
+        SELECT source_type, COUNT(*) as count
+        FROM documents
+        GROUP BY source_type
+      `);
+
+      const status: SyncStatus = { initialized: true };
+
+      for (const row of result.rows) {
+        const sourceKey = row.source_type as 'slack' | 'notion' | 'linear';
+        status[sourceKey] = { documentCount: parseInt(row.count, 10) };
+      }
+
+      return status;
+    } catch (error) {
+      console.error('[LocalSearch] getSyncStatus error:', error);
+      return { initialized: true };
+    }
+  }
+
+  async syncSource(source: string): Promise<void> {
+    console.log(`[LocalSearch] syncSource called for: ${source}`);
+  }
+
+  async syncAll(): Promise<void> {
+    console.log('[LocalSearch] syncAll called');
+    await Promise.all([
+      this.syncSource('slack'),
+      this.syncSource('notion'),
+      this.syncSource('linear'),
+    ]);
+  }
 
   /**
    * Hybrid search: Semantic + Keyword with RRF fusion
@@ -216,12 +271,14 @@ export class LocalSearchService {
 // Singleton instance
 let localSearchService: LocalSearchService | null = null;
 
-/**
- * Get singleton LocalSearchService instance
- */
-export function getLocalSearchService(): LocalSearchService {
+export function getLocalSearchService(): LocalSearchService | null {
   if (!localSearchService) {
-    localSearchService = new LocalSearchService();
+    try {
+      localSearchService = new LocalSearchService();
+    } catch (error) {
+      console.error('[LocalSearch] Failed to initialize:', error);
+      return null;
+    }
   }
   return localSearchService;
 }
