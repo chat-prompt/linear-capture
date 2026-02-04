@@ -30,7 +30,11 @@ import {
   setLanguage,
   getSupportedLanguages,
   setOpenaiApiKey,
+  getSyncIntervalMs,
+  setSyncInterval,
+  getSyncInterval,
   UserInfo as SettingsUserInfo,
+  SyncInterval,
 } from '../services/settings-store';
 import { initAutoUpdater, checkForUpdates } from '../services/auto-updater';
 import { createSlackService, SlackService } from '../services/slack-client';
@@ -45,7 +49,7 @@ import type { ContextSource } from '../types/context-search';
 import { createNotionSyncAdapter } from '../services/sync-adapters/notion-sync';
 import { createSlackSyncAdapter } from '../services/sync-adapters/slack-sync';
 import { createLinearSyncAdapter } from '../services/sync-adapters/linear-sync';
-import { getDatabaseService } from '../services/database';
+import { getDatabaseService, initDatabaseService } from '../services/database';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
@@ -229,6 +233,60 @@ let captureService: ICaptureService;
 let pendingSlackCallback: { code: string; state: string } | null = null;
 let pendingNotionCallback: { code: string; state: string } | null = null;
 let pendingGmailCallback: { code: string; state: string } | null = null;
+let syncSchedulerTimer: NodeJS.Timeout | null = null;
+
+async function runAutoSync(): Promise<void> {
+  console.log('[AutoSync] Running scheduled sync...');
+  const sources: Array<'slack' | 'notion' | 'linear'> = ['slack', 'notion', 'linear'];
+  
+  for (const source of sources) {
+    try {
+      let connected = false;
+      let adapter;
+      
+      if (source === 'slack' && slackService) {
+        const status = await slackService.getConnectionStatus();
+        connected = status.connected;
+        if (connected) adapter = createSlackSyncAdapter();
+      } else if (source === 'notion' && notionService) {
+        const status = await notionService.getConnectionStatus();
+        connected = status.connected;
+        if (connected) adapter = createNotionSyncAdapter();
+      } else if (source === 'linear' && hasToken()) {
+        connected = true;
+        adapter = createLinearSyncAdapter();
+      }
+      
+      if (connected && adapter) {
+        console.log(`[AutoSync] Syncing ${source}...`);
+        const result = await adapter.syncIncremental();
+        console.log(`[AutoSync] ${source} sync complete:`, result.itemsSynced, 'items');
+      }
+    } catch (error) {
+      console.error(`[AutoSync] Failed to sync ${source}:`, error);
+    }
+  }
+}
+
+function startSyncScheduler(): void {
+  stopSyncScheduler();
+  
+  const intervalMs = getSyncIntervalMs();
+  if (intervalMs === 0) {
+    console.log('[AutoSync] Scheduler disabled (interval: off)');
+    return;
+  }
+  
+  console.log(`[AutoSync] Starting scheduler with interval: ${getSyncInterval()}`);
+  syncSchedulerTimer = setInterval(runAutoSync, intervalMs);
+}
+
+function stopSyncScheduler(): void {
+  if (syncSchedulerTimer) {
+    clearInterval(syncSchedulerTimer);
+    syncSchedulerTimer = null;
+  }
+}
 
 function openScreenCaptureSettings(): void {
   captureService.openPermissionSettings();
@@ -571,6 +629,14 @@ async function loadLinearData(): Promise<void> {
 
 app.whenReady().then(async () => {
   await initI18n(getLanguage());
+  
+  // Initialize local database for semantic search
+  try {
+    await initDatabaseService();
+    console.log('[Main] Database service initialized');
+  } catch (dbError) {
+    console.error('[Main] Failed to initialize database:', dbError);
+  }
   
   captureService = createCaptureService();
   
@@ -975,6 +1041,17 @@ app.whenReady().then(async () => {
     return await slackService.getChannels();
   });
 
+  ipcMain.handle('get-selected-slack-channels', async () => {
+    const { getSelectedSlackChannels } = await import('../services/settings-store');
+    return getSelectedSlackChannels();
+  });
+
+  ipcMain.handle('set-selected-slack-channels', async (_event, channels) => {
+    const { setSelectedSlackChannels } = await import('../services/settings-store');
+    setSelectedSlackChannels(channels);
+    return { success: true };
+  });
+
   ipcMain.handle('slack-search', async (_event, { query, channels, count }: { query: string; channels?: string[]; count?: number }) => {
     if (!slackService) {
       return { success: false, error: 'Slack service not initialized' };
@@ -1100,44 +1177,20 @@ app.whenReady().then(async () => {
     return await getAiRecommendations(text, limit);
   });
 
-  ipcMain.handle('context-semantic-search', async (_event, { query, source }: { query: string; source: string }) => {
+  ipcMain.handle('context-semantic-search', async (_event, { query, source }: { query: string; source?: string }) => {
     const debug: string[] = [];
-    debug.push(`query="${query}", source="${source}"`);
-    console.log(`[SemanticSearch] Handler called! query="${query}", source="${source}"`);
+    debug.push(`query="${query}", source="${source || 'all'}"`);
+    console.log(`[SemanticSearch] Handler called! query="${query}", source="${source || 'all'}"`);
     
     try {
-      debug.push('Getting adapter...');
-      console.log(`[SemanticSearch] Getting adapter for ${source}...`);
-      const adapter = getAdapter(source as ContextSource);
-      
-      debug.push('Checking connection...');
-      console.log(`[SemanticSearch] Got adapter, checking connection...`);
-      const isConnected = await adapter.isConnected();
-      debug.push(`isConnected=${isConnected}`);
-      console.log(`[SemanticSearch] ${source} connected: ${isConnected}`);
-      
-      if (!isConnected) {
-        debug.push('Not connected, returning early');
-        console.log(`[SemanticSearch] ${source} not connected, returning empty results`);
-        return { success: true, results: [], notConnected: true, _debug: debug };
-      }
-      
-      debug.push('Fetching items...');
-      const items = await adapter.fetchItems(query);
-      debug.push(`fetchedItems=${items.length}`);
-      console.log(`[SemanticSearch] Fetched ${items.length} items from ${source}`);
-      
-      if (items.length === 0) {
-        debug.push('No items found, returning empty');
-        console.log('[SemanticSearch] No items to search, returning empty results');
-        return { success: true, results: [], _debug: debug };
-      }
-      
-      debug.push('Calling semantic search service...');
       const searchService = getSemanticSearchService();
-      const results = await searchService.search(query, items);
+      const results = await searchService.search(query, [], 10, source);
       debug.push(`searchResults=${results.length}`);
       console.log(`[SemanticSearch] Search returned ${results.length} results`);
+      
+      if (results.length === 0) {
+        return { success: true, results: [], noData: true, _debug: debug };
+      }
       
       return { success: true, results, _debug: debug };
     } catch (error) {
@@ -1156,99 +1209,23 @@ app.whenReady().then(async () => {
     }
     
     try {
-      const [slackResult, aiResult, semanticSlackResult, semanticNotionResult] = 
-        await Promise.allSettled([
-          (async () => {
-            if (!slackService) return [];
-            const status = await slackService.getConnectionStatus();
-            if (!status.connected) return [];
-            const result = await slackService.searchMessages(query, undefined, Math.floor(limit / 3));
-            return (result.messages || []).map(m => ({
-              id: `slack-${m.ts}`,
-              source: 'slack' as const,
-              title: `#${m.channel?.name || 'unknown'}`,
-              snippet: m.text?.substring(0, 200) || '',
-              url: m.permalink,
-              timestamp: m.timestamp,
-              raw: m
-            }));
-          })(),
-          
-          (async () => {
-            const result = await getAiRecommendations(query, Math.floor(limit / 3));
-            return (result.recommendations || []).map((r, idx) => ({
-              id: `ai-${idx}`,
-              source: r.source as 'slack' | 'notion' | 'gmail' | 'linear',
-              title: r.title,
-              snippet: r.snippet?.substring(0, 200) || '',
-              url: r.url,
-              confidence: r.score,
-              raw: r
-            }));
-          })(),
-          
-          (async () => {
-            const adapter = getAdapter('slack');
-            if (!await adapter.isConnected()) return [];
-            const items = await adapter.fetchItems(query);
-            if (items.length === 0) return [];
-            const searchService = getSemanticSearchService();
-            const results = await searchService.search(query, items);
-            return results.slice(0, Math.floor(limit / 3)).map(r => ({
-              id: `semantic-slack-${r.id}`,
-              source: 'slack' as const,
-              title: r.title,
-              snippet: r.content?.substring(0, 200) || '',
-              url: r.url,
-              confidence: r.score,
-              raw: r
-            }));
-          })(),
-          
-          (async () => {
-            const adapter = getAdapter('notion');
-            if (!await adapter.isConnected()) return [];
-            const items = await adapter.fetchItems(query);
-            if (items.length === 0) return [];
-            const searchService = getSemanticSearchService();
-            const results = await searchService.search(query, items);
-            return results.slice(0, Math.floor(limit / 3)).map(r => ({
-              id: `semantic-notion-${r.id}`,
-              source: 'notion' as const,
-              title: r.title,
-              snippet: r.content?.substring(0, 200) || '',
-              url: r.url,
-              confidence: r.score,
-              raw: r
-            }));
-          })()
-        ]);
+      const searchService = getSemanticSearchService();
+      const results = await searchService.search(query, [], limit);
+      debug.push(`localSearch: ${results.length} results`);
       
-      const results: any[] = [];
-      
-      [slackResult, aiResult, semanticSlackResult, semanticNotionResult].forEach((r, i) => {
-        const names = ['slack', 'ai', 'semantic-slack', 'semantic-notion'];
-        if (r.status === 'fulfilled') {
-          results.push(...r.value);
-          debug.push(`${names[i]}: ${r.value.length} results`);
-        } else {
-          debug.push(`${names[i]}: ERROR - ${r.reason}`);
-        }
-      });
-      
-      const seen = new Set<string>();
-      const deduplicated = results.filter(r => {
-        if (!r.url) return true;
-        if (seen.has(r.url)) return false;
-        seen.add(r.url);
-        return true;
-      });
-      
-      debug.push(`total: ${deduplicated.length} (deduped from ${results.length})`);
+      const mapped = results.map(r => ({
+        id: `local-${r.id}`,
+        source: r.source,
+        title: r.title,
+        snippet: r.content?.substring(0, 200) || '',
+        url: r.url,
+        confidence: r.score,
+        raw: r
+      }));
       
       return { 
         success: true, 
-        results: deduplicated.slice(0, limit),
+        results: mapped,
         _debug: debug 
       };
     } catch (error) {
@@ -1286,11 +1263,42 @@ app.whenReady().then(async () => {
         connected = hasToken();
       }
       
+      let status = result.rows[0]?.status || 'idle';
+      if (status === 'syncing') {
+        status = 'idle';
+        await db.query(
+          `UPDATE sync_cursors SET status = 'idle' WHERE source_type = $1`,
+          [source]
+        );
+      }
+      
+      // Count actual documents (filtered by selected channels for Slack)
+      let itemCount = 0;
+      if (source === 'slack') {
+        const { getSelectedSlackChannels } = await import('../services/settings-store');
+        const selectedChannels = getSelectedSlackChannels();
+        if (selectedChannels.length > 0) {
+          const channelIds = selectedChannels.map(ch => ch.id);
+          const countResult = await db.query<{ count: string }>(
+            `SELECT COUNT(*) as count FROM documents 
+             WHERE source_type = 'slack' AND metadata->>'channelId' = ANY(SELECT jsonb_array_elements_text($1::jsonb))`,
+            [JSON.stringify(channelIds)]
+          );
+          itemCount = parseInt(countResult.rows[0]?.count || '0', 10);
+        }
+      } else {
+        const countResult = await db.query<{ count: string }>(
+          `SELECT COUNT(*) as count FROM documents WHERE source_type = $1`,
+          [source]
+        );
+        itemCount = parseInt(countResult.rows[0]?.count || '0', 10);
+      }
+      
       return {
         ...result.rows[0],
         connected,
-        status: result.rows[0]?.status || 'idle',
-        items_synced: result.rows[0]?.items_synced || 0,
+        status,
+        items_synced: itemCount,
       };
     } catch (error) {
       console.error(`[sync:get-status] Error for ${source}:`, error);
@@ -1347,7 +1355,16 @@ app.whenReady().then(async () => {
     }
   });
 
-  // Initialize AI analyzer (prefer Gemini, fallback to Anthropic)
+  ipcMain.handle('sync:get-interval', () => {
+    return getSyncInterval();
+  });
+
+  ipcMain.handle('sync:set-interval', (_event, interval: SyncInterval) => {
+    setSyncInterval(interval);
+    startSyncScheduler();
+    return { success: true };
+  });
+
   geminiAnalyzer = createGeminiAnalyzer();
   if (geminiAnalyzer) {
     console.log('Gemini AI analysis enabled (default)');
@@ -1403,6 +1420,8 @@ app.whenReady().then(async () => {
       checkForUpdates();
     }, 4 * 60 * 60 * 1000);
   }
+
+  startSyncScheduler();
 
   console.log('Linear Capture ready! Press ⌘+Shift+L to capture.');
 });

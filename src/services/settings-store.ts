@@ -15,6 +15,13 @@ export interface UserInfo {
   email: string;
 }
 
+export interface SlackChannelInfo {
+  id: string;
+  name: string;
+}
+
+export type SyncInterval = 'off' | '5m' | '15m' | '30m' | '1h' | '6h' | '24h';
+
 export interface Settings {
   linearApiToken?: string;
   userInfo?: UserInfo;
@@ -23,6 +30,8 @@ export interface Settings {
   deviceId?: string;
   language?: string;
   openaiApiKey?: string;
+  selectedSlackChannels?: SlackChannelInfo[];
+  syncInterval?: SyncInterval;
 }
 
 const DEFAULT_HOTKEY = 'CommandOrControl+Shift+L';
@@ -185,4 +194,47 @@ export function setLanguage(lang: string): void {
   if (SUPPORTED_LANGUAGES.includes(lang as SupportedLanguage)) {
     settingsStore.set('language', lang);
   }
+}
+
+/**
+ * 선택된 Slack 채널 목록 가져오기
+ */
+export function getSelectedSlackChannels(): SlackChannelInfo[] {
+  return settingsStore.get('selectedSlackChannels') || [];
+}
+
+/**
+ * 선택된 Slack 채널 목록 저장
+ */
+export function setSelectedSlackChannels(channels: SlackChannelInfo[]): void {
+  settingsStore.set('selectedSlackChannels', channels);
+}
+
+/**
+ * 선택된 Slack 채널 목록 초기화
+ */
+export function clearSelectedSlackChannels(): void {
+  settingsStore.delete('selectedSlackChannels');
+}
+
+const SYNC_INTERVAL_MS: Record<SyncInterval, number> = {
+  'off': 0,
+  '5m': 5 * 60 * 1000,
+  '15m': 15 * 60 * 1000,
+  '30m': 30 * 60 * 1000,
+  '1h': 60 * 60 * 1000,
+  '6h': 6 * 60 * 60 * 1000,
+  '24h': 24 * 60 * 60 * 1000,
+};
+
+export function getSyncInterval(): SyncInterval {
+  return settingsStore.get('syncInterval') || 'off';
+}
+
+export function setSyncInterval(interval: SyncInterval): void {
+  settingsStore.set('syncInterval', interval);
+}
+
+export function getSyncIntervalMs(): number {
+  return SYNC_INTERVAL_MS[getSyncInterval()];
 }

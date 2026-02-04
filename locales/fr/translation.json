@@ -219,6 +219,17 @@
     "noResultsHint": "Essayez d'autres mots-clés ou vérifiez les connexions",
     "enterQuery": "Saisir un titre ou un terme de recherche",
     "insertToDescription": "Insérer dans la description",
-    "selected": "{{count}} sélectionné(s)"
+    "selected": "{{count}} sélectionné(s)",
+    "relevance": "{{score}}% pertinence"
+  },
+  "sync": {
+    "title": "Synchronisation des données",
+    "autoSync": "Synchronisation automatique",
+    "intervalOff": "Désactivé",
+    "syncNow": "Synchroniser maintenant",
+    "lastSync": "Dernière synchronisation",
+    "itemsSynced": "Éléments",
+    "connectFirst": "Connectez-vous d'abord pour activer la synchronisation",
+    "selectChannels": "Sélectionner les canaux à synchroniser"
   }
 }

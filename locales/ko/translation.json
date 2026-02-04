@@ -28,7 +28,9 @@
     "settings": "설정",
     "status": "상태",
     "user": "사용자",
-    "version": "버전"
+    "version": "버전",
+    "selectAll": "전체 선택",
+    "deselectAll": "전체 해제"
   },
   "capture": {
     "title": "Linear 이슈 생성",
@@ -219,6 +221,17 @@
     "noResultsHint": "다른 키워드를 사용하거나 연결을 확인하세요.",
     "enterQuery": "제목 또는 검색어를 입력하세요.",
     "insertToDescription": "설명에 삽입",
-    "selected": "{{count}}개 선택됨"
+    "selected": "{{count}}개 선택됨",
+    "relevance": "{{score}}% 신뢰도"
+  },
+  "sync": {
+    "title": "데이터 동기화",
+    "autoSync": "자동 동기화",
+    "intervalOff": "꺼짐",
+    "syncNow": "지금 동기화",
+    "lastSync": "마지막 동기화",
+    "itemsSynced": "항목",
+    "connectFirst": "먼저 연결해야 동기화할 수 있습니다",
+    "selectChannels": "동기화할 채널 선택"
   }
 }

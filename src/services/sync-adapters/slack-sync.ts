@@ -18,7 +18,7 @@ import type { SlackService, SlackChannel } from '../slack-client';
 import type { DatabaseService } from '../database';
 import type { TextPreprocessor } from '../text-preprocessor';
 import type { EmbeddingService } from '../embedding-service';
-import { getDeviceId } from '../settings-store';
+import { getDeviceId, getSelectedSlackChannels } from '../settings-store';
 
 const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
 
@@ -93,13 +93,33 @@ export class SlackSyncAdapter {
         throw new Error(channelsResult.error || 'Failed to fetch channels');
       }
 
-      console.log(`[SlackSync] Found ${channelsResult.channels.length} channels`);
+      const publicChannels = channelsResult.channels.filter(ch => !ch.is_private);
+      const selectedChannels = getSelectedSlackChannels();
+      const selectedIds = new Set(selectedChannels.map(ch => ch.id));
+      
+      const channelsToSync = selectedIds.size > 0
+        ? publicChannels.filter(ch => selectedIds.has(ch.id))
+        : publicChannels;
+      
+      console.log(`[SlackSync] Found ${channelsResult.channels.length} channels (${publicChannels.length} public, ${channelsToSync.length} selected)`);
 
+      if (channelsToSync.length === 0) {
+        console.log('[SlackSync] No channels selected for sync');
+        return result;
+      }
+
+      const syncPromises = channelsToSync.map(channel =>
+        this.syncChannel(channel, null)
+          .then(channelResult => ({ channel, channelResult, success: true as const }))
+          .catch(error => ({ channel, error, success: false as const }))
+      );
+
+      const syncResults = await Promise.all(syncPromises);
       let latestTimestamp: string | null = null;
 
-      for (const channel of channelsResult.channels) {
-        try {
-          const channelResult = await this.syncChannel(channel, null);
+      for (const syncResult of syncResults) {
+        if (syncResult.success) {
+          const { channelResult } = syncResult;
           result.itemsSynced += channelResult.itemsSynced;
           result.itemsFailed += channelResult.itemsFailed;
           result.errors.push(...channelResult.errors);
@@ -107,12 +127,12 @@ export class SlackSyncAdapter {
           if (channelResult.lastCursor && (!latestTimestamp || channelResult.lastCursor > latestTimestamp)) {
             latestTimestamp = channelResult.lastCursor;
           }
-        } catch (error) {
-          console.error(`[SlackSync] Failed to sync channel ${channel.name}:`, error);
+        } else {
+          console.error(`[SlackSync] Failed to sync channel ${syncResult.channel.name}:`, syncResult.error);
           result.itemsFailed++;
           result.errors.push({
-            messageId: channel.id,
-            error: error instanceof Error ? error.message : 'Unknown error',
+            messageId: syncResult.channel.id,
+            error: syncResult.error instanceof Error ? syncResult.error.message : 'Unknown error',
           });
         }
       }
@@ -158,23 +178,48 @@ export class SlackSyncAdapter {
 
       // Check connection status
       const status = await this.slackService.getConnectionStatus();
+      console.log('[SlackSync] Connection status:', JSON.stringify(status));
       if (!status.connected) {
         throw new Error('Slack not connected');
       }
 
       // Get all channels
+      console.log('[SlackSync] Fetching channels...');
       const channelsResult = await this.slackService.getChannels();
+      console.log('[SlackSync] Channels result:', JSON.stringify(channelsResult));
+      
       if (!channelsResult.success || !channelsResult.channels) {
         throw new Error(channelsResult.error || 'Failed to fetch channels');
       }
 
-      console.log(`[SlackSync] Found ${channelsResult.channels.length} channels`);
+      const publicChannels = channelsResult.channels.filter(ch => !ch.is_private);
+      const selectedChannels = getSelectedSlackChannels();
+      const selectedIds = new Set(selectedChannels.map(ch => ch.id));
+      
+      const channelsToSync = selectedIds.size > 0
+        ? publicChannels.filter(ch => selectedIds.has(ch.id))
+        : publicChannels;
+      
+      console.log(`[SlackSync] Found ${channelsResult.channels.length} channels (${publicChannels.length} public, ${channelsToSync.length} selected)`);
+      
+      if (channelsToSync.length === 0) {
+        console.log('[SlackSync] No channels selected for sync');
+        await this.updateSyncStatus('idle');
+        return result;
+      }
 
+      const syncPromises = channelsToSync.map(channel =>
+        this.syncChannel(channel, lastCursor)
+          .then(channelResult => ({ channel, channelResult, success: true as const }))
+          .catch(error => ({ channel, error, success: false as const }))
+      );
+
+      const syncResults = await Promise.all(syncPromises);
       let latestTimestamp: string | null = lastCursor;
 
-      for (const channel of channelsResult.channels) {
-        try {
-          const channelResult = await this.syncChannel(channel, lastCursor);
+      for (const syncResult of syncResults) {
+        if (syncResult.success) {
+          const { channelResult } = syncResult;
           result.itemsSynced += channelResult.itemsSynced;
           result.itemsFailed += channelResult.itemsFailed;
           result.errors.push(...channelResult.errors);
@@ -182,12 +227,12 @@ export class SlackSyncAdapter {
           if (channelResult.lastCursor && (!latestTimestamp || channelResult.lastCursor > latestTimestamp)) {
             latestTimestamp = channelResult.lastCursor;
           }
-        } catch (error) {
-          console.error(`[SlackSync] Failed to sync channel ${channel.name}:`, error);
+        } else {
+          console.error(`[SlackSync] Failed to sync channel ${syncResult.channel.name}:`, syncResult.error);
           result.itemsFailed++;
           result.errors.push({
-            messageId: channel.id,
-            error: error instanceof Error ? error.message : 'Unknown error',
+            messageId: syncResult.channel.id,
+            error: syncResult.error instanceof Error ? syncResult.error.message : 'Unknown error',
           });
         }
       }
@@ -297,16 +342,18 @@ export class SlackSyncAdapter {
     try {
       const url = new URL(`${WORKER_URL}/slack/history`);
       url.searchParams.set('device_id', this.deviceId);
-      url.searchParams.set('channel', channelId);
+      url.searchParams.set('channel_id', channelId);
       if (oldest) {
         url.searchParams.set('oldest', oldest);
       }
 
+      console.log(`[SlackSync] Fetching history for channel ${channelId}, oldest: ${oldest || 'none'}`);
       const response = await fetch(url.toString());
       const data = await response.json() as SlackMessageHistoryResponse;
+      console.log(`[SlackSync] History response for ${channelId}: success=${data.success}, messages=${data.messages?.length || 0}, error=${data.error || 'none'}`);
       return data;
     } catch (error) {
-      console.error('Slack history fetch error:', error);
+      console.error('[SlackSync] History fetch error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }

@@ -506,6 +506,95 @@
       font-weight: 500;
     }
 
+    .sync-channels {
+      margin-top: 12px;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    .sync-channels-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .sync-channels-header:hover {
+      opacity: 0.8;
+    }
+
+    .sync-channels-title {
+      font-size: 12px;
+      font-weight: 500;
+      color: #666;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sync-channels-title::before {
+      content: '▼';
+      font-size: 8px;
+      transition: transform 0.2s;
+    }
+
+    .sync-channels.collapsed .sync-channels-title::before {
+      transform: rotate(-90deg);
+    }
+
+    .sync-channels-list {
+      max-height: 150px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 8px;
+    }
+
+    .sync-channels.collapsed .sync-channels-list {
+      display: none;
+    }
+
+    .sync-channel-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .sync-channel-item:hover {
+      background: #eee;
+    }
+
+    .sync-channel-item input[type="checkbox"] {
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .sync-channel-item label {
+      font-size: 13px;
+      color: #333;
+      cursor: pointer;
+      flex: 1;
+    }
+
+    .btn-link {
+      background: none;
+      border: none;
+      color: #5e6ad2;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .btn-link:hover {
+      text-decoration: underline;
+    }
+
     .sync-actions {
       display: flex;
       gap: 8px;
@@ -563,6 +652,43 @@
       color: #888;
       margin-top: 4px;
       font-style: italic;
+    }
+
+    /* Auto Sync Interval Setting */
+    .sync-interval-setting {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    .sync-interval-setting label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 0;
+    }
+
+    .sync-interval-setting select {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      background: white;
+      cursor: pointer;
+      min-width: 120px;
+    }
+
+    .sync-interval-setting select:hover {
+      border-color: #bbb;
+    }
+
+    .sync-interval-setting select:focus {
+      outline: none;
+      border-color: #5e6ad2;
     }
   </style>
 </head>
@@ -651,6 +777,20 @@
     <div class="sync-section">
       <h2 data-i18n="sync.title">Data Sync</h2>
       
+      <!-- Auto Sync Interval -->
+      <div class="sync-interval-setting">
+        <label for="sync-interval-select" data-i18n="sync.autoSync">Auto Sync:</label>
+        <select id="sync-interval-select">
+          <option value="off" data-i18n="sync.intervalOff">Off</option>
+          <option value="5m">5 min</option>
+          <option value="15m">15 min</option>
+          <option value="30m">30 min</option>
+          <option value="1h">1 hour</option>
+          <option value="6h">6 hours</option>
+          <option value="24h">24 hours</option>
+        </select>
+      </div>
+      
       <!-- Notion Sync -->
       <div class="sync-source">
         <div class="sync-header">
@@ -707,6 +847,13 @@
             <span class="sync-info-value" id="slack-items">0</span>
           </div>
         </div>
+        <div class="sync-channels collapsed" id="slack-channels-section" style="display: none;">
+          <div class="sync-channels-header">
+            <span class="sync-channels-title">Select channels to sync</span>
+            <button class="btn-link" id="slack-select-all-btn">Select All</button>
+          </div>
+          <div class="sync-channels-list" id="slack-channels-list"></div>
+        </div>
         <div class="sync-actions">
           <button class="btn-sync" id="sync-slack-btn" data-i18n="sync.syncNow">Sync Now</button>
         </div>
@@ -722,8 +869,8 @@
       <div class="sync-source">
         <div class="sync-header">
           <div class="sync-source-name">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M2.5 2.5L12 12L21.5 21.5M2.5 21.5L12 12L21.5 2.5" stroke="#5E6AD2" stroke-width="2" stroke-linecap="round"/>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path fill="#000" d="M2.147 9.383c-.027-.114.109-.186.192-.103L6.72 13.66c.083.083.011.219-.103.192a6.015 6.015 0 0 1-4.47-4.47ZM2 7.627a.119.119 0 0 0 .035.091l6.247 6.247a.119.119 0 0 0 .091.035c.285-.018.564-.055.836-.111a.117.117 0 0 0 .057-.198L2.31 6.734a.117.117 0 0 0-.198.057 6.007 6.007 0 0 0-.11.836ZM2.505 5.565a.119.119 0 0 0 .025.132l7.773 7.773a.118.118 0 0 0 .132.025c.215-.096.422-.203.623-.322a.118.118 0 0 0 .022-.185L3.012 4.92a.118.118 0 0 0-.185.022c-.119.2-.226.408-.322.623ZM3.519 4.169a.118.118 0 0 1-.005-.163 6.006 6.006 0 1 1 8.48 8.48.118.118 0 0 1-.163-.005L3.52 4.169Z"/>
             </svg>
             <span>Linear</span>
           </div>
@@ -1290,19 +1437,130 @@
     }
 
     async function updateSlackUI(status) {
+      const channelsSection = document.getElementById('slack-channels-section');
       if (status.connected) {
         const workspaceName = status.workspace?.name || 'Workspace';
         slackStatusText.textContent = await t('slack.connectedTo', { workspace: workspaceName });
         slackStatusText.className = 'integration-status connected';
         slackConnectBtn.textContent = await t('common.disconnect');
         slackConnectBtn.className = 'btn-integration disconnect';
+        if (channelsSection) {
+          channelsSection.style.display = 'block';
+          loadSlackChannels();
+        }
       } else {
         slackStatusText.textContent = await t('slack.notConnected');
         slackStatusText.className = 'integration-status';
         slackConnectBtn.textContent = await t('common.connect');
         slackConnectBtn.className = 'btn-integration';
+        if (channelsSection) {
+          channelsSection.style.display = 'none';
+        }
       }
       slackError.style.display = 'none';
+    }
+
+    let slackChannelsData = [];
+    let selectedChannelIds = new Set();
+
+    async function loadSlackChannels() {
+      try {
+        const [channelsResult, savedChannels] = await Promise.all([
+          ipcRenderer.invoke('slack-channels'),
+          ipcRenderer.invoke('get-selected-slack-channels')
+        ]);
+
+        if (!channelsResult.success || !channelsResult.channels) return;
+
+        slackChannelsData = channelsResult.channels.filter(ch => !ch.is_private);
+        selectedChannelIds = new Set(savedChannels.map(ch => ch.id));
+
+        if (selectedChannelIds.size === 0 && slackChannelsData.length > 0) {
+          slackChannelsData.forEach(ch => selectedChannelIds.add(ch.id));
+          saveSelectedChannels();
+        }
+
+        renderChannelList();
+      } catch (error) {
+        console.error('Failed to load Slack channels:', error);
+      }
+    }
+
+    function renderChannelList() {
+      const listEl = document.getElementById('slack-channels-list');
+      if (!listEl) return;
+      listEl.innerHTML = '';
+
+      slackChannelsData.forEach(channel => {
+        const item = document.createElement('div');
+        item.className = 'sync-channel-item';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `ch-${channel.id}`;
+        checkbox.checked = selectedChannelIds.has(channel.id);
+        checkbox.addEventListener('change', () => {
+          if (checkbox.checked) {
+            selectedChannelIds.add(channel.id);
+          } else {
+            selectedChannelIds.delete(channel.id);
+          }
+          saveSelectedChannels();
+          updateSelectAllBtn();
+        });
+
+        const label = document.createElement('label');
+        label.htmlFor = `ch-${channel.id}`;
+        label.textContent = `#${channel.name}`;
+
+        item.appendChild(checkbox);
+        item.appendChild(label);
+        listEl.appendChild(item);
+      });
+
+      updateSelectAllBtn();
+    }
+
+    async function saveSelectedChannels() {
+      const selected = slackChannelsData
+        .filter(ch => selectedChannelIds.has(ch.id))
+        .map(ch => ({ id: ch.id, name: ch.name }));
+      await ipcRenderer.invoke('set-selected-slack-channels', selected);
+      
+      const status = await ipcRenderer.invoke('sync:get-status', 'slack');
+      updateSyncUI('slack', status);
+    }
+
+    function updateSelectAllBtn() {
+      const btn = document.getElementById('slack-select-all-btn');
+      if (!btn) return;
+      const allSelected = slackChannelsData.length > 0 && slackChannelsData.every(ch => selectedChannelIds.has(ch.id));
+      btn.textContent = allSelected ? 'Deselect All' : 'Select All';
+      btn.dataset.allSelected = allSelected ? 'true' : 'false';
+    }
+
+    const selectAllBtn = document.getElementById('slack-select-all-btn');
+    if (selectAllBtn) {
+      selectAllBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const allSelected = selectAllBtn.dataset.allSelected === 'true';
+        if (allSelected) {
+          selectedChannelIds.clear();
+        } else {
+          slackChannelsData.forEach(ch => selectedChannelIds.add(ch.id));
+        }
+        saveSelectedChannels();
+        renderChannelList();
+      });
+    }
+
+    const channelsHeader = document.querySelector('#slack-channels-section .sync-channels-header');
+    if (channelsHeader) {
+      channelsHeader.addEventListener('click', (e) => {
+        if (e.target.closest('.btn-link')) return;
+        const section = document.getElementById('slack-channels-section');
+        if (section) section.classList.toggle('collapsed');
+      });
     }
 
     slackConnectBtn.addEventListener('click', async () => {
@@ -1680,6 +1938,31 @@
     ipcRenderer.on('slack-connected', () => {
       loadSyncStatus();
     });
+
+    // ==================== Auto Sync Interval ====================
+    const syncIntervalSelect = document.getElementById('sync-interval-select');
+
+    async function loadSyncInterval() {
+      try {
+        const interval = await ipcRenderer.invoke('sync:get-interval');
+        syncIntervalSelect.value = interval || 'off';
+      } catch (error) {
+        console.error('Failed to load sync interval:', error);
+      }
+    }
+
+    syncIntervalSelect.addEventListener('change', async () => {
+      const newInterval = syncIntervalSelect.value;
+      try {
+        await ipcRenderer.invoke('sync:set-interval', newInterval);
+        console.log('Sync interval updated to:', newInterval);
+      } catch (error) {
+        console.error('Failed to set sync interval:', error);
+        alert('Failed to update sync interval');
+      }
+    });
+
+    loadSyncInterval();
   </script>
 </body>
 </html>

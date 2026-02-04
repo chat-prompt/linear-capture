@@ -28,7 +28,9 @@
     "settings": "Settings",
     "status": "Status",
     "user": "User",
-    "version": "Version"
+    "version": "Version",
+    "selectAll": "Select All",
+    "deselectAll": "Deselect All"
   },
   "capture": {
     "title": "Create Linear Issue",
@@ -222,13 +224,17 @@
     "noResultsHint": "Try different keywords or check connections",
     "enterQuery": "Enter a title or search term",
     "insertToDescription": "Insert to Description",
-    "selected": "{{count}} selected"
+    "selected": "{{count}} selected",
+    "relevance": "{{score}}% relevance"
   },
   "sync": {
     "title": "Data Sync",
+    "autoSync": "Auto Sync",
+    "intervalOff": "Off",
     "syncNow": "Sync Now",
     "lastSync": "Last synced",
     "itemsSynced": "Items",
-    "connectFirst": "Connect first to enable sync"
+    "connectFirst": "Connect first to enable sync",
+    "selectChannels": "Select channels to sync"
   }
 }
