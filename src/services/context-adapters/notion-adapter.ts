@@ -1,6 +1,7 @@
 import type { ContextAdapter, ContextItem, ContextSource } from '../../types/context-search';
 import { createNotionService, type NotionPage } from '../notion-client';
 import { isNotionDbAvailable, getNotionLocalReader, type LocalNotionPage } from '../notion-local-reader';
+import { logger } from '../utils/logger';
 
 export class NotionAdapter implements ContextAdapter {
   readonly source: ContextSource = 'notion';
@@ -19,15 +20,15 @@ export class NotionAdapter implements ContextAdapter {
     // 로컬 캐시 우선 (Notion Desktop App의 SQLite DB)
     if (isNotionDbAvailable()) {
       try {
-        const localReader = getNotionLocalReader();
-        const localResult = await localReader.searchPages(query, limit);
-        if (localResult.success && localResult.pages.length > 0) {
-          console.log('[NotionAdapter] Using local cache:', localResult.pages.length, 'results');
-          return localResult.pages.map(page => this.localPageToContextItem(page));
-        }
-      } catch (error) {
-        console.error('[NotionAdapter] Local cache error, falling back to API:', error);
-      }
+         const localReader = getNotionLocalReader();
+         const localResult = await localReader.searchPages(query, limit);
+         if (localResult.success && localResult.pages.length > 0) {
+           logger.log('[NotionAdapter] Using local cache:', localResult.pages.length, 'results');
+           return localResult.pages.map(page => this.localPageToContextItem(page));
+         }
+       } catch (error) {
+         logger.error('[NotionAdapter] Local cache error, falling back to API:', error);
+       }
     }
 
     // API 폴백

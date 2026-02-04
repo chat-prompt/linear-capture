@@ -1,14 +1,15 @@
 import { autoUpdater, UpdateInfo, ProgressInfo } from 'electron-updater';
 import { app, BrowserWindow, dialog } from 'electron';
 import { t } from '../main/i18n';
+import { logger } from './utils/logger';
 
-// 로깅 설정 (electron-log 없이 console 사용)
+// 로깅 설정 (electron-log 없이 logger 사용)
 autoUpdater.logger = {
-  info: (...args: unknown[]) => console.log('[AutoUpdater]', ...args),
-  warn: (...args: unknown[]) => console.warn('[AutoUpdater]', ...args),
-  error: (...args: unknown[]) => console.error('[AutoUpdater]', ...args),
-  debug: (...args: unknown[]) => console.log('[AutoUpdater DEBUG]', ...args),
-};
+   info: (...args: unknown[]) => logger.log('[AutoUpdater]', ...args),
+   warn: (...args: unknown[]) => logger.warn('[AutoUpdater]', ...args),
+   error: (...args: unknown[]) => logger.error('[AutoUpdater]', ...args),
+   debug: (...args: unknown[]) => logger.log('[AutoUpdater DEBUG]', ...args),
+ };
 
 // Ad-hoc 서명 앱용 설정
 autoUpdater.autoDownload = false; // 사용자 동의 후 다운로드
@@ -20,6 +21,16 @@ let updateCheckInProgress = false;
 let manualCheckMode = false; // 수동 확인 모드 (결과 항상 표시)
 
 /**
+ * 다이얼로그 표시 헬퍼 (부모 창 자동 지정)
+ */
+function showDialog(options: Electron.MessageBoxOptions): Promise<Electron.MessageBoxReturnValue> {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    return dialog.showMessageBox(mainWindow, options);
+  }
+  return dialog.showMessageBox(options);
+}
+
+/**
  * 자동 업데이터 초기화
  */
 export function initAutoUpdater(window: BrowserWindow): void {
@@ -27,12 +38,12 @@ export function initAutoUpdater(window: BrowserWindow): void {
 
   // 이벤트: 업데이트 확인 시작
   autoUpdater.on('checking-for-update', () => {
-    console.log('[AutoUpdater] Checking for update...');
+    logger.log('[AutoUpdater] Checking for update...');
   });
 
   // 이벤트: 업데이트 발견
   autoUpdater.on('update-available', (info: UpdateInfo) => {
-    console.log('[AutoUpdater] Update available:', info.version);
+    logger.log('[AutoUpdater] Update available:', info.version);
     updateCheckInProgress = false;
     manualCheckMode = false;
     showUpdateAvailableDialog(info);
@@ -40,7 +51,7 @@ export function initAutoUpdater(window: BrowserWindow): void {
 
   // 이벤트: 업데이트 없음 (최신 버전)
   autoUpdater.on('update-not-available', (info: UpdateInfo) => {
-    console.log('[AutoUpdater] Already up to date:', info.version);
+    logger.log('[AutoUpdater] Already up to date:', info.version);
     updateCheckInProgress = false;
     if (manualCheckMode) {
       manualCheckMode = false;
@@ -50,7 +61,7 @@ export function initAutoUpdater(window: BrowserWindow): void {
 
   // 이벤트: 에러
   autoUpdater.on('error', (err: Error) => {
-    console.error('[AutoUpdater] Error:', err.message);
+    logger.error('[AutoUpdater] Error:', err.message);
     updateCheckInProgress = false;
     if (manualCheckMode) {
       manualCheckMode = false;
@@ -62,7 +73,7 @@ export function initAutoUpdater(window: BrowserWindow): void {
                           errorMessage.includes('Cannot find latest');
 
       if (isNoRelease) {
-        dialog.showMessageBox({
+        showDialog({
           type: 'info',
           title: t('update.checkTitle'),
           message: t('update.noReleases'),
@@ -70,7 +81,7 @@ export function initAutoUpdater(window: BrowserWindow): void {
           buttons: [t('common.ok')],
         });
       } else {
-        dialog.showMessageBox({
+        showDialog({
           type: 'warning',
           title: t('update.checkTitle'),
           message: t('update.checkFailed'),
@@ -84,12 +95,12 @@ export function initAutoUpdater(window: BrowserWindow): void {
   // 이벤트: 다운로드 진행
   autoUpdater.on('download-progress', (progress: ProgressInfo) => {
     const percent = progress.percent.toFixed(1);
-    console.log(`[AutoUpdater] Download: ${percent}% (${formatBytes(progress.transferred)}/${formatBytes(progress.total)})`);
+    logger.log(`[AutoUpdater] Download: ${percent}% (${formatBytes(progress.transferred)}/${formatBytes(progress.total)})`);
   });
 
   // 이벤트: 다운로드 완료
   autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
-    console.log('[AutoUpdater] Update downloaded:', info.version);
+    logger.log('[AutoUpdater] Update downloaded:', info.version);
     showRestartDialog(info);
   });
 }
@@ -100,7 +111,7 @@ export function initAutoUpdater(window: BrowserWindow): void {
  */
 export async function checkForUpdates(silent = true): Promise<void> {
   if (updateCheckInProgress) {
-    console.log('[AutoUpdater] Update check already in progress');
+    logger.log('[AutoUpdater] Update check already in progress');
     return;
   }
 
@@ -110,7 +121,7 @@ export async function checkForUpdates(silent = true): Promise<void> {
     await autoUpdater.checkForUpdates();
     // 플래그 리셋은 이벤트 핸들러에서 처리
   } catch (error) {
-    console.error('[AutoUpdater] Failed to check for updates:', error);
+    logger.error('[AutoUpdater] Failed to check for updates:', error);
     updateCheckInProgress = false;
     if (!silent) {
       manualCheckMode = false;
@@ -123,7 +134,7 @@ export async function checkForUpdates(silent = true): Promise<void> {
  * 최신 버전일 때 다이얼로그 (수동 확인 시에만)
  */
 function showUpToDateDialog(): void {
-  dialog.showMessageBox({
+  showDialog({
     type: 'info',
     title: t('update.upToDateTitle'),
     message: t('update.upToDateMessage'),
@@ -136,21 +147,19 @@ function showUpToDateDialog(): void {
  * 업데이트 발견 시 다이얼로그
  */
 function showUpdateAvailableDialog(info: UpdateInfo): void {
-  dialog
-    .showMessageBox({
-      type: 'info',
-      title: t('update.availableTitle'),
-      message: t('update.availableMessage'),
-      detail: t('update.availableDetail', { current: app.getVersion(), new: info.version }),
-      buttons: [t('common.download'), t('common.later')],
-      defaultId: 0,
-      cancelId: 1,
-    })
-    .then((result) => {
-      if (result.response === 0) {
-        downloadUpdate();
-      }
-    });
+  showDialog({
+    type: 'info',
+    title: t('update.availableTitle'),
+    message: t('update.availableMessage'),
+    detail: t('update.availableDetail', { current: app.getVersion(), new: info.version }),
+    buttons: [t('common.download'), t('common.later')],
+    defaultId: 0,
+    cancelId: 1,
+  }).then((result) => {
+    if (result.response === 0) {
+      downloadUpdate();
+    }
+  });
 }
 
 /**
@@ -158,7 +167,7 @@ function showUpdateAvailableDialog(info: UpdateInfo): void {
  */
 async function downloadUpdate(): Promise<void> {
   try {
-    dialog.showMessageBox({
+    showDialog({
       type: 'info',
       title: t('update.downloadingTitle'),
       message: t('update.downloadingMessage'),
@@ -168,7 +177,7 @@ async function downloadUpdate(): Promise<void> {
 
     await autoUpdater.downloadUpdate();
   } catch (error) {
-    console.error('[AutoUpdater] Download failed:', error);
+    logger.error('[AutoUpdater] Download failed:', error);
     dialog.showErrorBox(t('update.downloadFailed'), t('update.downloadFailedDetail'));
   }
 }
@@ -177,26 +186,24 @@ async function downloadUpdate(): Promise<void> {
  * 다운로드 완료 후 재시작 다이얼로그
  */
 function showRestartDialog(info: UpdateInfo): void {
-  dialog
-    .showMessageBox({
-      type: 'info',
-      title: t('update.readyTitle'),
-      message: t('update.readyMessage', { version: info.version }),
-      detail: t('update.readyDetail'),
-      buttons: [t('update.restartNow'), t('common.later')],
-      defaultId: 0,
-      cancelId: 1,
-    })
-    .then((result) => {
+  showDialog({
+    type: 'info',
+    title: t('update.readyTitle'),
+    message: t('update.readyMessage', { version: info.version }),
+    detail: t('update.readyDetail'),
+    buttons: [t('update.restartNow'), t('common.later')],
+    defaultId: 0,
+    cancelId: 1,
+  }).then((result) => {
       if (result.response === 0) {
-        console.log('[AutoUpdater] Closing all windows before restart...');
+        logger.log('[AutoUpdater] Closing all windows before restart...');
         BrowserWindow.getAllWindows().forEach((win) => {
           win.removeAllListeners('close');
           win.close();
         });
 
         setTimeout(() => {
-          console.log('[AutoUpdater] Executing quitAndInstall...');
+          logger.log('[AutoUpdater] Executing quitAndInstall...');
           autoUpdater.quitAndInstall(false, true);
         }, 500);
       }

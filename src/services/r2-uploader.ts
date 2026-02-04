@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from './utils/logger';
 
 // Cloudflare Worker URL
 const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
@@ -17,9 +18,9 @@ export interface MultiUploadResult {
 }
 
 export class R2Uploader {
-  constructor() {
-    console.log('📤 R2 Uploader (via Cloudflare Worker)');
-  }
+   constructor() {
+     logger.log('📤 R2 Uploader (via Cloudflare Worker)');
+   }
 
   /**
    * Upload an image file to R2 via Worker and return the public URL
@@ -47,19 +48,19 @@ export class R2Uploader {
         return { data: base64Data, mimeType, fileName };
       });
 
-      console.log(`📤 Uploading ${images.length} image(s) to Worker...`);
-      const startTime = Date.now();
+       logger.log(`📤 Uploading ${images.length} image(s) to Worker...`);
+       const startTime = Date.now();
 
-      const response = await fetch(`${WORKER_URL}/upload`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ images }),
-      });
+       const response = await fetch(`${WORKER_URL}/upload`, {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+         },
+         body: JSON.stringify({ images }),
+       });
 
-      const elapsed = Date.now() - startTime;
-      console.log(`⏱️ Upload response in ${elapsed}ms`);
+       const elapsed = Date.now() - startTime;
+       logger.log(`⏱️ Upload response in ${elapsed}ms`);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -73,11 +74,11 @@ export class R2Uploader {
       }
 
       return { success: true, urls: result.urls };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      console.error('❌ R2 upload error:', message);
-      return { success: false, error: message };
-    }
+     } catch (error) {
+       const message = error instanceof Error ? error.message : 'Unknown error';
+       logger.error('❌ R2 upload error:', message);
+       return { success: false, error: message };
+     }
   }
 }
 

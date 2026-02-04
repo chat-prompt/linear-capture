@@ -13,6 +13,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { app } from 'electron';
 import initSqlJs, { Database } from 'sql.js';
+import { logger } from './utils/logger';
 
 export interface LocalNotionPage {
   id: string;
@@ -163,16 +164,16 @@ export class NotionLocalReader {
   private async _doInitialize(): Promise<boolean> {
     if (this.db) return true;
 
-    const dbPath = getNotionDbPath();
-    if (!dbPath) {
-      console.log('[NotionLocalReader] Platform not supported');
-      return false;
-    }
+     const dbPath = getNotionDbPath();
+     if (!dbPath) {
+       logger.log('[NotionLocalReader] Platform not supported');
+       return false;
+     }
 
-    if (!fs.existsSync(dbPath)) {
-      console.log('[NotionLocalReader] Notion database not found at:', dbPath);
-      return false;
-    }
+     if (!fs.existsSync(dbPath)) {
+       logger.log('[NotionLocalReader] Notion database not found at:', dbPath);
+       return false;
+     }
 
     try {
       this.SQL = await initSqlJs({
@@ -192,17 +193,17 @@ export class NotionLocalReader {
         }
       });
 
-      // Read database file
-      const buffer = fs.readFileSync(dbPath);
-      this.db = new this.SQL.Database(new Uint8Array(buffer));
-      
-      console.log('[NotionLocalReader] Database loaded successfully');
-      return true;
-    } catch (error) {
-      console.error('[NotionLocalReader] Failed to initialize:', error);
-      this.db = null;
-      return false;
-    }
+       // Read database file
+       const buffer = fs.readFileSync(dbPath);
+       this.db = new this.SQL.Database(new Uint8Array(buffer));
+       
+       logger.log('[NotionLocalReader] Database loaded successfully');
+       return true;
+     } catch (error) {
+       logger.error('[NotionLocalReader] Failed to initialize:', error);
+       this.db = null;
+       return false;
+     }
   }
 
   /**
@@ -252,7 +253,7 @@ export class NotionLocalReader {
         total: results.length
       };
     } catch (error) {
-      console.error('[NotionLocalReader] Search error:', error);
+      logger.error('[NotionLocalReader] Search error:', error);
       return {
         success: false,
         pages: [],
@@ -316,12 +317,12 @@ export class NotionLocalReader {
         }
       }
 
-      stmt.free();
-    } catch (error) {
-      console.error('[NotionLocalReader] Title search error:', error);
-    }
+       stmt.free();
+     } catch (error) {
+       logger.error('[NotionLocalReader] Title search error:', error);
+     }
 
-    return results;
+     return results;
   }
 
   private getPageContentPreview(pageId: string, maxChars: number = 200): string | null {
@@ -368,11 +369,11 @@ export class NotionLocalReader {
         preview = preview.substring(0, maxChars).trim() + '...';
       }
 
-      return preview || null;
-    } catch (error) {
-      console.error('[NotionLocalReader] getPageContentPreview error:', error);
-      return null;
-    }
+       return preview || null;
+     } catch (error) {
+       logger.error('[NotionLocalReader] getPageContentPreview error:', error);
+       return null;
+     }
   }
 
   /**
@@ -447,12 +448,12 @@ export class NotionLocalReader {
         });
       }
 
-      stmt.free();
-    } catch (error) {
-      console.error('[NotionLocalReader] Content search error:', error);
-    }
+       stmt.free();
+     } catch (error) {
+       logger.error('[NotionLocalReader] Content search error:', error);
+     }
 
-    return results;
+     return results;
   }
 
   /**
@@ -565,11 +566,11 @@ export class NotionLocalReader {
         spaceId: row.space_id,
         parentId: row.parent_id || undefined
       };
-    } catch (error) {
-      console.error('[NotionLocalReader] getPage error:', error);
-      return null;
-    }
-  }
+     } catch (error) {
+       logger.error('[NotionLocalReader] getPage error:', error);
+       return null;
+     }
+   }
 
   /**
    * Close the database connection

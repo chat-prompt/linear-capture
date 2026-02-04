@@ -1,6 +1,7 @@
 import { LinearClient, Team, Project, User, WorkflowState, Cycle } from '@linear/sdk';
 import { getLinearToken } from './settings-store';
 import { trackApiError } from './analytics';
+import { logger } from './utils/logger';
 
 export interface CreateIssueParams {
   title: string;
@@ -150,7 +151,7 @@ export class LinearService {
         issueEstimationExtended: team.issueEstimationExtended ?? false,
       }));
     } catch (error) {
-      console.error('Failed to fetch teams:', error);
+      logger.error('Failed to fetch teams:', error);
       return [];
     }
   }
@@ -182,7 +183,7 @@ export class LinearService {
       
       return result;
     } catch (error) {
-      console.error('Failed to fetch projects:', error);
+      logger.error('Failed to fetch projects:', error);
       return [];
     }
   }
@@ -200,7 +201,7 @@ export class LinearService {
         avatarUrl: user.avatarUrl || undefined,
       }));
     } catch (error) {
-      console.error('Failed to fetch users:', error);
+      logger.error('Failed to fetch users:', error);
       return [];
     }
   }
@@ -241,7 +242,7 @@ export class LinearService {
 
       return result;
     } catch (error) {
-      console.error('Failed to fetch workflow states:', error);
+      logger.error('Failed to fetch workflow states:', error);
       return [];
     }
   }
@@ -280,7 +281,7 @@ export class LinearService {
 
       return result;
     } catch (error) {
-      console.error('Failed to fetch cycles:', error);
+      logger.error('Failed to fetch cycles:', error);
       return [];
     }
   }
@@ -303,7 +304,7 @@ export class LinearService {
       }));
       return { success: true, issues };
     } catch (error) {
-      console.error('Failed to search issues:', error);
+      logger.error('Failed to search issues:', error);
       return { success: false, issues: [] };
     }
   }
@@ -335,7 +336,7 @@ export class LinearService {
 
       return result;
     } catch (error) {
-      console.error('Failed to fetch labels:', error);
+      logger.error('Failed to fetch labels:', error);
       return [];
     }
   }
@@ -349,7 +350,7 @@ export function createLinearServiceFromEnv(): LinearService | null {
   const apiToken = getLinearToken();
 
   if (!apiToken) {
-    console.error('Missing LINEAR_API_TOKEN. Please check Settings or .env file.');
+    logger.error('Missing LINEAR_API_TOKEN. Please check Settings or .env file.');
     return null;
   }
 

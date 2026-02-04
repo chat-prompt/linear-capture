@@ -2,6 +2,7 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as path from 'path';
 import { app } from 'electron';
+import { logger } from './utils/logger';
 
 const execFileAsync = promisify(execFile);
 
@@ -35,10 +36,10 @@ export interface LocalCacheData {
 export async function loadLocalCache(): Promise<LocalCacheData | null> {
   try {
     // Get script path (handle both development and packaged app)
-    const appPath = app.getAppPath();
-    const scriptPath = path.join(appPath, 'scripts', 'export_linear_cache.py');
+     const appPath = app.getAppPath();
+     const scriptPath = path.join(appPath, 'scripts', 'export_linear_cache.py');
 
-    console.log('[LocalCache] Loading cache from:', scriptPath);
+     logger.log('[LocalCache] Loading cache from:', scriptPath);
 
     // Execute Python script with 5 second timeout
     const { stdout, stderr } = await execFileAsync('python3', [scriptPath], {
@@ -46,42 +47,42 @@ export async function loadLocalCache(): Promise<LocalCacheData | null> {
       maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large cache
     });
 
-    // Log stderr if present (warnings/errors)
-    if (stderr) {
-      console.warn('[LocalCache] Python stderr:', stderr);
-    }
+     // Log stderr if present (warnings/errors)
+     if (stderr) {
+       logger.warn('[LocalCache] Python stderr:', stderr);
+     }
 
-    // Parse JSON output
-    const data = JSON.parse(stdout) as LocalCacheData;
+     // Parse JSON output
+     const data = JSON.parse(stdout) as LocalCacheData;
 
-    // Validate structure
-    if (!data.version || !data.updatedAt || !Array.isArray(data.projects)) {
-      console.error('[LocalCache] Invalid data structure:', data);
-      return null;
-    }
+     // Validate structure
+     if (!data.version || !data.updatedAt || !Array.isArray(data.projects)) {
+       logger.error('[LocalCache] Invalid data structure:', data);
+       return null;
+     }
 
-    console.log(`[LocalCache] Loaded ${data.projects.length} projects from cache`);
-    return data;
+     logger.log(`[LocalCache] Loaded ${data.projects.length} projects from cache`);
+     return data;
 
   } catch (error) {
     // Graceful fallback on any error
     if (error instanceof Error) {
       // Check for specific error types
-      if ('code' in error) {
-        const code = (error as any).code;
-        if (code === 'ENOENT') {
-          console.warn('[LocalCache] Python3 not found - skipping local cache');
-        } else if (code === 'ETIMEDOUT') {
-          console.warn('[LocalCache] Script timeout - skipping local cache');
-        } else {
-          console.error('[LocalCache] Script error:', error.message);
-        }
-      } else {
-        console.error('[LocalCache] Error loading cache:', error.message);
-      }
-    } else {
-      console.error('[LocalCache] Unknown error:', error);
-    }
+       if ('code' in error) {
+         const code = (error as any).code;
+         if (code === 'ENOENT') {
+           logger.warn('[LocalCache] Python3 not found - skipping local cache');
+         } else if (code === 'ETIMEDOUT') {
+           logger.warn('[LocalCache] Script timeout - skipping local cache');
+         } else {
+           logger.error('[LocalCache] Script error:', error.message);
+         }
+       } else {
+         logger.error('[LocalCache] Error loading cache:', error.message);
+       }
+     } else {
+       logger.error('[LocalCache] Unknown error:', error);
+     }
     return null;
   }
 }

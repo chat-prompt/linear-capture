@@ -1,5 +1,6 @@
 import { shell } from 'electron';
 import { getDeviceId } from './settings-store';
+import { logger } from './utils/logger';
 
 const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
 const GMAIL_REDIRECT_URI = 'https://linear-capture-ai.ny-4f1.workers.dev/gmail/oauth-redirect';
@@ -63,7 +64,7 @@ export class GmailService {
       await shell.openExternal(data.auth_url);
       return { success: true };
     } catch (error) {
-      console.error('Gmail OAuth start error:', error);
+      logger.error('Gmail OAuth start error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -85,7 +86,7 @@ export class GmailService {
       const data = await response.json() as GmailCallbackResult;
       return data;
     } catch (error) {
-      console.error('Gmail callback error:', error);
+      logger.error('Gmail callback error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -104,7 +105,7 @@ export class GmailService {
       };
 
       if (!data.success) {
-        console.error('Gmail status error:', data.error);
+        logger.error('Gmail status error:', data.error);
         return { connected: false };
       }
 
@@ -113,7 +114,7 @@ export class GmailService {
         user: data.user,
       };
     } catch (error) {
-      console.error('Gmail status error:', error);
+      logger.error('Gmail status error:', error);
       return { connected: false };
     }
   }
@@ -127,7 +128,7 @@ export class GmailService {
       const data = await response.json() as { success: boolean; error?: string };
       return data;
     } catch (error) {
-      console.error('Gmail disconnect error:', error);
+      logger.error('Gmail disconnect error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -145,7 +146,7 @@ export class GmailService {
       const data = await response.json() as GmailSearchResult;
       return data;
     } catch (error) {
-      console.error('Gmail search error:', error);
+      logger.error('Gmail search error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }

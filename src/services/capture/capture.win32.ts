@@ -3,6 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ICaptureService, CaptureResult, PermissionStatus, cleanupCapture } from './index';
+import { logger } from '../utils/logger';
 
 interface SelectionResult {
   cancelled: boolean;
@@ -75,7 +76,7 @@ export class Win32CaptureService implements ICaptureService {
 
       return { success: true, filePath };
     } catch (error) {
-      console.error('Win32 capture error:', error);
+      logger.error('Win32 capture error:', error);
       return { success: false, error: String(error) };
     }
   }

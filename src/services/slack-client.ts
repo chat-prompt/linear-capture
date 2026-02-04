@@ -1,5 +1,6 @@
 import { shell } from 'electron';
 import { getDeviceId } from './settings-store';
+import { logger } from './utils/logger';
 
 const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
 const SLACK_REDIRECT_URI = 'https://linear-capture-ai.ny-4f1.workers.dev/slack/oauth-redirect';
@@ -89,7 +90,7 @@ export class SlackService {
       await shell.openExternal(data.auth_url);
       return { success: true };
     } catch (error) {
-      console.error('Slack OAuth start error:', error);
+      logger.error('Slack OAuth start error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -111,7 +112,7 @@ export class SlackService {
       const data = await response.json() as SlackCallbackResult;
       return data;
     } catch (error) {
-      console.error('Slack callback error:', error);
+      logger.error('Slack callback error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -131,7 +132,7 @@ export class SlackService {
       };
 
       if (!data.success) {
-        console.error('Slack status error:', data.error);
+        logger.error('Slack status error:', data.error);
         return { connected: false };
       }
 
@@ -141,7 +142,7 @@ export class SlackService {
         user: data.user,
       };
     } catch (error) {
-      console.error('Slack status error:', error);
+      logger.error('Slack status error:', error);
       return { connected: false };
     }
   }
@@ -155,7 +156,7 @@ export class SlackService {
       const data = await response.json() as SlackChannelsResult;
       return data;
     } catch (error) {
-      console.error('Slack channels error:', error);
+      logger.error('Slack channels error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -169,7 +170,7 @@ export class SlackService {
       const data = await response.json() as { success: boolean; error?: string };
       return data;
     } catch (error) {
-      console.error('Slack disconnect error:', error);
+      logger.error('Slack disconnect error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -190,7 +191,7 @@ export class SlackService {
       const data = await response.json() as SlackSearchResult;
       return data;
     } catch (error) {
-      console.error('Slack search error:', error);
+      logger.error('Slack search error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }

@@ -1,6 +1,7 @@
 import { app } from 'electron';
 import { getDeviceId } from './settings-store';
 import type { AnalyticsEvent, TrackRequest, TrackResponse } from '../types/context-search';
+import { logger } from './utils/logger';
 
 const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
 const MAX_MESSAGE_LENGTH = 200;
@@ -13,32 +14,32 @@ export async function trackEvent(
   event: AnalyticsEvent,
   metadata?: Omit<TrackRequest['metadata'], 'version'>
 ): Promise<boolean> {
-  try {
-    const deviceId = getDeviceId();
-    const version = app.getVersion();
-    console.log(`[ANALYTICS] Sending: ${event}`, { deviceId, metadata: { ...metadata, version } });
-    
-    const response = await fetch(`${WORKER_URL}/track`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        event, 
-        deviceId, 
-        metadata: { ...metadata, version } 
-      } as TrackRequest),
-    });
+   try {
+     const deviceId = getDeviceId();
+     const version = app.getVersion();
+     logger.log(`[ANALYTICS] Sending: ${event}`, { deviceId, metadata: { ...metadata, version } });
+     
+     const response = await fetch(`${WORKER_URL}/track`, {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({ 
+         event, 
+         deviceId, 
+         metadata: { ...metadata, version } 
+       } as TrackRequest),
+     });
 
-    if (!response.ok) {
-      console.error(`Track failed: ${response.status}`);
-      return false;
-    }
+     if (!response.ok) {
+       logger.error(`Track failed: ${response.status}`);
+       return false;
+     }
 
-    const result = await response.json() as TrackResponse;
-    return result.success;
-  } catch (error) {
-    console.error('Track error:', error);
-    return false;
-  }
+     const result = await response.json() as TrackResponse;
+     return result.success;
+   } catch (error) {
+     logger.error('Track error:', error);
+     return false;
+   }
 }
 
 export const trackAppOpen = () => trackEvent('app_open');

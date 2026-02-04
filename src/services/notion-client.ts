@@ -1,11 +1,12 @@
 import { shell } from 'electron';
 import { getDeviceId } from './settings-store';
 import { 
-  getNotionLocalReader, 
-  isNotionDbAvailable, 
-  closeNotionLocalReader,
-  type LocalNotionPage 
-} from './notion-local-reader';
+   getNotionLocalReader, 
+   isNotionDbAvailable, 
+   closeNotionLocalReader,
+   type LocalNotionPage 
+ } from './notion-local-reader';
+import { logger } from './utils/logger';
 
 const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
 const NOTION_REDIRECT_URI = 'https://linear-capture-ai.ny-4f1.workers.dev/notion/oauth-redirect';
@@ -90,13 +91,13 @@ export class NotionService {
         return { success: false, error: data.error || 'Failed to get auth URL' };
       }
 
-      await shell.openExternal(data.auth_url);
-      return { success: true };
-    } catch (error) {
-      console.error('Notion OAuth start error:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
-  }
+       await shell.openExternal(data.auth_url);
+       return { success: true };
+     } catch (error) {
+       logger.error('Notion OAuth start error:', error);
+       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+     }
+   }
 
   async handleCallback(code: string, state: string): Promise<NotionCallbackResult> {
     try {
@@ -112,13 +113,13 @@ export class NotionService {
         }),
       });
 
-      const data = await response.json() as NotionCallbackResult;
-      return data;
-    } catch (error) {
-      console.error('Notion callback error:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
-  }
+       const data = await response.json() as NotionCallbackResult;
+       return data;
+     } catch (error) {
+       logger.error('Notion callback error:', error);
+       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+     }
+   }
 
   async getConnectionStatus(): Promise<NotionConnectionStatus> {
     try {
@@ -134,20 +135,20 @@ export class NotionService {
         error?: string;
       };
 
-      if (!data.success) {
-        console.error('Notion status error:', data.error);
-        return { connected: false };
-      }
+       if (!data.success) {
+         logger.error('Notion status error:', data.error);
+         return { connected: false };
+       }
 
-      return {
-        connected: data.connected || false,
-        workspace: data.workspace,
-        user: data.user,
-      };
-    } catch (error) {
-      console.error('Notion status error:', error);
-      return { connected: false };
-    }
+       return {
+         connected: data.connected || false,
+         workspace: data.workspace,
+         user: data.user,
+       };
+     } catch (error) {
+       logger.error('Notion status error:', error);
+       return { connected: false };
+     }
   }
 
   async disconnect(): Promise<{ success: boolean; error?: string }> {
@@ -155,14 +156,14 @@ export class NotionService {
       const url = new URL(`${WORKER_URL}/notion/disconnect`);
       url.searchParams.set('device_id', this.deviceId);
 
-      const response = await fetch(url.toString(), { method: 'DELETE' });
-      const data = await response.json() as { success: boolean; error?: string };
-      return data;
-    } catch (error) {
-      console.error('Notion disconnect error:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
-  }
+       const response = await fetch(url.toString(), { method: 'DELETE' });
+       const data = await response.json() as { success: boolean; error?: string };
+       return data;
+     } catch (error) {
+       logger.error('Notion disconnect error:', error);
+       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+     }
+   }
 
   async searchPages(query: string, pageSize?: number): Promise<NotionSearchResult> {
     const limit = pageSize || 20;
@@ -172,18 +173,18 @@ export class NotionService {
         const localReader = getNotionLocalReader();
         const localResult = await localReader.searchPages(query, limit);
         
-        if (localResult.success && localResult.pages.length > 0) {
-          console.log(`[Notion] Local search returned ${localResult.pages.length} results`);
-          return {
-            success: true,
-            pages: localResult.pages.map(this.convertLocalPage),
-            total: localResult.total,
-            source: 'local'
-          };
-        }
-      } catch (error) {
-        console.warn('[Notion] Local search failed, falling back to API:', error);
-      }
+         if (localResult.success && localResult.pages.length > 0) {
+           logger.log(`[Notion] Local search returned ${localResult.pages.length} results`);
+           return {
+             success: true,
+             pages: localResult.pages.map(this.convertLocalPage),
+             total: localResult.total,
+             source: 'local'
+           };
+         }
+       } catch (error) {
+         logger.warn('[Notion] Local search failed, falling back to API:', error);
+       }
     }
 
     return this.searchPagesViaApi(query, limit);
@@ -197,14 +198,14 @@ export class NotionService {
       url.searchParams.set('filter', 'page');
       url.searchParams.set('page_size', pageSize.toString());
 
-      const response = await fetch(url.toString());
-      const data = await response.json() as NotionSearchResult;
-      return { ...data, source: 'api' };
-    } catch (error) {
-      console.error('Notion search error:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error', source: 'api' };
-    }
-  }
+       const response = await fetch(url.toString());
+       const data = await response.json() as NotionSearchResult;
+       return { ...data, source: 'api' };
+     } catch (error) {
+       logger.error('Notion search error:', error);
+       return { success: false, error: error instanceof Error ? error.message : 'Unknown error', source: 'api' };
+     }
+   }
 
   private convertLocalPage(localPage: LocalNotionPage): NotionPage {
     return {
@@ -224,14 +225,14 @@ export class NotionService {
       url.searchParams.set('device_id', this.deviceId);
       url.searchParams.set('page_id', pageId);
 
-      const response = await fetch(url.toString());
-      const data = await response.json() as NotionPageContent;
-      return data;
-    } catch (error) {
-      console.error('Notion get content error:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
-  }
+       const response = await fetch(url.toString());
+       const data = await response.json() as NotionPageContent;
+       return data;
+     } catch (error) {
+       logger.error('Notion get content error:', error);
+       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+     }
+   }
 }
 
 let notionService: NotionService | null = null;

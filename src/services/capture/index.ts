@@ -49,6 +49,7 @@ export function createCaptureService(): ICaptureService {
 }
 
 import * as fs from 'fs';
+import { logger } from '../utils/logger';
 
 export function cleanupCapture(filePath: string): void {
   try {
@@ -56,6 +57,6 @@ export function cleanupCapture(filePath: string): void {
       fs.unlinkSync(filePath);
     }
   } catch (error) {
-    console.error('Failed to cleanup capture file:', error);
+    logger.error('Failed to cleanup capture file:', error);
   }
 }

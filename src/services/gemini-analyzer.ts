@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { trackAnalysisFailed } from './analytics';
+import { logger } from './utils/logger';
 
 const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
 
@@ -27,9 +28,9 @@ export class GeminiAnalyzer {
   private maxRetries = 3;
   private baseDelay = 2000;
 
-  constructor() {
-    console.log('🤖 Gemini Analyzer (via Cloudflare Worker)');
-  }
+   constructor() {
+     logger.log('🤖 Gemini Analyzer (via Cloudflare Worker)');
+   }
 
   private async sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -45,16 +46,16 @@ export class GeminiAnalyzer {
     }
 
     for (let attempt = 0; attempt < this.maxRetries; attempt++) {
-      try {
-        if (attempt > 0) {
-          const delay = this.baseDelay * Math.pow(2, attempt - 1);
-          console.log(`⏳ Retry attempt ${attempt + 1} after ${delay}ms...`);
-          await this.sleep(delay);
-        }
+       try {
+         if (attempt > 0) {
+           const delay = this.baseDelay * Math.pow(2, attempt - 1);
+           logger.log(`⏳ Retry attempt ${attempt + 1} after ${delay}ms...`);
+           await this.sleep(delay);
+         }
 
-        return await this.callWorker(imagePaths, context);
-      } catch (error: unknown) {
-        console.error(`❌ Analysis attempt ${attempt + 1} failed:`, error);
+         return await this.callWorker(imagePaths, context);
+       } catch (error: unknown) {
+         logger.error(`❌ Analysis attempt ${attempt + 1} failed:`, error);
 
         // 마지막 시도가 아니면 재시도
         if (attempt < this.maxRetries - 1) {
@@ -100,19 +101,19 @@ export class GeminiAnalyzer {
       model: 'gemini'
     };
 
-    console.log(`📤 Sending ${images.length} image(s) to Worker...`);
-    const startTime = Date.now();
+     logger.log(`📤 Sending ${images.length} image(s) to Worker...`);
+     const startTime = Date.now();
 
-    const response = await fetch(WORKER_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody)
-    });
+     const response = await fetch(WORKER_URL, {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+       },
+       body: JSON.stringify(requestBody)
+     });
 
-    const elapsed = Date.now() - startTime;
-    console.log(`⏱️ Worker response in ${elapsed}ms`);
+     const elapsed = Date.now() - startTime;
+     logger.log(`⏱️ Worker response in ${elapsed}ms`);
 
     if (!response.ok) {
       const errorText = await response.text();

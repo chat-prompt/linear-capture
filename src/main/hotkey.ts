@@ -1,4 +1,5 @@
 import { globalShortcut } from 'electron';
+import { logger } from '../services/utils/logger';
 
 export const DEFAULT_SHORTCUT = 'CommandOrControl+Shift+L';
 
@@ -12,29 +13,29 @@ let currentCallback: (() => void) | null = null;
 export function registerHotkey(callback: () => void, shortcut?: string): boolean {
   const key = shortcut || DEFAULT_SHORTCUT;
 
-  try {
-    const success = globalShortcut.register(key, callback);
-    if (success) {
-      console.log(`Global hotkey registered: ${key}`);
-      currentShortcut = key;
-      currentCallback = callback;
-    } else {
-      console.error(`Failed to register hotkey: ${key}`);
-    }
-    return success;
-  } catch (error) {
-    console.error('Error registering hotkey:', error);
-    return false;
-  }
+   try {
+     const success = globalShortcut.register(key, callback);
+     if (success) {
+       logger.log(`Global hotkey registered: ${key}`);
+       currentShortcut = key;
+       currentCallback = callback;
+     } else {
+       logger.error(`Failed to register hotkey: ${key}`);
+     }
+     return success;
+   } catch (error) {
+     logger.error('Error registering hotkey:', error);
+     return false;
+   }
 }
 
 /**
  * Unregister all global hotkeys
  */
 export function unregisterAllHotkeys(): void {
-  globalShortcut.unregisterAll();
-  console.log('All global hotkeys unregistered');
-}
+   globalShortcut.unregisterAll();
+   logger.log('All global hotkeys unregistered');
+ }
 
 /**
  * Check if hotkey is registered
@@ -56,56 +57,56 @@ export function getCurrentShortcut(): string | null {
  * Unregisters old shortcut and registers new one
  */
 export function updateHotkey(newShortcut: string): boolean {
-  if (!currentCallback) {
-    console.error('No callback registered, cannot update hotkey');
-    return false;
-  }
+   if (!currentCallback) {
+     logger.error('No callback registered, cannot update hotkey');
+     return false;
+   }
 
-  // Validate first
-  const validation = validateHotkey(newShortcut);
-  if (!validation.valid) {
-    console.error(`Invalid hotkey: ${validation.error}`);
-    return false;
-  }
+   // Validate first
+   const validation = validateHotkey(newShortcut);
+   if (!validation.valid) {
+     logger.error(`Invalid hotkey: ${validation.error}`);
+     return false;
+   }
 
-  // Unregister old shortcut if exists
-  if (currentShortcut) {
-    try {
-      globalShortcut.unregister(currentShortcut);
-      console.log(`Unregistered old hotkey: ${currentShortcut}`);
-    } catch (error) {
-      console.error('Error unregistering old hotkey:', error);
-    }
-  }
+   // Unregister old shortcut if exists
+   if (currentShortcut) {
+     try {
+       globalShortcut.unregister(currentShortcut);
+       logger.log(`Unregistered old hotkey: ${currentShortcut}`);
+     } catch (error) {
+       logger.error('Error unregistering old hotkey:', error);
+     }
+   }
 
-  // Register new shortcut
-  try {
-    const success = globalShortcut.register(newShortcut, currentCallback);
-    if (success) {
-      console.log(`Hotkey updated to: ${newShortcut}`);
-      currentShortcut = newShortcut;
-      return true;
-    } else {
-      console.error(`Failed to register new hotkey: ${newShortcut}`);
-      // Try to re-register old shortcut
-      if (currentShortcut) {
-        globalShortcut.register(currentShortcut, currentCallback);
-      }
-      return false;
-    }
-  } catch (error) {
-    console.error('Error registering new hotkey:', error);
-    // Try to re-register old shortcut
-    if (currentShortcut) {
-      try {
-        globalShortcut.register(currentShortcut, currentCallback);
-      } catch (e) {
-        // Ignore
-      }
-    }
-    return false;
-  }
-}
+   // Register new shortcut
+   try {
+     const success = globalShortcut.register(newShortcut, currentCallback);
+     if (success) {
+       logger.log(`Hotkey updated to: ${newShortcut}`);
+       currentShortcut = newShortcut;
+       return true;
+     } else {
+       logger.error(`Failed to register new hotkey: ${newShortcut}`);
+       // Try to re-register old shortcut
+       if (currentShortcut) {
+         globalShortcut.register(currentShortcut, currentCallback);
+       }
+       return false;
+     }
+   } catch (error) {
+     logger.error('Error registering new hotkey:', error);
+     // Try to re-register old shortcut
+     if (currentShortcut) {
+       try {
+         globalShortcut.register(currentShortcut, currentCallback);
+       } catch (e) {
+         // Ignore
+       }
+     }
+     return false;
+   }
+ }
 
 /**
  * Validate hotkey format

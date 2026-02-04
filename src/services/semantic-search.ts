@@ -3,6 +3,7 @@ import { LocalVectorStore } from './local-vector-store';
 import { HybridSearch, HybridSearchResult } from './hybrid-search';
 import { SlackSync, SlackSyncResult } from './slack-sync';
 import { slackUserCache } from './slack-user-cache';
+import { logger } from './utils/logger';
 
 const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
 
@@ -179,7 +180,7 @@ export class SemanticSearchService {
 
         return result.results || [];
       } catch (error) {
-        console.error(`[SemanticSearch] Worker attempt ${attempt + 1} failed:`, error);
+        logger.error(`[SemanticSearch] Worker attempt ${attempt + 1} failed:`, error);
 
         if (attempt < this.maxRetries - 1) {
           continue;

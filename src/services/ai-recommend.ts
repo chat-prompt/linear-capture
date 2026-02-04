@@ -1,4 +1,5 @@
 import { getDeviceId } from './settings-store';
+import { logger } from './utils/logger';
 
 const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
 
@@ -35,7 +36,7 @@ export async function getAiRecommendations(text: string, limit: number = 5): Pro
     const data = await response.json() as RecommendResult;
     return data;
   } catch (error) {
-    console.error('AI recommend error:', error);
+    logger.error('AI recommend error:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
