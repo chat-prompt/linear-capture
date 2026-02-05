@@ -822,8 +822,12 @@ export function registerIpcHandlers(): void {
       if (!localSearch) {
         return { success: false, error: 'LocalSearchService not initialized' };
       }
-      await localSearch.syncSource(source);
-      return { success: true };
+      const result = await localSearch.syncSource(source);
+      return {
+        success: result.success,
+        itemsSynced: result.itemsSynced,
+        itemsFailed: result.itemsFailed,
+      };
     } catch (error) {
       logger.error('sync:trigger error:', error);
       return { success: false, error: String(error) };

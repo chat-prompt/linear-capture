@@ -1577,8 +1577,12 @@
       try {
         const result = await ipcRenderer.invoke('sync:trigger', source);
         if (result.success) {
-          statusEl.textContent = 'just now';
+          const itemsText = result.itemsSynced === 1 ? 'item' : 'items';
+          statusEl.textContent = `Synced ${result.itemsSynced} ${itemsText}`;
           statusEl.classList.remove('syncing', 'error');
+          setTimeout(() => {
+            statusEl.textContent = 'just now';
+          }, 3000);
         } else {
           statusEl.textContent = result.error || await t('sync.failed');
           statusEl.classList.remove('syncing');

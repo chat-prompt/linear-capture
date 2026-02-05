@@ -17,7 +17,15 @@ import { getSelectedSlackChannels, getOpenaiApiKey } from './settings-store';
 import { createSlackSyncAdapter } from './sync-adapters/slack-sync';
 import { createNotionSyncAdapter } from './sync-adapters/notion-sync';
 import { createLinearSyncAdapter } from './sync-adapters/linear-sync';
-import { createGmailSyncAdapter, SyncResult } from './sync-adapters/gmail-sync';
+import { createGmailSyncAdapter } from './sync-adapters/gmail-sync';
+
+export interface SyncResult {
+  success: boolean;
+  itemsSynced: number;
+  itemsFailed: number;
+  errors: Array<{ id: string; error: string }>;
+  lastCursor?: string;
+}
 
 const RRF_K = 60; // Standard RRF constant
 const RETRIEVAL_LIMIT = 100; // Retrieve top 100 from each channel before RRF
@@ -108,7 +116,7 @@ export class LocalSearchService {
     }
   }
 
-  async syncSource(source: string): Promise<void> {
+  async syncSource(source: string): Promise<SyncResult> {
     console.log(`[LocalSearch] Starting sync for: ${source}`);
 
     if (!this.canSync()) {
@@ -123,30 +131,55 @@ export class LocalSearchService {
       switch (source) {
         case 'slack': {
           const adapter = createSlackSyncAdapter();
-          const result = await adapter.syncIncremental();
-          console.log(`[LocalSearch] Slack sync complete: ${result.itemsSynced} items, ${result.itemsFailed} failed`);
-          break;
+          const adapterResult = await adapter.syncIncremental();
+          console.log(`[LocalSearch] Slack sync complete: ${adapterResult.itemsSynced} items, ${adapterResult.itemsFailed} failed`);
+          return {
+            success: adapterResult.success,
+            itemsSynced: adapterResult.itemsSynced,
+            itemsFailed: adapterResult.itemsFailed,
+            errors: adapterResult.errors.map(e => ({ id: e.messageId, error: e.error })),
+            lastCursor: adapterResult.lastCursor,
+          };
         }
         case 'notion': {
           const adapter = createNotionSyncAdapter();
-          const result = await adapter.syncIncremental();
-          console.log(`[LocalSearch] Notion sync complete: ${result.itemsSynced} items, ${result.itemsFailed} failed`);
-          break;
+          const adapterResult = await adapter.syncIncremental();
+          console.log(`[LocalSearch] Notion sync complete: ${adapterResult.itemsSynced} items, ${adapterResult.itemsFailed} failed`);
+          return {
+            success: adapterResult.success,
+            itemsSynced: adapterResult.itemsSynced,
+            itemsFailed: adapterResult.itemsFailed,
+            errors: adapterResult.errors.map(e => ({ id: e.pageId, error: e.error })),
+            lastCursor: adapterResult.lastCursor,
+          };
         }
         case 'linear': {
           const adapter = createLinearSyncAdapter();
-          const result = await adapter.syncIncremental();
-          console.log(`[LocalSearch] Linear sync complete: ${result.itemsSynced} items, ${result.itemsFailed} failed`);
-          break;
+          const adapterResult = await adapter.syncIncremental();
+          console.log(`[LocalSearch] Linear sync complete: ${adapterResult.itemsSynced} items, ${adapterResult.itemsFailed} failed`);
+          return {
+            success: adapterResult.success,
+            itemsSynced: adapterResult.itemsSynced,
+            itemsFailed: adapterResult.itemsFailed,
+            errors: adapterResult.errors.map(e => ({ id: e.itemId, error: e.error })),
+            lastCursor: adapterResult.lastCursor,
+          };
         }
         case 'gmail': {
           const adapter = createGmailSyncAdapter();
-          const result = await adapter.syncIncremental();
-          console.log(`[LocalSearch] Gmail sync complete: ${result.itemsSynced} items, ${result.itemsFailed} failed`);
-          break;
+          const adapterResult = await adapter.syncIncremental();
+          console.log(`[LocalSearch] Gmail sync complete: ${adapterResult.itemsSynced} items, ${adapterResult.itemsFailed} failed`);
+          return {
+            success: adapterResult.success,
+            itemsSynced: adapterResult.itemsSynced,
+            itemsFailed: adapterResult.itemsFailed,
+            errors: adapterResult.errors.map(e => ({ id: e.emailId, error: e.error })),
+            lastCursor: adapterResult.lastCursor,
+          };
         }
         default:
           console.warn(`[LocalSearch] Unknown source: ${source}`);
+          return { success: false, itemsSynced: 0, itemsFailed: 0, errors: [] };
       }
     } catch (error) {
       console.error(`[LocalSearch] Sync failed for ${source}:`, error);
