@@ -545,15 +545,28 @@ export class SlackSyncAdapter {
    */
   private async updateSyncStatus(status: 'idle' | 'syncing' | 'error'): Promise<void> {
     const db = this.dbService.getDb();
-    await db.query(
-      `
-      INSERT INTO sync_cursors (source_type, status)
-      VALUES ($1, $2)
-      ON CONFLICT (source_type) DO UPDATE SET
-        status = EXCLUDED.status
-    `,
-      ['slack', status]
-    );
+    if (status === 'idle') {
+      await db.query(
+        `
+        INSERT INTO sync_cursors (source_type, status, last_synced_at)
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (source_type) DO UPDATE SET
+          status = EXCLUDED.status,
+          last_synced_at = NOW()
+      `,
+        ['slack', status]
+      );
+    } else {
+      await db.query(
+        `
+        INSERT INTO sync_cursors (source_type, status)
+        VALUES ($1, $2)
+        ON CONFLICT (source_type) DO UPDATE SET
+          status = EXCLUDED.status
+      `,
+        ['slack', status]
+      );
+    }
   }
 
   /**

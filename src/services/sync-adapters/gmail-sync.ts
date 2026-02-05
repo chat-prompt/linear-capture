@@ -84,21 +84,14 @@ export class GmailSyncAdapter {
 
         console.log(`[GmailSync] Batch ${batchCount + 1}: ${searchResult.messages.length} emails`);
 
-        for (const email of searchResult.messages) {
-          try {
-            await this.syncEmail(email);
-            result.itemsSynced++;
+        const batchResult = await this.processBatchWithEmbedding(searchResult.messages);
+        result.itemsSynced += batchResult.synced;
+        result.itemsFailed += batchResult.failed;
+        result.errors.push(...batchResult.errors);
 
-            if (!latestDateOverall || email.date > latestDateOverall) {
-              latestDateOverall = email.date;
-            }
-          } catch (error) {
-            console.error(`[GmailSync] Failed to sync email ${email.id}:`, error);
-            result.itemsFailed++;
-            result.errors.push({
-              emailId: email.id,
-              error: error instanceof Error ? error.message : 'Unknown error',
-            });
+        for (const email of searchResult.messages) {
+          if (!latestDateOverall || email.date > latestDateOverall) {
+            latestDateOverall = email.date;
           }
         }
 
@@ -182,21 +175,14 @@ export class GmailSyncAdapter {
 
         console.log(`[GmailSync] Batch ${batchCount + 1}: ${searchResult.messages.length} emails`);
 
-        for (const email of searchResult.messages) {
-          try {
-            await this.syncEmail(email);
-            result.itemsSynced++;
+        const batchResult = await this.processBatchWithEmbedding(searchResult.messages);
+        result.itemsSynced += batchResult.synced;
+        result.itemsFailed += batchResult.failed;
+        result.errors.push(...batchResult.errors);
 
-            if (!latestDateOverall || email.date > latestDateOverall) {
-              latestDateOverall = email.date;
-            }
-          } catch (error) {
-            console.error(`[GmailSync] Failed to sync email ${email.id}:`, error);
-            result.itemsFailed++;
-            result.errors.push({
-              emailId: email.id,
-              error: error instanceof Error ? error.message : 'Unknown error',
-            });
+        for (const email of searchResult.messages) {
+          if (!latestDateOverall || email.date > latestDateOverall) {
+            latestDateOverall = email.date;
           }
         }
 
@@ -234,6 +220,109 @@ export class GmailSyncAdapter {
     }
 
     return result;
+  }
+
+  private async processBatchWithEmbedding(
+    emails: GmailMessage[]
+  ): Promise<{ synced: number; failed: number; errors: Array<{ emailId: string; error: string }> }> {
+    const result = { synced: 0, failed: 0, errors: [] as Array<{ emailId: string; error: string }> };
+
+    if (emails.length === 0) return result;
+
+    const db = this.dbService.getDb();
+    const emailsToProcess: Array<{ email: GmailMessage; text: string; hash: string }> = [];
+
+    for (const email of emails) {
+      const fullText = `${email.subject}\n\n${email.snippet}`;
+      const preprocessedText = this.preprocessor.preprocess(fullText);
+      const contentHash = this.calculateContentHash(preprocessedText);
+
+      const existingDoc = await db.query<{ content_hash: string }>(
+        `SELECT content_hash FROM documents WHERE source_type = $1 AND source_id = $2`,
+        ['gmail', email.id]
+      );
+
+      if (existingDoc.rows.length > 0 && existingDoc.rows[0].content_hash === contentHash) {
+        console.log(`[GmailSync] Email ${email.id} unchanged, skipping`);
+        result.synced++;
+        continue;
+      }
+
+      emailsToProcess.push({ email, text: preprocessedText, hash: contentHash });
+    }
+
+    if (emailsToProcess.length === 0) return result;
+
+    console.log(`[GmailSync] Generating embeddings for ${emailsToProcess.length} emails in batch`);
+    const texts = emailsToProcess.map(e => e.text);
+    const embeddings = await this.embeddingService.embedBatch(texts);
+
+    for (let i = 0; i < emailsToProcess.length; i++) {
+      const { email, text, hash } = emailsToProcess[i];
+      const embedding = embeddings[i];
+
+      try {
+        await this.saveEmailWithEmbedding(email, text, hash, embedding);
+        result.synced++;
+      } catch (error) {
+        console.error(`[GmailSync] Failed to save email ${email.id}:`, error);
+        result.failed++;
+        result.errors.push({
+          emailId: email.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    return result;
+  }
+
+  private async saveEmailWithEmbedding(
+    email: GmailMessage,
+    preprocessedText: string,
+    contentHash: string,
+    embedding: number[]
+  ): Promise<void> {
+    const db = this.dbService.getDb();
+    const metadata = {
+      threadId: email.threadId,
+      from: email.from.email,
+      fromName: email.from.name,
+      url: `https://mail.google.com/mail/u/0/#inbox/${email.threadId}`,
+    };
+
+    const emailDate = new Date(email.date);
+    await db.query(
+      `
+      INSERT INTO documents (
+        source_type, source_id, title, content, content_hash,
+        embedding, metadata, source_created_at, source_updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ON CONFLICT (source_type, source_id) 
+      DO UPDATE SET
+        title = EXCLUDED.title,
+        content = EXCLUDED.content,
+        content_hash = EXCLUDED.content_hash,
+        embedding = EXCLUDED.embedding,
+        metadata = EXCLUDED.metadata,
+        source_updated_at = EXCLUDED.source_updated_at,
+        indexed_at = NOW()
+      WHERE documents.content_hash != EXCLUDED.content_hash
+    `,
+      [
+        'gmail',
+        email.id,
+        email.subject,
+        preprocessedText,
+        contentHash,
+        JSON.stringify(embedding),
+        JSON.stringify(metadata),
+        emailDate,
+        emailDate,
+      ]
+    );
+
+    console.log(`[GmailSync] Email ${email.id} saved successfully`);
   }
 
   private async syncEmail(email: GmailMessage): Promise<void> {
@@ -326,15 +415,28 @@ export class GmailSyncAdapter {
 
   private async updateSyncStatus(status: 'idle' | 'syncing' | 'error'): Promise<void> {
     const db = this.dbService.getDb();
-    await db.query(
-      `
-      INSERT INTO sync_cursors (source_type, status)
-      VALUES ($1, $2)
-      ON CONFLICT (source_type) DO UPDATE SET
-        status = EXCLUDED.status
-    `,
-      ['gmail', status]
-    );
+    if (status === 'idle') {
+      await db.query(
+        `
+        INSERT INTO sync_cursors (source_type, status, last_synced_at)
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (source_type) DO UPDATE SET
+          status = EXCLUDED.status,
+          last_synced_at = NOW()
+      `,
+        ['gmail', status]
+      );
+    } else {
+      await db.query(
+        `
+        INSERT INTO sync_cursors (source_type, status)
+        VALUES ($1, $2)
+        ON CONFLICT (source_type) DO UPDATE SET
+          status = EXCLUDED.status
+      `,
+        ['gmail', status]
+      );
+    }
   }
 
   private calculateContentHash(content: string): string {

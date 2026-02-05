@@ -43,10 +43,12 @@ interface DatabaseRow {
 
 export interface SyncStatus {
   initialized: boolean;
-  slack?: { lastSync?: number; documentCount?: number };
-  notion?: { lastSync?: number; documentCount?: number };
-  linear?: { lastSync?: number; documentCount?: number };
-  gmail?: { lastSync?: number; documentCount?: number };
+  sources?: {
+    slack?: { lastSync?: number; documentCount?: number };
+    notion?: { lastSync?: number; documentCount?: number };
+    linear?: { lastSync?: number; documentCount?: number };
+    gmail?: { lastSync?: number; documentCount?: number };
+  };
 }
 
 export class LocalSearchService {
@@ -96,20 +98,30 @@ export class LocalSearchService {
     }
 
     try {
-      const result = await db.query<{ source_type: string; count: string }>(`
-        SELECT source_type, COUNT(*) as count
-        FROM documents
-        GROUP BY source_type
+      // JOIN sync_cursors to get last_synced_at for each source
+      const result = await db.query<{ source_type: string; count: string; last_synced_at: string | null }>(`
+        SELECT d.source_type, COUNT(*) as count, sc.last_synced_at
+        FROM documents d
+        LEFT JOIN sync_cursors sc ON d.source_type = sc.source_type
+        GROUP BY d.source_type, sc.last_synced_at
       `);
 
-      const status: SyncStatus = { initialized: true };
+      // Build sources object that UI expects: syncStatus.sources.slack.lastSync
+      const sources: Record<string, { lastSync?: number; documentCount?: number }> = {};
 
       for (const row of result.rows) {
         const sourceKey = row.source_type as 'slack' | 'notion' | 'linear' | 'gmail';
-        status[sourceKey] = { documentCount: parseInt(row.count, 10) };
+        sources[sourceKey] = {
+          documentCount: parseInt(row.count, 10),
+          lastSync: row.last_synced_at ? new Date(row.last_synced_at).getTime() : undefined,
+        };
       }
 
-      return status;
+      // Return with sources wrapper to match UI contract: syncStatus?.sources?.slack?.lastSync
+      return {
+        initialized: true,
+        sources,
+      } as SyncStatus;
     } catch (error) {
       console.error('[LocalSearch] getSyncStatus error:', error);
       return { initialized: true };
@@ -372,7 +384,16 @@ export class LocalSearchService {
   private async likeSearch(query: string, limit: number, source?: string): Promise<SearchResult[]> {
     const db = this.dbService.getDb();
 
-    const conditions = [`(content ILIKE $1 OR title ILIKE $1)`];
+    const conditions = [`(
+      content ILIKE $1 
+      OR title ILIKE $1
+      OR metadata->>'assigneeName' ILIKE $1
+      OR metadata->>'projectName' ILIKE $1
+      OR metadata->>'teamName' ILIKE $1
+      OR metadata->>'labels' ILIKE $1
+      OR metadata->>'userName' ILIKE $1
+      OR metadata->>'fromName' ILIKE $1
+    )`];
     const params: any[] = [`%${query}%`, limit];
 
     if (source) {

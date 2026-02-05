@@ -206,14 +206,26 @@ export class LinearSyncAdapter {
     return result;
   }
 
-  /**
-   * Sync a single issue to database
-   */
   private async syncIssue(issue: Issue): Promise<void> {
     console.log(`[LinearSync] Syncing issue: ${issue.identifier} - ${issue.title}`);
 
-    // Build full text content
-    const fullText = `${issue.identifier}: ${issue.title}\n\n${issue.description || ''}`;
+    const team = await issue.team;
+    const project = await issue.project;
+    const state = await issue.state;
+    const assignee = await issue.assignee;
+    const labelsConnection = await issue.labels();
+    const labels = labelsConnection?.nodes.map(l => l.name).join(', ') || '';
+
+    const contentParts = [
+      `${issue.identifier}: ${issue.title}`,
+      issue.description || '',
+      assignee?.name ? `담당자: ${assignee.name}` : '',
+      project?.name ? `프로젝트: ${project.name}` : '',
+      team?.name ? `팀: ${team.name}` : '',
+      labels ? `라벨: ${labels}` : '',
+    ].filter(Boolean);
+
+    const fullText = contentParts.join('\n');
     const preprocessedText = this.preprocessor.preprocess(fullText);
     const contentHash = this.calculateContentHash(preprocessedText);
 
@@ -230,17 +242,15 @@ export class LinearSyncAdapter {
 
     const embedding = await this.embeddingService.embed(preprocessedText);
 
-    // Fetch related entities
-    const team = await issue.team;
-    const project = await issue.project;
-    const state = await issue.state;
-
     const metadata = {
       identifier: issue.identifier,
       teamId: team?.id,
       teamName: team?.name,
       projectId: project?.id,
       projectName: project?.name,
+      assigneeId: assignee?.id,
+      assigneeName: assignee?.name,
+      labels,
       state: state?.name,
       priority: issue.priority,
       url: issue.url,
@@ -441,15 +451,28 @@ export class LinearSyncAdapter {
    */
   private async updateSyncStatus(status: 'idle' | 'syncing' | 'error'): Promise<void> {
     const db = this.dbService.getDb();
-    await db.query(
-      `
-      INSERT INTO sync_cursors (source_type, status)
-      VALUES ($1, $2)
-      ON CONFLICT (source_type) DO UPDATE SET
-        status = EXCLUDED.status
-    `,
-      ['linear', status]
-    );
+    if (status === 'idle') {
+      await db.query(
+        `
+        INSERT INTO sync_cursors (source_type, status, last_synced_at)
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (source_type) DO UPDATE SET
+          status = EXCLUDED.status,
+          last_synced_at = NOW()
+      `,
+        ['linear', status]
+      );
+    } else {
+      await db.query(
+        `
+        INSERT INTO sync_cursors (source_type, status)
+        VALUES ($1, $2)
+        ON CONFLICT (source_type) DO UPDATE SET
+          status = EXCLUDED.status
+      `,
+        ['linear', status]
+      );
+    }
   }
 
   /**
