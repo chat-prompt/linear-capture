@@ -220,5 +220,15 @@
     "enterQuery": "Ingrese un título o término de búsqueda",
     "insertToDescription": "Insertar en la descripción",
     "selected": "{{count}} seleccionado(s)"
+  },
+  "sync": {
+    "title": "Sincronización de datos",
+    "hint": "Sincroniza los servicios conectados localmente para una búsqueda semántica más rápida. Se sincroniza automáticamente cada 5 minutos.",
+    "openaiPlaceholder": "sk-...",
+    "notConnected": "No conectado",
+    "syncNow": "Sincronizar ahora",
+    "ready": "Listo para sincronizar",
+    "syncing": "Sincronizando...",
+    "failed": "Sincronización fallida"
   }
 }

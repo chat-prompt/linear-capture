@@ -220,5 +220,15 @@
     "enterQuery": "Enter a title or search term",
     "insertToDescription": "Insert to Description",
     "selected": "{{count}} selected"
+  },
+  "sync": {
+    "title": "Data Sync",
+    "hint": "Sync connected services locally for faster semantic search. Auto-syncs every 5 minutes.",
+    "openaiPlaceholder": "sk-...",
+    "notConnected": "Not connected",
+    "syncNow": "Sync Now",
+    "ready": "Ready to sync",
+    "syncing": "Syncing...",
+    "failed": "Sync failed"
   }
 }

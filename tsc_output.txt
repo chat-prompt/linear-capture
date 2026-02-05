@@ -1,0 +1,1 @@
+src/main/index.ts(1187,65): error TS2554: Expected 2-3 arguments, but got 4.

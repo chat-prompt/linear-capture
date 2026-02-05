@@ -624,86 +624,143 @@ export function registerIpcHandlers(): void {
     
     try {
       const QUOTA_PER_SOURCE = 5;
-      
-      const gmailService = createGmailService();
-      const linearService = createLinearServiceFromEnv();
-      
-      const [slackConnected, notionConnected, gmailConnected, linearConnected] = await Promise.all([
-        state.slackService?.getConnectionStatus().then(s => s.connected).catch(() => false) ?? false,
-        state.notionService?.getConnectionStatus().then(s => s.connected).catch(() => false) ?? false,
-        gmailService?.getConnectionStatus().then(s => s.connected).catch(() => false) ?? false,
-        Promise.resolve(linearService !== null),
-      ]);
-      
-      debug.push(`connected: slack=${slackConnected}, notion=${notionConnected}, gmail=${gmailConnected}, linear=${linearConnected}`);
-
-      const [slackResult, notionResult, gmailResult, linearResult] = await Promise.allSettled([
-        (async () => {
-          if (!slackConnected) return [];
-          const result = await state.slackService!.searchMessages(query, undefined, QUOTA_PER_SOURCE);
-          return (result.messages || []).map(m => ({
-            id: `slack-${m.ts}`,
-            source: 'slack' as const,
-            title: `#${m.channel?.name || 'unknown'}`,
-            snippet: m.text?.substring(0, 200) || '',
-            url: m.permalink,
-            timestamp: m.timestamp,
-          }));
-        })(),
-        
-        (async () => {
-          if (!notionConnected) return [];
-          const adapter = getAdapter('notion');
-          const items = await adapter.fetchItems(query, QUOTA_PER_SOURCE);
-          return items.map(item => ({
-            id: `notion-${item.id}`,
-            source: 'notion' as const,
-            title: item.title,
-            snippet: item.content?.substring(0, 200) || '',
-            url: item.url,
-            timestamp: item.timestamp,
-          }));
-        })(),
-        
-        (async () => {
-          if (!gmailConnected) return [];
-          const adapter = getAdapter('gmail');
-          const items = await adapter.fetchItems(query, QUOTA_PER_SOURCE);
-          return items.map(item => ({
-            id: `gmail-${item.id}`,
-            source: 'gmail' as const,
-            title: item.title,
-            snippet: item.content?.substring(0, 200) || '',
-            url: item.url,
-            timestamp: item.timestamp,
-          }));
-        })(),
-        
-        (async () => {
-          if (!linearConnected) return [];
-          const adapter = getAdapter('linear');
-          const items = await adapter.fetchItems(query, QUOTA_PER_SOURCE);
-          return items.map(item => ({
-            id: `linear-${item.id}`,
-            source: 'linear' as const,
-            title: item.title,
-            snippet: item.content?.substring(0, 200) || '',
-            url: item.url,
-          }));
-        })(),
-      ]);
-      
       const results: any[] = [];
-      const sourceNames = ['slack', 'notion', 'gmail', 'linear'];
       
-      [slackResult, notionResult, gmailResult, linearResult].forEach((r, i) => {
-        if (r.status === 'fulfilled') {
-          results.push(...r.value);
-          debug.push(`${sourceNames[i]}: ${r.value.length} results`);
-        } else {
-          debug.push(`${sourceNames[i]}: ERROR - ${r.reason}`);
-        }
-      });
+      const localSearch = getLocalSearchService();
+      const useLocalSearch = localSearch?.isInitialized() ?? false;
+      debug.push(`localSearch: ${useLocalSearch ? 'available' : 'unavailable'}`);
+
+      if (useLocalSearch) {
+        const localResults = await localSearch!.search(query, [], QUOTA_PER_SOURCE * 4);
+        
+        const slackResults = localResults.filter(r => r.source === 'slack').slice(0, QUOTA_PER_SOURCE);
+        const notionResults = localResults.filter(r => r.source === 'notion').slice(0, QUOTA_PER_SOURCE);
+        const linearResults = localResults.filter(r => r.source === 'linear').slice(0, QUOTA_PER_SOURCE);
+        const gmailResults = localResults.filter(r => r.source === 'gmail').slice(0, QUOTA_PER_SOURCE);
+        
+        debug.push(`slack: ${slackResults.length} (local)`);
+        debug.push(`notion: ${notionResults.length} (local)`);
+        debug.push(`linear: ${linearResults.length} (local)`);
+        debug.push(`gmail: ${gmailResults.length} (local)`);
+        
+        results.push(...slackResults.map(r => ({
+          id: `slack-${r.id}`,
+          source: 'slack',
+          title: r.title || '',
+          snippet: r.content?.substring(0, 200) || '',
+          url: r.url,
+          timestamp: r.timestamp,
+        })));
+        
+        results.push(...notionResults.map(r => ({
+          id: `notion-${r.id}`,
+          source: 'notion',
+          title: r.title || '',
+          snippet: r.content?.substring(0, 200) || '',
+          url: r.url,
+          timestamp: r.timestamp,
+        })));
+        
+        results.push(...linearResults.map(r => ({
+          id: `linear-${r.id}`,
+          source: 'linear',
+          title: r.title || '',
+          snippet: r.content?.substring(0, 200) || '',
+          url: r.url,
+          timestamp: r.timestamp,
+        })));
+        
+        results.push(...gmailResults.map(r => ({
+          id: `gmail-${r.id}`,
+          source: 'gmail',
+          title: r.title || '',
+          snippet: r.content?.substring(0, 200) || '',
+          url: r.url,
+          timestamp: r.timestamp,
+        })));
+        
+      } else {
+        debug.push('using API fallback');
+        
+        const gmailService = createGmailService();
+        const linearService = createLinearServiceFromEnv();
+        
+        const [slackConnected, notionConnected, gmailConnected, linearConnected] = await Promise.all([
+          state.slackService?.getConnectionStatus().then(s => s.connected).catch(() => false) ?? false,
+          state.notionService?.getConnectionStatus().then(s => s.connected).catch(() => false) ?? false,
+          gmailService?.getConnectionStatus().then(s => s.connected).catch(() => false) ?? false,
+          Promise.resolve(linearService !== null),
+        ]);
+        
+        debug.push(`connected: slack=${slackConnected}, notion=${notionConnected}, gmail=${gmailConnected}, linear=${linearConnected}`);
+
+        const [slackResult, notionResult, gmailResult, linearResult] = await Promise.allSettled([
+          (async () => {
+            if (!slackConnected) return [];
+            const result = await state.slackService!.searchMessages(query, undefined, QUOTA_PER_SOURCE);
+            return (result.messages || []).map(m => ({
+              id: `slack-${m.ts}`,
+              source: 'slack' as const,
+              title: `#${m.channel?.name || 'unknown'}`,
+              snippet: m.text?.substring(0, 200) || '',
+              url: m.permalink,
+              timestamp: m.timestamp,
+            }));
+          })(),
+          
+          (async () => {
+            if (!notionConnected) return [];
+            const adapter = getAdapter('notion');
+            const items = await adapter.fetchItems(query, QUOTA_PER_SOURCE);
+            return items.map(item => ({
+              id: `notion-${item.id}`,
+              source: 'notion' as const,
+              title: item.title,
+              snippet: item.content?.substring(0, 200) || '',
+              url: item.url,
+              timestamp: item.timestamp,
+            }));
+          })(),
+          
+          (async () => {
+            if (!gmailConnected) return [];
+            const adapter = getAdapter('gmail');
+            const items = await adapter.fetchItems(query, QUOTA_PER_SOURCE);
+            return items.map(item => ({
+              id: `gmail-${item.id}`,
+              source: 'gmail' as const,
+              title: item.title,
+              snippet: item.content?.substring(0, 200) || '',
+              url: item.url,
+              timestamp: item.timestamp,
+            }));
+          })(),
+          
+          (async () => {
+            if (!linearConnected) return [];
+            const adapter = getAdapter('linear');
+            const items = await adapter.fetchItems(query, QUOTA_PER_SOURCE);
+            return items.map(item => ({
+              id: `linear-${item.id}`,
+              source: 'linear' as const,
+              title: item.title,
+              snippet: item.content?.substring(0, 200) || '',
+              url: item.url,
+            }));
+          })(),
+        ]);
+        
+        const sourceNames = ['slack', 'notion', 'gmail', 'linear'];
+        
+        [slackResult, notionResult, gmailResult, linearResult].forEach((r, i) => {
+          if (r.status === 'fulfilled') {
+            results.push(...r.value);
+            debug.push(`${sourceNames[i]}: ${r.value.length} (api)`);
+          } else {
+            debug.push(`${sourceNames[i]}: ERROR - ${r.reason}`);
+          }
+        });
+      }
       
       const seen = new Set<string>();
       const deduplicated = results.filter(r => {

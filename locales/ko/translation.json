@@ -220,5 +220,15 @@
     "enterQuery": "제목 또는 검색어를 입력하세요.",
     "insertToDescription": "설명에 삽입",
     "selected": "{{count}}개 선택됨"
+  },
+  "sync": {
+    "title": "데이터 동기화",
+    "hint": "더 빠른 시맨틱 검색을 위해 연결된 서비스를 로컬로 동기화합니다. 5분마다 자동 동기화됩니다.",
+    "openaiPlaceholder": "sk-...",
+    "notConnected": "연결되지 않음",
+    "syncNow": "지금 동기화",
+    "ready": "동기화 준비 완료",
+    "syncing": "동기화 중...",
+    "failed": "동기화 실패"
   }
 }

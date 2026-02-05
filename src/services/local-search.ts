@@ -11,16 +11,20 @@
 
 import type { ContextItem, SearchResult } from '../types/context-search';
 import { getDatabaseService } from './database';
-import { createEmbeddingService } from './embedding-service';
+import { createEmbeddingService, EmbeddingService } from './embedding-service';
 import { TextPreprocessor } from './text-preprocessor';
-import { getSelectedSlackChannels } from './settings-store';
+import { getSelectedSlackChannels, getOpenaiApiKey } from './settings-store';
+import { createSlackSyncAdapter } from './sync-adapters/slack-sync';
+import { createNotionSyncAdapter } from './sync-adapters/notion-sync';
+import { createLinearSyncAdapter } from './sync-adapters/linear-sync';
+import { createGmailSyncAdapter } from './sync-adapters/gmail-sync';
 
 const RRF_K = 60; // Standard RRF constant
 const RETRIEVAL_LIMIT = 100; // Retrieve top 100 from each channel before RRF
 
 interface DatabaseRow {
   id: string;
-  source_type: 'notion' | 'slack' | 'linear';
+  source_type: 'notion' | 'slack' | 'linear' | 'gmail';
   source_id: string;
   title?: string;
   content: string;
@@ -34,12 +38,40 @@ export interface SyncStatus {
   slack?: { lastSync?: number; documentCount?: number };
   notion?: { lastSync?: number; documentCount?: number };
   linear?: { lastSync?: number; documentCount?: number };
+  gmail?: { lastSync?: number; documentCount?: number };
 }
 
 export class LocalSearchService {
   private dbService = getDatabaseService();
-  private embeddingService = createEmbeddingService();
+  private embeddingService: EmbeddingService | null = null;
   private preprocessor = new TextPreprocessor();
+
+  constructor() {
+    this.initEmbeddingService();
+  }
+
+  private initEmbeddingService(): void {
+    try {
+      const apiKey = getOpenaiApiKey();
+      if (apiKey) {
+        this.embeddingService = createEmbeddingService();
+        console.log('[LocalSearch] EmbeddingService initialized');
+      } else {
+        console.warn('[LocalSearch] OpenAI API key not set - sync disabled');
+      }
+    } catch (error) {
+      console.error('[LocalSearch] EmbeddingService init failed:', error);
+      this.embeddingService = null;
+    }
+  }
+
+  reinitializeEmbedding(): void {
+    this.initEmbeddingService();
+  }
+
+  canSync(): boolean {
+    return this.embeddingService !== null && this.isInitialized();
+  }
 
   isInitialized(): boolean {
     try {
@@ -65,7 +97,7 @@ export class LocalSearchService {
       const status: SyncStatus = { initialized: true };
 
       for (const row of result.rows) {
-        const sourceKey = row.source_type as 'slack' | 'notion' | 'linear';
+        const sourceKey = row.source_type as 'slack' | 'notion' | 'linear' | 'gmail';
         status[sourceKey] = { documentCount: parseInt(row.count, 10) };
       }
 
@@ -77,16 +109,71 @@ export class LocalSearchService {
   }
 
   async syncSource(source: string): Promise<void> {
-    console.log(`[LocalSearch] syncSource called for: ${source}`);
+    console.log(`[LocalSearch] Starting sync for: ${source}`);
+
+    if (!this.canSync()) {
+      const reason = !this.isInitialized()
+        ? 'Database not initialized'
+        : 'OpenAI API key not set';
+      console.error(`[LocalSearch] Cannot sync: ${reason}`);
+      throw new Error(`Sync unavailable: ${reason}. Please check Settings.`);
+    }
+
+    try {
+      switch (source) {
+        case 'slack': {
+          const adapter = createSlackSyncAdapter();
+          const result = await adapter.syncIncremental();
+          console.log(`[LocalSearch] Slack sync complete: ${result.itemsSynced} items, ${result.itemsFailed} failed`);
+          break;
+        }
+        case 'notion': {
+          const adapter = createNotionSyncAdapter();
+          const result = await adapter.syncIncremental();
+          console.log(`[LocalSearch] Notion sync complete: ${result.itemsSynced} items, ${result.itemsFailed} failed`);
+          break;
+        }
+        case 'linear': {
+          const adapter = createLinearSyncAdapter();
+          const result = await adapter.syncIncremental();
+          console.log(`[LocalSearch] Linear sync complete: ${result.itemsSynced} items, ${result.itemsFailed} failed`);
+          break;
+        }
+        case 'gmail': {
+          const adapter = createGmailSyncAdapter();
+          const result = await adapter.syncIncremental();
+          console.log(`[LocalSearch] Gmail sync complete: ${result.itemsSynced} items, ${result.itemsFailed} failed`);
+          break;
+        }
+        default:
+          console.warn(`[LocalSearch] Unknown source: ${source}`);
+      }
+    } catch (error) {
+      console.error(`[LocalSearch] Sync failed for ${source}:`, error);
+      throw error;
+    }
   }
 
   async syncAll(): Promise<void> {
-    console.log('[LocalSearch] syncAll called');
-    await Promise.all([
-      this.syncSource('slack'),
-      this.syncSource('notion'),
-      this.syncSource('linear'),
-    ]);
+    console.log('[LocalSearch] Starting syncAll');
+
+    if (!this.canSync()) {
+      console.warn('[LocalSearch] syncAll skipped - not ready');
+      return;
+    }
+
+    const sources = ['slack', 'notion', 'linear', 'gmail'];
+    const results = await Promise.allSettled(
+      sources.map(source => this.syncSource(source))
+    );
+
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        console.error(`[LocalSearch] ${sources[index]} sync failed:`, result.reason);
+      }
+    });
+
+    console.log('[LocalSearch] syncAll complete');
   }
 
   /**
@@ -103,12 +190,20 @@ export class LocalSearchService {
       return [];
     }
 
+    if (!this.isInitialized()) {
+      console.warn('[LocalSearch] Search skipped - DB not initialized');
+      return [];
+    }
+
+    if (!this.embeddingService) {
+      console.warn('[LocalSearch] EmbeddingService not available, keyword search only');
+      return this.keywordSearch(query, limit, source);
+    }
+
     try {
-      // 1. Generate query embedding
       const preprocessedQuery = this.preprocessor.preprocess(query);
       const queryEmbedding = await this.embeddingService.embed(preprocessedQuery);
 
-      // 2. Parallel search: Semantic + Keyword (with optional source filter)
       const [semanticResults, keywordResults] = await Promise.all([
         this.semanticSearch(queryEmbedding, RETRIEVAL_LIMIT, source),
         this.keywordSearch(query, RETRIEVAL_LIMIT, source),
@@ -118,10 +213,8 @@ export class LocalSearchService {
         `[LocalSearch] Semantic: ${semanticResults.length}, Keyword: ${keywordResults.length}${source ? `, source: ${source}` : ''}`
       );
 
-      // 3. Merge with RRF
       const merged = this.mergeWithRRF(semanticResults, keywordResults, RRF_K);
 
-      // 4. Return top N results
       return merged.slice(0, limit);
     } catch (error) {
       console.error('[LocalSearch] Search failed:', error);
@@ -134,6 +227,11 @@ export class LocalSearchService {
     limit: number,
     source?: string
   ): Promise<SearchResult[]> {
+    if (!this.isInitialized()) {
+      console.warn('[LocalSearch] semanticSearch skipped - DB not initialized');
+      return [];
+    }
+
     const db = this.dbService.getDb();
 
     const conditions = ['embedding IS NOT NULL'];
@@ -173,6 +271,11 @@ export class LocalSearchService {
   }
 
   private async keywordSearch(query: string, limit: number, source?: string): Promise<SearchResult[]> {
+    if (!this.isInitialized()) {
+      console.warn('[LocalSearch] keywordSearch skipped - DB not initialized');
+      return [];
+    }
+
     const db = this.dbService.getDb();
 
     const conditions = ['tsv @@ query'];

@@ -18,6 +18,11 @@ import { createNotionService } from '../services/notion-client';
 import { closeNotionLocalReader } from '../services/notion-local-reader';
 import { createGmailService } from '../services/gmail-client';
 import { trackAppOpen } from '../services/analytics';
+import { initDatabaseService, closeDatabaseService } from '../services/database';
+import { getLocalSearchService } from '../services/local-search';
+
+const SYNC_INTERVAL_MS = 5 * 60 * 1000;
+let syncScheduler: NodeJS.Timeout | null = null;
 
 import { getState, getStore } from './state';
 import { handleDeepLink } from './oauth-handlers';
@@ -77,6 +82,28 @@ app.whenReady().then(async () => {
 
   registerIpcHandlers();
 
+  // Initialize DatabaseService for local sync (PGlite + pgvector)
+  try {
+    await initDatabaseService();
+    logger.log('[App] DatabaseService initialized successfully');
+
+    syncScheduler = setInterval(async () => {
+      const localSearch = getLocalSearchService();
+      if (localSearch?.canSync()) {
+        logger.log('[AutoSync] Starting scheduled sync');
+        try {
+          await localSearch.syncAll();
+        } catch (error) {
+          logger.error('[AutoSync] Scheduled sync failed:', error);
+        }
+      }
+    }, SYNC_INTERVAL_MS);
+    logger.log('[AutoSync] Scheduler started (5min interval)');
+  } catch (error) {
+    logger.error('[App] Failed to initialize DatabaseService:', error);
+    // Continue app execution - sync features will be disabled
+  }
+
   state.slackService = createSlackService();
   state.notionService = createNotionService();
   state.gmailService = createGmailService();
@@ -130,10 +157,15 @@ app.whenReady().then(async () => {
   logger.log('Linear Capture ready! Press ⌘+Shift+L to capture.');
 });
 
-app.on('will-quit', () => {
+app.on('will-quit', async () => {
+  if (syncScheduler) {
+    clearInterval(syncScheduler);
+    syncScheduler = null;
+  }
   unregisterAllHotkeys();
   destroyTray();
   closeNotionLocalReader();
+  await closeDatabaseService();
 });
 
 app.on('window-all-closed', () => {
