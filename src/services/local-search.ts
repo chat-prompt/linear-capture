@@ -17,7 +17,7 @@ import { getSelectedSlackChannels, getOpenaiApiKey } from './settings-store';
 import { createSlackSyncAdapter } from './sync-adapters/slack-sync';
 import { createNotionSyncAdapter } from './sync-adapters/notion-sync';
 import { createLinearSyncAdapter } from './sync-adapters/linear-sync';
-import { createGmailSyncAdapter } from './sync-adapters/gmail-sync';
+import { createGmailSyncAdapter, SyncResult } from './sync-adapters/gmail-sync';
 
 const RRF_K = 60; // Standard RRF constant
 const RETRIEVAL_LIMIT = 100; // Retrieve top 100 from each channel before RRF
@@ -276,6 +276,26 @@ export class LocalSearchService {
       return [];
     }
 
+    // PostgreSQL websearch_to_tsquery ignores short tokens (≤3 chars) like "cto", "kr"
+    if (query.length <= 3) {
+      console.log(`[LocalSearch] Short query "${query}" - using LIKE search`);
+      return this.likeSearch(query, limit, source);
+    }
+
+    const ftsResults = await this.ftsSearch(query, limit, source);
+
+    if (ftsResults.length === 0) {
+      console.log(`[LocalSearch] FTS returned 0 results for "${query}", falling back to LIKE`);
+      return this.likeSearch(query, limit, source);
+    }
+
+    return ftsResults;
+  }
+
+  /**
+   * Full-Text Search using tsvector
+   */
+  private async ftsSearch(query: string, limit: number, source?: string): Promise<SearchResult[]> {
     const db = this.dbService.getDb();
 
     const conditions = ['tsv @@ query'];
@@ -305,6 +325,47 @@ export class LocalSearchService {
       FROM documents, websearch_to_tsquery('simple', $1) query
       ${whereClause}
       ORDER BY score DESC
+      LIMIT $2
+      `,
+      params
+    );
+
+    return result.rows.map(row => this.rowToSearchResult(row));
+  }
+
+  /**
+   * LIKE search fallback for short keywords that FTS may miss
+   */
+  private async likeSearch(query: string, limit: number, source?: string): Promise<SearchResult[]> {
+    const db = this.dbService.getDb();
+
+    const conditions = [`(content ILIKE $1 OR title ILIKE $1)`];
+    const params: any[] = [`%${query}%`, limit];
+
+    if (source) {
+      params.push(source);
+      conditions.push(`source_type = $${params.length}`);
+    }
+
+    const selectedChannels = getSelectedSlackChannels();
+    if (selectedChannels.length > 0) {
+      const channelIds = selectedChannels.map(ch => ch.id);
+      params.push(JSON.stringify(channelIds));
+      conditions.push(`(source_type != 'slack' OR metadata->>'channelId' = ANY(SELECT jsonb_array_elements_text($${params.length}::jsonb)))`);
+    } else {
+      conditions.push(`source_type != 'slack'`);
+    }
+
+    const whereClause = 'WHERE ' + conditions.join(' AND ');
+
+    const result = await db.query<DatabaseRow>(
+      `
+      SELECT 
+        id, source_type, source_id, title, content, metadata, source_created_at,
+        0.5 AS score
+      FROM documents
+      ${whereClause}
+      ORDER BY source_created_at DESC
       LIMIT $2
       `,
       params
