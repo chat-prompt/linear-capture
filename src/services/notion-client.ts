@@ -165,7 +165,7 @@ export class NotionService {
      }
    }
 
-  async searchPages(query: string, pageSize?: number): Promise<NotionSearchResult> {
+  async searchPages(query: string, pageSize?: number, cursor?: string): Promise<NotionSearchResult> {
     const limit = pageSize || 20;
     
     if (isNotionDbAvailable()) {
@@ -187,16 +187,19 @@ export class NotionService {
        }
     }
 
-    return this.searchPagesViaApi(query, limit);
+    return this.searchPagesViaApi(query, limit, cursor);
   }
 
-  private async searchPagesViaApi(query: string, pageSize: number): Promise<NotionSearchResult> {
+  private async searchPagesViaApi(query: string, pageSize: number, cursor?: string): Promise<NotionSearchResult> {
     try {
       const url = new URL(`${WORKER_URL}/notion/search`);
       url.searchParams.set('device_id', this.deviceId);
       url.searchParams.set('query', query);
       url.searchParams.set('filter', 'page');
       url.searchParams.set('page_size', pageSize.toString());
+      if (cursor) {
+        url.searchParams.set('start_cursor', cursor);
+      }
 
        const response = await fetch(url.toString());
        const data = await response.json() as NotionSearchResult;

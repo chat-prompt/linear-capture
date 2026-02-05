@@ -53,40 +53,56 @@ export class NotionSyncAdapter {
       errors: [],
     };
 
+    let cursor: string | undefined;
+
     try {
       await this.updateSyncStatus('syncing');
 
-      const searchResult = await this.notionService.searchPages('', 100);
-
-      if (!searchResult.success || !searchResult.pages) {
-        throw new Error(searchResult.error || 'Failed to fetch pages');
+      cursor = await this.getSavedPaginationCursor();
+      if (cursor) {
+        console.log(`[NotionSync] Resuming from saved cursor: ${cursor}`);
       }
 
-      console.log(`[NotionSync] Found ${searchResult.pages.length} pages`);
+      let hasMore = true;
+      let latestTime: string | undefined;
 
-      for (const page of searchResult.pages) {
-        try {
-          await this.syncPage(page);
-          result.itemsSynced++;
-        } catch (error) {
-          console.error(`[NotionSync] Failed to sync page ${page.id}:`, error);
-          result.itemsFailed++;
-          result.errors.push({
-            pageId: page.id,
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
+      while (hasMore) {
+        const searchResult = await this.notionService.searchPages('', 100, cursor);
+
+        if (!searchResult.success || !searchResult.pages) {
+          throw new Error(searchResult.error || 'Failed to fetch pages');
         }
+
+        console.log(`[NotionSync] Found ${searchResult.pages.length} pages (cursor: ${cursor || 'none'})`);
+
+        for (const page of searchResult.pages) {
+          try {
+            await this.syncPage(page);
+            result.itemsSynced++;
+          } catch (error) {
+            console.error(`[NotionSync] Failed to sync page ${page.id}:`, error);
+            result.itemsFailed++;
+            result.errors.push({
+              pageId: page.id,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            });
+          }
+
+          if (!latestTime || page.lastEditedTime > latestTime) {
+            latestTime = page.lastEditedTime;
+          }
+        }
+
+        hasMore = searchResult.hasMore ?? false;
+        cursor = searchResult.nextCursor ?? undefined;
       }
 
-      if (searchResult.pages.length > 0) {
-        const latestTime = searchResult.pages.reduce((latest, page) => {
-          return page.lastEditedTime > latest ? page.lastEditedTime : latest;
-        }, searchResult.pages[0].lastEditedTime);
-
+      if (latestTime) {
         await this.updateSyncCursor(latestTime, result.itemsSynced);
         result.lastCursor = latestTime;
       }
 
+      await this.clearPaginationCursor();
       await this.updateSyncStatus('idle');
 
       console.log(
@@ -95,6 +111,9 @@ export class NotionSyncAdapter {
     } catch (error) {
       console.error('[NotionSync] Full sync failed:', error);
       result.success = false;
+      if (cursor) {
+        await this.savePaginationCursor(cursor);
+      }
       await this.updateSyncStatus('error');
       throw error;
     }
@@ -118,43 +137,51 @@ export class NotionSyncAdapter {
     try {
       await this.updateSyncStatus('syncing');
 
-      const lastCursor = await this.getLastSyncCursor();
-      console.log(`[NotionSync] Last sync cursor: ${lastCursor || 'none'}`);
+      const lastSyncCursor = await this.getLastSyncCursor();
+      console.log(`[NotionSync] Last sync cursor: ${lastSyncCursor || 'none'}`);
 
-      // Notion API doesn't support filtering by last_edited_time - filter client-side
-      const searchResult = await this.notionService.searchPages('', 100);
+      let cursor: string | undefined;
+      let hasMore = true;
+      let latestTime: string | undefined;
 
-      if (!searchResult.success || !searchResult.pages) {
-        throw new Error(searchResult.error || 'Failed to fetch pages');
-      }
+      while (hasMore) {
+        const searchResult = await this.notionService.searchPages('', 100, cursor);
 
-      const pagesToSync = lastCursor
-        ? searchResult.pages.filter((page) => page.lastEditedTime > lastCursor)
-        : searchResult.pages;
-
-      console.log(
-        `[NotionSync] Found ${pagesToSync.length} pages to sync (${searchResult.pages.length} total)`
-      );
-
-      for (const page of pagesToSync) {
-        try {
-          await this.syncPage(page);
-          result.itemsSynced++;
-        } catch (error) {
-          console.error(`[NotionSync] Failed to sync page ${page.id}:`, error);
-          result.itemsFailed++;
-          result.errors.push({
-            pageId: page.id,
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
+        if (!searchResult.success || !searchResult.pages) {
+          throw new Error(searchResult.error || 'Failed to fetch pages');
         }
+
+        const pagesToSync = lastSyncCursor
+          ? searchResult.pages.filter((page) => page.lastEditedTime > lastSyncCursor)
+          : searchResult.pages;
+
+        console.log(
+          `[NotionSync] Found ${pagesToSync.length} pages to sync (${searchResult.pages.length} in batch, cursor: ${cursor || 'none'})`
+        );
+
+        for (const page of pagesToSync) {
+          try {
+            await this.syncPage(page);
+            result.itemsSynced++;
+          } catch (error) {
+            console.error(`[NotionSync] Failed to sync page ${page.id}:`, error);
+            result.itemsFailed++;
+            result.errors.push({
+              pageId: page.id,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            });
+          }
+
+          if (!latestTime || page.lastEditedTime > latestTime) {
+            latestTime = page.lastEditedTime;
+          }
+        }
+
+        hasMore = searchResult.hasMore ?? false;
+        cursor = searchResult.nextCursor ?? undefined;
       }
 
-      if (pagesToSync.length > 0) {
-        const latestTime = pagesToSync.reduce((latest, page) => {
-          return page.lastEditedTime > latest ? page.lastEditedTime : latest;
-        }, pagesToSync[0].lastEditedTime);
-
+      if (latestTime) {
         await this.updateSyncCursor(latestTime, result.itemsSynced);
         result.lastCursor = latestTime;
       }
@@ -243,9 +270,6 @@ export class NotionSyncAdapter {
     console.log(`[NotionSync] Page ${page.id} synced successfully`);
   }
 
-  /**
-   * Get last sync cursor from database
-   */
   private async getLastSyncCursor(): Promise<string | null> {
     const db = this.dbService.getDb();
     const result = await db.query<{ cursor_value: string }>(
@@ -254,6 +278,34 @@ export class NotionSyncAdapter {
     );
 
     return result.rows[0]?.cursor_value || null;
+  }
+
+  private async getSavedPaginationCursor(): Promise<string | undefined> {
+    const db = this.dbService.getDb();
+    const result = await db.query<{ cursor_value: string }>(
+      `SELECT cursor_value FROM sync_cursors WHERE source_type = $1`,
+      ['notion_pagination_cursor']
+    );
+    return result.rows[0]?.cursor_value || undefined;
+  }
+
+  private async savePaginationCursor(cursor: string): Promise<void> {
+    const db = this.dbService.getDb();
+    await db.query(
+      `INSERT INTO sync_cursors (source_type, cursor_value, cursor_type)
+       VALUES ($1, $2, 'pagination_cursor')
+       ON CONFLICT (source_type) DO UPDATE SET cursor_value = EXCLUDED.cursor_value`,
+      ['notion_pagination_cursor', cursor]
+    );
+    console.log(`[NotionSync] Saved pagination cursor for resume: ${cursor}`);
+  }
+
+  private async clearPaginationCursor(): Promise<void> {
+    const db = this.dbService.getDb();
+    await db.query(
+      `DELETE FROM sync_cursors WHERE source_type = $1`,
+      ['notion_pagination_cursor']
+    );
   }
 
   /**
