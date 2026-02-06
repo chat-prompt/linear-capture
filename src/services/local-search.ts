@@ -276,13 +276,18 @@ export class LocalSearchService {
       conditions.push(`source_type = $${params.length}`);
     }
 
-    // Filter by selected Slack channels (no selection = exclude Slack)
-    const selectedChannels = getSelectedSlackChannels();
-    if (selectedChannels.length > 0) {
-      const channelIds = selectedChannels.map(ch => ch.id);
-      params.push(JSON.stringify(channelIds));
+    // Filter by selected Slack channels
+    const allChannelsSemantic = getSelectedSlackChannels();
+    const selectedIdsSemantic = allChannelsSemantic.filter(ch => ch.selected).map(ch => ch.id);
+
+    if (allChannelsSemantic.length === 0) {
+      // No config = include all Slack (opt-out model)
+    } else if (selectedIdsSemantic.length > 0) {
+      // Some selected = include only selected channels
+      params.push(JSON.stringify(selectedIdsSemantic));
       conditions.push(`(source_type != 'slack' OR metadata->>'channelId' = ANY(SELECT jsonb_array_elements_text($${params.length}::jsonb)))`);
     } else {
+      // All deselected = exclude all Slack
       conditions.push(`source_type != 'slack'`);
     }
 
@@ -340,12 +345,18 @@ export class LocalSearchService {
       conditions.push(`source_type = $${params.length}`);
     }
 
-    const selectedChannels = getSelectedSlackChannels();
-    if (selectedChannels.length > 0) {
-      const channelIds = selectedChannels.map(ch => ch.id);
-      params.push(JSON.stringify(channelIds));
+    // Filter by selected Slack channels
+    const allChannelsFts = getSelectedSlackChannels();
+    const selectedIdsFts = allChannelsFts.filter(ch => ch.selected).map(ch => ch.id);
+
+    if (allChannelsFts.length === 0) {
+      // No config = include all Slack (opt-out model)
+    } else if (selectedIdsFts.length > 0) {
+      // Some selected = include only selected channels
+      params.push(JSON.stringify(selectedIdsFts));
       conditions.push(`(source_type != 'slack' OR metadata->>'channelId' = ANY(SELECT jsonb_array_elements_text($${params.length}::jsonb)))`);
     } else {
+      // All deselected = exclude all Slack
       conditions.push(`source_type != 'slack'`);
     }
 
@@ -390,12 +401,18 @@ export class LocalSearchService {
       conditions.push(`source_type = $${params.length}`);
     }
 
-    const selectedChannels = getSelectedSlackChannels();
-    if (selectedChannels.length > 0) {
-      const channelIds = selectedChannels.map(ch => ch.id);
-      params.push(JSON.stringify(channelIds));
+    // Filter by selected Slack channels
+    const allChannelsLike = getSelectedSlackChannels();
+    const selectedIdsLike = allChannelsLike.filter(ch => ch.selected).map(ch => ch.id);
+
+    if (allChannelsLike.length === 0) {
+      // No config = include all Slack (opt-out model)
+    } else if (selectedIdsLike.length > 0) {
+      // Some selected = include only selected channels
+      params.push(JSON.stringify(selectedIdsLike));
       conditions.push(`(source_type != 'slack' OR metadata->>'channelId' = ANY(SELECT jsonb_array_elements_text($${params.length}::jsonb)))`);
     } else {
+      // All deselected = exclude all Slack
       conditions.push(`source_type != 'slack'`);
     }
 
