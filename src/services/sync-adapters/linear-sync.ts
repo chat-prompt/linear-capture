@@ -194,11 +194,13 @@ export class LinearSyncAdapter {
   private async syncIssue(issue: Issue): Promise<void> {
     console.log(`[LinearSync] Syncing issue: ${issue.identifier} - ${issue.title}`);
 
-    const team = await issue.team;
-    const project = await issue.project;
-    const state = await issue.state;
-    const assignee = await issue.assignee;
-    const labelsConnection = await issue.labels();
+    const [team, project, state, assignee, labelsConnection] = await Promise.all([
+      issue.team,
+      issue.project,
+      issue.state,
+      issue.assignee,
+      issue.labels(),
+    ]);
     const labels = labelsConnection?.nodes.map(l => l.name).join(', ') || '';
 
     const contentParts = [
