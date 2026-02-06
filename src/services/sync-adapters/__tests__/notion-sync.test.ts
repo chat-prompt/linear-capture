@@ -82,6 +82,20 @@ describe('NotionSyncAdapter', () => {
   });
 
   describe('sync - pagination', () => {
+    it('should pass cursor parameter to searchPages', async () => {
+      mockSearchPages.mockResolvedValueOnce({
+        success: true,
+        pages: [createMockPage('page-1', '2024-01-01T00:00:00Z')],
+        hasMore: false,
+        nextCursor: null,
+      });
+
+      await adapter.sync();
+
+      // First call should have undefined cursor
+      expect(mockSearchPages).toHaveBeenNthCalledWith(1, 100, undefined);
+    });
+
     it('should pass cursor to subsequent calls when hasMore is true', async () => {
       mockSearchPages.mockResolvedValueOnce({
         success: true,
