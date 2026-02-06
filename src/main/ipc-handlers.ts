@@ -1,7 +1,7 @@
 import { app, ipcMain, clipboard, BrowserWindow } from 'electron';
 import { logger } from '../services/utils/logger';
 import { cleanupCapture } from '../services/capture';
-import { createR2UploaderFromEnv } from '../services/r2-uploader';
+import { createLinearUploaderFromEnv } from '../services/linear-uploader';
 import { createLinearServiceFromEnv, validateLinearToken } from '../services/linear-client';
 import { createGeminiAnalyzer } from '../services/gemini-analyzer';
 import { createAnthropicAnalyzer } from '../services/anthropic-analyzer';
@@ -129,17 +129,17 @@ export function registerIpcHandlers(): void {
       return { success: false, error: 'Linear not configured' };
     }
 
-    const r2 = createR2UploaderFromEnv();
-    if (!r2) {
-      return { success: false, error: 'R2 not configured' };
+    const uploader = createLinearUploaderFromEnv();
+    if (!uploader) {
+      return { success: false, error: 'Linear uploader not configured' };
     }
 
     const imageUrls: string[] = [];
     const totalImages = state.captureSession?.images.length || 0;
     if (totalImages > 0) {
-      logger.log(`Uploading ${totalImages} images to R2...`);
+      logger.log(`Uploading ${totalImages} images via Linear SDK...`);
       const uploadResults = await Promise.all(
-        state.captureSession!.images.map(img => r2.upload(img.filePath))
+        state.captureSession!.images.map(img => uploader.upload(img.filePath))
       );
 
       for (const uploadResult of uploadResults) {
