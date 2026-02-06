@@ -48,6 +48,10 @@ export async function rerank(
     }));
   }
 
+  if (documents.length === 1) {
+    return [{ id: documents[0].id, relevanceScore: 1, index: 0 }];
+  }
+
   // 문서가 topN보다 적으면 전체 반환
   const effectiveTopN = Math.min(topN, documents.length);
 
