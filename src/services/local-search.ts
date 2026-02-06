@@ -18,6 +18,8 @@ import { createSlackSyncAdapter } from './sync-adapters/slack-sync';
 import { createNotionSyncAdapter } from './sync-adapters/notion-sync';
 import { createLinearSyncAdapter } from './sync-adapters/linear-sync';
 import { createGmailSyncAdapter } from './sync-adapters/gmail-sync';
+import { rerank, type RerankDocument } from './reranker';
+import { applyRecencyBoost } from './recency-boost';
 
 export interface SyncResult {
   success: boolean;
@@ -269,7 +271,10 @@ export class LocalSearchService {
 
       const merged = this.mergeWithRRF(semanticResults, keywordResults, RRF_K);
 
-      return merged.slice(0, limit);
+      const reranked = await this.applyRerank(query, merged);
+      const boosted = applyRecencyBoost(reranked);
+
+      return boosted.slice(0, limit);
     } catch (error) {
       console.error('[LocalSearch] Search failed:', error);
       return [];
@@ -478,9 +483,28 @@ export class LocalSearchService {
     return merged;
   }
 
-  /**
-   * Convert database row to SearchResult
-   */
+  private async applyRerank(query: string, results: SearchResult[]): Promise<SearchResult[]> {
+    if (results.length <= 1) {
+      return results;
+    }
+
+    const documents: RerankDocument[] = results.map(r => ({
+      id: r.id,
+      text: `${r.title || ''} ${r.content}`.trim(),
+    }));
+
+    const reranked = await rerank(query, documents, results.length);
+
+    const resultMap = new Map(results.map(r => [r.id, r]));
+    return reranked
+      .map(r => {
+        const original = resultMap.get(r.id);
+        if (!original) return null;
+        return { ...original, score: r.relevanceScore };
+      })
+      .filter((r): r is SearchResult => r !== null);
+  }
+
   private rowToSearchResult(row: DatabaseRow): SearchResult {
     return {
       id: row.source_id,
