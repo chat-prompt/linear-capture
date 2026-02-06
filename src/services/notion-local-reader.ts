@@ -573,16 +573,20 @@ export class NotionLocalReader {
    }
 
   /**
-   * Get full page content without character limit (for sync)
-   * Recursively fetches all child blocks
+   * Get page content for sync with optional character limit
+   * Recursively fetches child blocks, stops early when maxChars reached
+   * @param pageId Notion page ID
+   * @param maxChars Maximum characters to collect (default: 2000)
    */
-  getFullPageContent(pageId: string): string {
+  getFullPageContent(pageId: string, maxChars: number = 2000): string {
     if (!this.db) return '';
 
     try {
       const texts: string[] = [];
-      this.collectBlockTexts(pageId, texts, 0);
-      return texts.join('\n').trim();
+      const charCount = { current: 0 };
+      this.collectBlockTexts(pageId, texts, 0, maxChars, charCount);
+      const result = texts.join('\n').trim();
+      return result.length > maxChars ? result.substring(0, maxChars) : result;
     } catch (error) {
       logger.error('[NotionLocalReader] getFullPageContent error:', error);
       return '';
@@ -592,8 +596,15 @@ export class NotionLocalReader {
   /**
    * Recursively collect text from blocks and their children
    */
-  private collectBlockTexts(parentId: string, texts: string[], depth: number): void {
+  private collectBlockTexts(
+    parentId: string,
+    texts: string[],
+    depth: number,
+    maxChars: number = 2000,
+    charCount: { current: number } = { current: 0 }
+  ): void {
     if (!this.db || depth > 10) return; // Max depth to prevent infinite loops
+    if (charCount.current >= maxChars) return;
 
     try {
       const stmt = this.db.prepare(`
@@ -610,6 +621,8 @@ export class NotionLocalReader {
       const childBlocks: Array<{ id: string; type: string }> = [];
 
       while (stmt.step()) {
+        if (charCount.current >= maxChars) break;
+
         const row = stmt.getAsObject() as {
           id: string;
           properties: string | null;
@@ -622,6 +635,7 @@ export class NotionLocalReader {
             const blockText = extractBlockText(properties);
             if (blockText) {
               texts.push(blockText);
+              charCount.current += blockText.length;
             }
           } catch {
             continue;
@@ -635,7 +649,8 @@ export class NotionLocalReader {
       stmt.free();
 
       for (const child of childBlocks) {
-        this.collectBlockTexts(child.id, texts, depth + 1);
+        if (charCount.current >= maxChars) break;
+        this.collectBlockTexts(child.id, texts, depth + 1, maxChars, charCount);
       }
     } catch (error) {
       logger.error('[NotionLocalReader] collectBlockTexts error:', error);
