@@ -2248,8 +2248,12 @@
 
          if (gmailStatus.connected) {
            const src = syncStatus?.sources?.gmail;
+<<<<<<< HEAD
            gmailDocCount.textContent = await formatDocCount(src?.documentCount, 'emails');
            gmailDocCount.style.display = '';
+=======
+           gmailDocCount.textContent = formatDocCount(src?.documentCount, 'emails');
+>>>>>>> b321716 (fix(settings): use service-specific labels for sync doc counts)
           const lastSync = src?.lastSync;
           if (lastSync) {
             gmailLastSync.textContent = await formatLastSync(lastSync);
