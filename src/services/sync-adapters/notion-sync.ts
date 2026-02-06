@@ -13,12 +13,11 @@ import * as crypto from 'crypto';
 import { getDatabaseService } from '../database';
 import { createNotionService } from '../notion-client';
 import { createTextPreprocessor } from '../text-preprocessor';
-import { createEmbeddingService } from '../embedding-service';
+import { getEmbeddingClient, EmbeddingClient } from '../embedding-client';
 import { isNotionDbAvailable, getNotionLocalReader } from '../notion-local-reader';
 import type { NotionService, NotionPage } from '../notion-client';
 import type { DatabaseService } from '../database';
 import type { TextPreprocessor } from '../text-preprocessor';
-import type { EmbeddingService } from '../embedding-service';
 import type { SyncProgress, SyncProgressCallback } from '../local-search';
 
 export interface SyncResult {
@@ -33,13 +32,13 @@ export class NotionSyncAdapter {
   private notionService: NotionService;
   private dbService: DatabaseService;
   private preprocessor: TextPreprocessor;
-  private embeddingService: EmbeddingService;
+  private embeddingClient: EmbeddingClient;
 
   constructor() {
     this.notionService = createNotionService();
     this.dbService = getDatabaseService();
     this.preprocessor = createTextPreprocessor();
-    this.embeddingService = createEmbeddingService();
+    this.embeddingClient = getEmbeddingClient();
   }
 
   /**
@@ -209,7 +208,7 @@ export class NotionSyncAdapter {
         console.log(`[NotionSync] Embedding batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(changedPages.length / BATCH_SIZE)} (${batch.length} pages)`);
 
         try {
-          const embeddings = await this.embeddingService.embedBatch(texts);
+          const embeddings = await this.embeddingClient.embed(texts);
 
           const savePromises = batch.map(async (page, idx) => {
             try {
@@ -236,7 +235,7 @@ export class NotionSyncAdapter {
                   page.title,
                   page.preprocessed,
                   page.hash,
-                  JSON.stringify(embeddings[idx]),
+                  JSON.stringify(Array.from(embeddings[idx])),
                   JSON.stringify(metadata),
                   new Date(page.lastEditedTime),
                   new Date(page.lastEditedTime)
@@ -410,7 +409,7 @@ export class NotionSyncAdapter {
       return;
     }
 
-    const embedding = await this.embeddingService.embed(preprocessedText);
+    const embedding = await this.embeddingClient.embedSingle(preprocessedText);
 
     const metadata = {
       url: page.url,
@@ -442,7 +441,7 @@ export class NotionSyncAdapter {
         page.title,
         preprocessedText,
         contentHash,
-        JSON.stringify(embedding),
+        JSON.stringify(Array.from(embedding)),
         JSON.stringify(metadata),
         new Date(page.lastEditedTime),
         new Date(page.lastEditedTime)

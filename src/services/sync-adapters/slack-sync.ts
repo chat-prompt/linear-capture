@@ -13,11 +13,10 @@ import * as crypto from 'crypto';
 import { getDatabaseService } from '../database';
 import { createSlackService } from '../slack-client';
 import { createTextPreprocessor } from '../text-preprocessor';
-import { createEmbeddingService } from '../embedding-service';
+import { getEmbeddingClient, EmbeddingClient } from '../embedding-client';
 import type { SlackService, SlackChannel } from '../slack-client';
 import type { DatabaseService } from '../database';
 import type { TextPreprocessor } from '../text-preprocessor';
-import type { EmbeddingService } from '../embedding-service';
 import type { SyncProgressCallback } from '../local-search';
 import { getDeviceId, getSelectedSlackChannels } from '../settings-store';
 
@@ -55,14 +54,14 @@ export class SlackSyncAdapter {
   private slackService: SlackService;
   private dbService: DatabaseService;
   private preprocessor: TextPreprocessor;
-  private embeddingService: EmbeddingService;
+  private embeddingClient: EmbeddingClient;
   private deviceId: string;
 
   constructor() {
     this.slackService = createSlackService();
     this.dbService = getDatabaseService();
     this.preprocessor = createTextPreprocessor();
-    this.embeddingService = createEmbeddingService();
+    this.embeddingClient = getEmbeddingClient();
     this.deviceId = getDeviceId();
   }
 
@@ -401,7 +400,7 @@ export class SlackSyncAdapter {
       return;
     }
 
-    const embedding = await this.embeddingService.embed(preprocessedText);
+    const embedding = await this.embeddingClient.embedSingle(preprocessedText);
 
     const title = `#${channel.name} - ${message.username || message.user}`;
     const metadata = {
@@ -436,7 +435,7 @@ export class SlackSyncAdapter {
         title,
         preprocessedText,
         contentHash,
-        JSON.stringify(embedding),
+        JSON.stringify(Array.from(embedding)),
         JSON.stringify(metadata),
         this.timestampToDate(message.ts),
         this.timestampToDate(message.ts),
@@ -476,7 +475,7 @@ export class SlackSyncAdapter {
       return;
     }
 
-    const embedding = await this.embeddingService.embed(preprocessedText);
+    const embedding = await this.embeddingClient.embedSingle(preprocessedText);
 
     const title = `Reply in #${channel.name}`;
     const metadata = {
@@ -512,7 +511,7 @@ export class SlackSyncAdapter {
         title,
         preprocessedText,
         contentHash,
-        JSON.stringify(embedding),
+        JSON.stringify(Array.from(embedding)),
         JSON.stringify(metadata),
         this.timestampToDate(reply.ts),
         this.timestampToDate(reply.ts),

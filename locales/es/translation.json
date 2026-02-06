@@ -9,6 +9,7 @@
     "close": "Cerrar",
     "delete": "Eliminar",
     "validate": "Validar",
+    "validateAndSave": "Validar y guardar",
     "reset": "Restablecer",
     "connect": "Conectar",
     "disconnect": "Desconectar",
@@ -114,7 +115,8 @@
     "languageHint": "Seleccionar idioma de la aplicación",
     "integrations": "Integraciones",
     "integrationHint": "Conecta servicios para buscar y adjuntar contenido relacionado al crear incidencias",
-    "changeWorkspace": "Cambiar espacio de trabajo"
+    "changeWorkspace": "Cambiar espacio de trabajo",
+    "changeAccount": "Cambiar cuenta"
   },
   "hotkey": {
     "title": "Atajo de captura",
@@ -143,7 +145,18 @@
     "connecting": "Conectando...",
     "disconnecting": "Desconectando...",
     "connectFailed": "No se pudo iniciar el flujo OAuth",
-    "disconnectFailed": "Error al desconectar"
+    "disconnectFailed": "Error al desconectar",
+    "channels": "Canales",
+    "selectChannels": "Seleccionar canales",
+    "searchChannels": "Buscar canales...",
+    "selectAll": "Seleccionar todos",
+    "deselectAll": "Deseleccionar todos",
+    "channelsSelected": "{{selected}} de {{total}} canales seleccionados",
+    "noChannels": "No se encontraron canales",
+    "save": "Guardar",
+    "skip": "Omitir",
+    "editChannels": "Editar",
+    "saveAndSync": "Guardar y sincronizar"
   },
   "notion": {
     "title": "Notion",

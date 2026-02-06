@@ -9,6 +9,7 @@
     "close": "Fermer",
     "delete": "Supprimer",
     "validate": "Valider",
+    "validateAndSave": "Valider et enregistrer",
     "reset": "Réinitialiser",
     "connect": "Connecter",
     "disconnect": "Déconnecter",
@@ -114,7 +115,8 @@
     "languageHint": "Sélectionner la langue d'affichage de l'application",
     "integrations": "Intégrations",
     "integrationHint": "Connectez des services pour rechercher et joindre du contenu connexe lors de la création de problèmes",
-    "changeWorkspace": "Changer d'espace de travail"
+    "changeWorkspace": "Changer d'espace de travail",
+    "changeAccount": "Changer de compte"
   },
   "hotkey": {
     "title": "Raccourci de capture",
@@ -143,7 +145,18 @@
     "connecting": "Connexion...",
     "disconnecting": "Déconnexion...",
     "connectFailed": "Impossible de démarrer le flux OAuth",
-    "disconnectFailed": "Échec de la déconnexion"
+    "disconnectFailed": "Échec de la déconnexion",
+    "channels": "Chaînes",
+    "selectChannels": "Sélectionner des chaînes",
+    "searchChannels": "Rechercher des chaînes...",
+    "selectAll": "Tout sélectionner",
+    "deselectAll": "Tout désélectionner",
+    "channelsSelected": "{{selected}} sur {{total}} chaînes sélectionnées",
+    "noChannels": "Aucune chaîne trouvée",
+    "save": "Enregistrer",
+    "skip": "Ignorer",
+    "editChannels": "Modifier",
+    "saveAndSync": "Enregistrer et synchroniser"
   },
   "notion": {
     "title": "Notion",

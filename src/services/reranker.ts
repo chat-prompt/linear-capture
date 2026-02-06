@@ -1,103 +1,56 @@
-/**
- * Reranker Service - Worker 프록시를 통한 Cohere Rerank 호출
- * 
- * Bi-encoder(임베딩) 결과를 Cross-encoder(Cohere)로 재정렬하여
- * 검색 정확도를 20~33% 향상시킵니다.
- */
-
-import { logger } from './utils/logger';
-
 const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
-
-export interface RerankDocument {
-  id: string;
-  text: string;
-}
 
 export interface RerankResult {
   id: string;
   relevanceScore: number;
-  index: number;
-}
-
-interface WorkerRerankResponse {
-  success: boolean;
-  results?: RerankResult[];
-  error?: string;
 }
 
 /**
- * Worker를 통해 Cohere Rerank API 호출
- * 
- * @param query - 검색 쿼리
- * @param documents - 재정렬할 문서 목록 (id + text)
- * @param topN - 반환할 상위 N개 (기본: 20)
- * @returns 재정렬된 결과 (실패 시 원본 순서 반환)
+ * Rerank documents via Worker /rerank endpoint (Cohere).
+ * Falls back to original order on any failure.
  */
 export async function rerank(
   query: string,
-  documents: RerankDocument[],
+  documents: Array<{ id: string; text: string }>,
   topN = 20
 ): Promise<RerankResult[]> {
-  if (!query || documents.length === 0) {
-    logger.warn('[Reranker] Empty query or documents, returning original order');
-    return documents.map((doc, i) => ({
-      id: doc.id,
-      relevanceScore: 1 - (i / documents.length),
-      index: i,
-    }));
-  }
+  if (!documents.length) return [];
 
-  if (documents.length === 1) {
-    return [{ id: documents[0].id, relevanceScore: 1, index: 0 }];
+  if (!query.trim()) {
+    console.warn('[Reranker] Empty query, returning original order');
+    return gracefulFallback(documents);
   }
-
-  // 문서가 topN보다 적으면 전체 반환
-  const effectiveTopN = Math.min(topN, documents.length);
 
   try {
-    logger.warn(`[Reranker] Reranking ${documents.length} documents for query: "${query.slice(0, 50)}..."`);
-    const startTime = Date.now();
+    console.log(`[Reranker] Reranking ${documents.length} documents`);
 
     const response = await fetch(`${WORKER_URL}/rerank`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query,
-        documents,
-        topN: effectiveTopN,
-      }),
+      body: JSON.stringify({ query, documents, topN }),
     });
 
-    const elapsed = Date.now() - startTime;
-
     if (!response.ok) {
-      logger.warn(`[Reranker] Worker returned ${response.status}, using original order`);
-      return fallbackOrder(documents);
+      const errorText = await response.text();
+      console.warn(
+        `[Reranker] Worker error (${response.status}): ${errorText}`
+      );
+      return gracefulFallback(documents);
     }
 
-    const data: WorkerRerankResponse = await response.json();
+    const data = (await response.json()) as { results: RerankResult[] };
+    console.log(`[Reranker] Success: ${data.results.length} results`);
 
-    if (!data.success || !data.results) {
-      logger.warn(`[Reranker] Worker error: ${data.error}, using original order`);
-      return fallbackOrder(documents);
-    }
-
-    logger.warn(`[Reranker] Reranked ${data.results.length} documents in ${elapsed}ms`);
     return data.results;
   } catch (error) {
-    logger.error('[Reranker] Failed:', error instanceof Error ? error.message : 'Unknown error');
-    return fallbackOrder(documents);
+    console.error('[Reranker] Failed:', error);
+    return gracefulFallback(documents);
   }
 }
 
-/**
- * Graceful degradation: 원본 순서 기반 fallback 점수 반환
- */
-function fallbackOrder(documents: RerankDocument[]): RerankResult[] {
-  return documents.map((doc, i) => ({
-    id: doc.id,
-    relevanceScore: 1 - (i / documents.length),
-    index: i,
-  }));
+function gracefulFallback(
+  documents: Array<{ id: string; text: string }>
+): RerankResult[] {
+  console.log('[Reranker] Using fallback (preserving original scores)');
+  return [];
 }

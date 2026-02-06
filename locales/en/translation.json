@@ -9,6 +9,7 @@
     "close": "Close",
     "delete": "Delete",
     "validate": "Validate",
+    "validateAndSave": "Validate & Save",
     "reset": "Reset",
     "connect": "Connect",
     "disconnect": "Disconnect",
@@ -114,7 +115,8 @@
     "languageHint": "Select app display language",
     "integrations": "Integrations",
     "integrationHint": "Connect services to search and attach related content when creating issues",
-    "changeWorkspace": "Change Workspace"
+    "changeWorkspace": "Change Workspace",
+    "changeAccount": "Change Account"
   },
   "hotkey": {
     "title": "Capture Hotkey",
@@ -143,7 +145,18 @@
     "connecting": "Connecting...",
     "disconnecting": "Disconnecting...",
     "connectFailed": "Failed to start OAuth flow",
-    "disconnectFailed": "Failed to disconnect"
+    "disconnectFailed": "Failed to disconnect",
+    "channels": "Channels",
+    "selectChannels": "Select Channels",
+    "searchChannels": "Search channels...",
+    "selectAll": "Select All",
+    "deselectAll": "Deselect All",
+    "channelsSelected": "{{selected}} of {{total}} channels selected",
+    "noChannels": "No channels found",
+    "save": "Save",
+    "skip": "Skip",
+    "editChannels": "Edit channels",
+    "saveAndSync": "Save & Sync"
   },
   "notion": {
     "title": "Notion",

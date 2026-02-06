@@ -1,72 +1,83 @@
 /**
- * Recency Boost - 최신 문서에 가중치 부여
- * 
- * 지수 감쇠 함수를 사용하여 최신 문서에 높은 점수를 부여합니다.
- * 14일 반감기: 14일 전 문서 ~50%, 28일 전 ~25%
+ * Source-specific Recency Boost with exponential decay
+ *
+ * Each source has a different half-life and weight:
+ * - Slack: 7-day half-life, 60% recency weight (conversations age fast)
+ * - Gmail: 14-day half-life, 50% recency weight
+ * - Linear: 14-day half-life, 40% recency weight (issues stay relevant longer)
+ * - Notion: 30-day half-life, 20% recency weight (docs are evergreen)
+ *
+ * Formula: recencyScore = e^(-lambda * ageDays)  where lambda = ln(2) / halfLife
+ * Final:   boostedScore = (1 - weight) * relevanceScore + weight * recencyScore
  */
 
-// 반감기 (일)
-const HALF_LIFE_DAYS = 14;
+export interface SourceRecencyConfig {
+  halfLifeDays: number;
+  weight: number; // 0-1 (recency proportion)
+}
 
-// Recency 가중치 비율 (30% recency, 70% relevance)
-const RECENCY_WEIGHT = 0.3;
+export const SOURCE_RECENCY_CONFIGS: Record<string, SourceRecencyConfig> = {
+  slack: { halfLifeDays: 7, weight: 0.6 },
+  linear: { halfLifeDays: 14, weight: 0.4 },
+  notion: { halfLifeDays: 30, weight: 0.2 },
+  gmail: { halfLifeDays: 14, weight: 0.5 },
+};
+
+const DEFAULT_CONFIG: SourceRecencyConfig = { halfLifeDays: 14, weight: 0.3 };
 
 /**
- * 지수 감쇠 함수로 recency 점수 계산
- * 
- * score = e^(-λt)
- * λ = ln(2) / half_life
- * 
- * @param timestamp - 문서 타임스탬프 (밀리초)
- * @returns 0~1 범위의 recency 점수
+ * Exponential decay: score = e^(-lambda * t)
+ * lambda = ln(2) / half_life
+ *
+ * @param timestamp - Document creation time (Unix timestamp ms)
+ * @param source - Source type ('slack' | 'notion' | 'linear' | 'gmail')
+ * @returns 0-1 recency score
  */
-export function calculateRecencyBoost(timestamp?: number): number {
-  if (!timestamp) {
-    return 0.5; // 타임스탬프 없으면 중간값
-  }
+export function calculateRecencyScore(
+  timestamp: number | undefined,
+  source: string
+): number {
+  if (!timestamp) return 0.5; // No timestamp → neutral
 
+  const config = SOURCE_RECENCY_CONFIGS[source] || DEFAULT_CONFIG;
   const ageInDays = (Date.now() - timestamp) / (1000 * 60 * 60 * 24);
-  
-  // 미래 타임스탬프는 최대 점수
-  if (ageInDays < 0) {
-    return 1.0;
-  }
+  const lambda = Math.LN2 / config.halfLifeDays;
 
-  const lambda = Math.LN2 / HALF_LIFE_DAYS;
-  return Math.exp(-lambda * ageInDays);
+  return Math.exp(-lambda * Math.max(0, ageInDays));
 }
 
 /**
- * 검색 결과에 Recency Boost 적용
- * 
- * 최종 점수 = (1 - RECENCY_WEIGHT) * relevance + RECENCY_WEIGHT * recency
- * 
- * @param results - score와 timestamp가 있는 결과 배열
- * @returns Recency boost가 적용된 결과 배열
+ * Apply recency boost to search results.
+ * finalScore = (1 - weight) * relevanceScore + weight * recencyScore
  */
-export function applyRecencyBoost<T extends { score: number; timestamp?: number }>(
-  results: T[]
-): T[] {
-  return results.map(result => {
-    const recencyScore = calculateRecencyBoost(result.timestamp);
-    const boostedScore = (1 - RECENCY_WEIGHT) * result.score + RECENCY_WEIGHT * recencyScore;
-    return { ...result, score: boostedScore };
+export function applyRecencyBoost<
+  T extends { score: number; timestamp?: number; source: string }
+>(results: T[]): T[] {
+  return results.map((result) => {
+    if (!result.timestamp) return result;
+
+    const config = SOURCE_RECENCY_CONFIGS[result.source] || DEFAULT_CONFIG;
+    const recencyScore = calculateRecencyScore(result.timestamp, result.source);
+    const boostedScore =
+      (1 - config.weight) * result.score + config.weight * recencyScore;
+
+    return { ...result, score: boostedScore } as T;
   });
 }
 
-/**
- * Recency 점수만 계산 (디버깅/테스트용)
- */
-export function getRecencyScore(timestamp?: number): {
-  recencyScore: number;
-  ageInDays: number;
-} {
-  if (!timestamp) {
-    return { recencyScore: 0.5, ageInDays: -1 };
-  }
+export function getRecencyDecayPreview(
+  source: string
+): Record<string, number> {
+  const now = Date.now();
+  const days = [0, 1, 7, 14, 30, 60, 90];
 
-  const ageInDays = (Date.now() - timestamp) / (1000 * 60 * 60 * 24);
-  const recencyScore = calculateRecencyBoost(timestamp);
-
-  return { recencyScore, ageInDays };
+  return days.reduce(
+    (acc, d) => {
+      const timestamp = now - d * 24 * 60 * 60 * 1000;
+      acc[`${d}d`] =
+        Math.round(calculateRecencyScore(timestamp, source) * 100) / 100;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
 }

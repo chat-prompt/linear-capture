@@ -1,113 +1,192 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { calculateRecencyBoost, applyRecencyBoost, getRecencyScore } from '../recency-boost';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import {
+  calculateRecencyScore,
+  applyRecencyBoost,
+  getRecencyDecayPreview,
+  SOURCE_RECENCY_CONFIGS,
+} from '../recency-boost';
 
 describe('recency-boost', () => {
-  const REAL_NOW = Date.now();
-  const DAY_MS = 24 * 60 * 60 * 1000;
-
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(REAL_NOW);
-  });
-
   afterEach(() => {
-    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
-  describe('calculateRecencyBoost', () => {
-    it('returns 0.5 for undefined timestamp', () => {
-      expect(calculateRecencyBoost(undefined)).toBe(0.5);
-    });
-
+  describe('calculateRecencyScore', () => {
     it('returns ~1.0 for current timestamp', () => {
-      const score = calculateRecencyBoost(REAL_NOW);
-      expect(score).toBeCloseTo(1.0, 2);
+      expect(calculateRecencyScore(Date.now(), 'slack')).toBeCloseTo(1.0, 1);
     });
 
-    it('returns ~0.5 for 14-day-old document (half-life)', () => {
-      const fourteenDaysAgo = REAL_NOW - (14 * DAY_MS);
-      const score = calculateRecencyBoost(fourteenDaysAgo);
-      expect(score).toBeCloseTo(0.5, 1);
+    it('returns ~0.5 for Slack at 7 days', () => {
+      const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      expect(calculateRecencyScore(sevenDaysAgo, 'slack')).toBeCloseTo(0.5, 1);
     });
 
-    it('returns ~0.25 for 28-day-old document (2x half-life)', () => {
-      const twentyEightDaysAgo = REAL_NOW - (28 * DAY_MS);
-      const score = calculateRecencyBoost(twentyEightDaysAgo);
-      expect(score).toBeCloseTo(0.25, 1);
-    });
-
-    it('returns 1.0 for future timestamp', () => {
-      const future = REAL_NOW + DAY_MS;
-      const score = calculateRecencyBoost(future);
-      expect(score).toBe(1.0);
-    });
-
-    it('decays exponentially over time', () => {
-      const scores = [0, 7, 14, 21, 28].map(days => 
-        calculateRecencyBoost(REAL_NOW - (days * DAY_MS))
+    it('returns ~0.5 for Notion at 30 days', () => {
+      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      expect(calculateRecencyScore(thirtyDaysAgo, 'notion')).toBeCloseTo(
+        0.5,
+        1
       );
-      
-      for (let i = 1; i < scores.length; i++) {
-        expect(scores[i]).toBeLessThan(scores[i - 1]);
-      }
+    });
+
+    it('returns ~0.5 for Gmail at 14 days', () => {
+      const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+      expect(calculateRecencyScore(fourteenDaysAgo, 'gmail')).toBeCloseTo(
+        0.5,
+        1
+      );
+    });
+
+    it('returns ~0.5 for Linear at 14 days', () => {
+      const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+      expect(calculateRecencyScore(fourteenDaysAgo, 'linear')).toBeCloseTo(
+        0.5,
+        1
+      );
+    });
+
+    it('Slack decays faster than Notion', () => {
+      const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+      const slackScore = calculateRecencyScore(fourteenDaysAgo, 'slack');
+      const notionScore = calculateRecencyScore(fourteenDaysAgo, 'notion');
+
+      expect(slackScore).toBeLessThan(notionScore);
+      expect(slackScore).toBeCloseTo(0.25, 1); // Slack 14d = ~25%
+      expect(notionScore).toBeCloseTo(0.72, 1); // Notion 14d = ~72%
+    });
+
+    it('returns 0.5 for undefined timestamp', () => {
+      expect(calculateRecencyScore(undefined, 'slack')).toBe(0.5);
+    });
+
+    it('uses default config for unknown source', () => {
+      // Default: halfLifeDays=14, so 14 days → ~0.5
+      const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+      expect(calculateRecencyScore(fourteenDaysAgo, 'unknown')).toBeCloseTo(
+        0.5,
+        1
+      );
+    });
+
+    it('returns 1.0 for future timestamps (clamped at 0 age)', () => {
+      const future = Date.now() + 1000 * 60 * 60 * 24;
+      expect(calculateRecencyScore(future, 'slack')).toBeCloseTo(1.0, 1);
     });
   });
 
   describe('applyRecencyBoost', () => {
-    it('boosts recent documents', () => {
+    it('applies source-specific weights for recent docs', () => {
+      const now = Date.now();
       const results = [
-        { id: '1', score: 0.8, timestamp: REAL_NOW },
-        { id: '2', score: 0.8, timestamp: REAL_NOW - (14 * DAY_MS) },
+        { id: '1', score: 0.8, timestamp: now, source: 'slack' },
+        { id: '2', score: 0.8, timestamp: now, source: 'notion' },
       ];
 
       const boosted = applyRecencyBoost(results);
 
-      expect(boosted[0].score).toBeGreaterThan(boosted[1].score);
+      // Slack: (1-0.6)*0.8 + 0.6*~1.0 = 0.32 + 0.6 = 0.92
+      expect(boosted[0].score).toBeCloseTo(0.92, 1);
+      // Notion: (1-0.2)*0.8 + 0.2*~1.0 = 0.64 + 0.2 = 0.84
+      expect(boosted[1].score).toBeCloseTo(0.84, 1);
     });
 
-    it('preserves original properties', () => {
+    it('preserves original fields', () => {
       const results = [
-        { id: 'test', score: 0.9, timestamp: REAL_NOW, extra: 'data' },
+        {
+          id: '1',
+          score: 0.8,
+          timestamp: Date.now(),
+          source: 'slack',
+          content: 'test content',
+          title: 'Test',
+        },
       ];
 
       const boosted = applyRecencyBoost(results);
-
-      expect(boosted[0].id).toBe('test');
-      expect(boosted[0].extra).toBe('data');
+      expect(boosted[0].id).toBe('1');
+      expect(boosted[0].content).toBe('test content');
+      expect(boosted[0].title).toBe('Test');
+      expect(boosted[0].source).toBe('slack');
     });
 
-    it('applies 30% recency weight', () => {
-      const results = [
-        { id: '1', score: 1.0, timestamp: REAL_NOW },
-      ];
-
-      const boosted = applyRecencyBoost(results);
-      // 0.7 * 1.0 + 0.3 * 1.0 = 1.0
-      expect(boosted[0].score).toBeCloseTo(1.0, 2);
+    it('handles empty array', () => {
+      expect(applyRecencyBoost([])).toEqual([]);
     });
 
-    it('handles missing timestamp with middle score', () => {
+    it('old Slack doc gets lower boost than old Notion doc', () => {
+      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
       const results = [
-        { id: '1', score: 1.0 },
+        { id: '1', score: 0.8, timestamp: thirtyDaysAgo, source: 'slack' },
+        { id: '2', score: 0.8, timestamp: thirtyDaysAgo, source: 'notion' },
       ];
 
       const boosted = applyRecencyBoost(results);
-      // 0.7 * 1.0 + 0.3 * 0.5 = 0.85
-      expect(boosted[0].score).toBeCloseTo(0.85, 2);
+
+      // Slack 30d: recency ~0.06, final = 0.4*0.8 + 0.6*0.06 = 0.356
+      // Notion 30d: recency ~0.50, final = 0.8*0.8 + 0.2*0.50 = 0.74
+      expect(boosted[0].score).toBeLessThan(boosted[1].score);
+    });
+
+    it('skips recency boost when timestamp is missing', () => {
+      const results = [
+        { id: '1', score: 0.8, source: 'slack' },
+        { id: '2', score: 0.8, timestamp: Date.now(), source: 'slack' },
+      ];
+
+      const boosted = applyRecencyBoost(results);
+
+      expect(boosted[0].score).toBe(0.8);
+      expect(boosted[1].score).toBeCloseTo(0.92, 1);
     });
   });
 
-  describe('getRecencyScore', () => {
-    it('returns ageInDays -1 for undefined timestamp', () => {
-      const result = getRecencyScore(undefined);
-      expect(result.ageInDays).toBe(-1);
-      expect(result.recencyScore).toBe(0.5);
+  describe('getRecencyDecayPreview', () => {
+    it('returns expected decay values for Slack', () => {
+      const preview = getRecencyDecayPreview('slack');
+      expect(preview['0d']).toBeCloseTo(1.0, 1);
+      expect(preview['7d']).toBeCloseTo(0.5, 1);
+      expect(preview['14d']).toBeCloseTo(0.25, 1);
     });
 
-    it('returns correct age in days', () => {
-      const sevenDaysAgo = REAL_NOW - (7 * DAY_MS);
-      const result = getRecencyScore(sevenDaysAgo);
-      expect(result.ageInDays).toBeCloseTo(7, 0);
+    it('returns expected decay values for Notion', () => {
+      const preview = getRecencyDecayPreview('notion');
+      expect(preview['0d']).toBeCloseTo(1.0, 1);
+      expect(preview['30d']).toBeCloseTo(0.5, 1);
+    });
+
+    it('returns all expected day keys', () => {
+      const preview = getRecencyDecayPreview('slack');
+      expect(Object.keys(preview)).toEqual([
+        '0d',
+        '1d',
+        '7d',
+        '14d',
+        '30d',
+        '60d',
+        '90d',
+      ]);
+    });
+  });
+
+  describe('SOURCE_RECENCY_CONFIGS', () => {
+    it('has configs for all expected sources', () => {
+      expect(SOURCE_RECENCY_CONFIGS).toHaveProperty('slack');
+      expect(SOURCE_RECENCY_CONFIGS).toHaveProperty('linear');
+      expect(SOURCE_RECENCY_CONFIGS).toHaveProperty('notion');
+      expect(SOURCE_RECENCY_CONFIGS).toHaveProperty('gmail');
+    });
+
+    it('all weights are between 0 and 1', () => {
+      for (const config of Object.values(SOURCE_RECENCY_CONFIGS)) {
+        expect(config.weight).toBeGreaterThanOrEqual(0);
+        expect(config.weight).toBeLessThanOrEqual(1);
+      }
+    });
+
+    it('all halfLifeDays are positive', () => {
+      for (const config of Object.values(SOURCE_RECENCY_CONFIGS)) {
+        expect(config.halfLifeDays).toBeGreaterThan(0);
+      }
     });
   });
 });

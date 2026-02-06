@@ -12,11 +12,10 @@ import * as crypto from 'crypto';
 import { getDatabaseService } from '../database';
 import { createGmailService } from '../gmail-client';
 import { createTextPreprocessor } from '../text-preprocessor';
-import { createEmbeddingService } from '../embedding-service';
+import { getEmbeddingClient, EmbeddingClient } from '../embedding-client';
 import type { GmailService, GmailMessage, GmailSearchResult } from '../gmail-client';
 import type { DatabaseService } from '../database';
 import type { TextPreprocessor } from '../text-preprocessor';
-import type { EmbeddingService } from '../embedding-service';
 import type { SyncProgressCallback } from '../local-search';
 
 const BATCH_SIZE = 100;
@@ -118,13 +117,13 @@ export class GmailSyncAdapter {
   private gmailService: GmailService;
   private dbService: DatabaseService;
   private preprocessor: TextPreprocessor;
-  private embeddingService: EmbeddingService;
+  private embeddingClient: EmbeddingClient;
 
   constructor() {
     this.gmailService = createGmailService();
     this.dbService = getDatabaseService();
     this.preprocessor = createTextPreprocessor();
-    this.embeddingService = createEmbeddingService();
+    this.embeddingClient = getEmbeddingClient();
   }
 
   async sync(): Promise<SyncResult> {
@@ -365,7 +364,7 @@ export class GmailSyncAdapter {
     // Step 3: Embedding generation
     console.log(`[GmailSync] Generating embeddings for ${emailsToProcess.length} emails in batch`);
     const texts = emailsToProcess.map(e => e.text);
-    const embeddings = await this.embeddingService.embedBatch(texts);
+    const embeddings = await this.embeddingClient.embed(texts);
 
     // Step 4: Parallel saves
     const savePromises = emailsToProcess.map(async ({ email, text, hash }, i) => {
@@ -390,7 +389,7 @@ export class GmailSyncAdapter {
     email: GmailMessage,
     preprocessedText: string,
     contentHash: string,
-    embedding: number[]
+    embedding: Float32Array
   ): Promise<void> {
     const db = this.dbService.getDb();
     const metadata = {
@@ -424,7 +423,7 @@ export class GmailSyncAdapter {
         email.subject,
         preprocessedText,
         contentHash,
-        JSON.stringify(embedding),
+        JSON.stringify(Array.from(embedding)),
         JSON.stringify(metadata),
         emailDate,
         emailDate,
@@ -453,7 +452,7 @@ export class GmailSyncAdapter {
       return;
     }
 
-    const embedding = await this.embeddingService.embed(preprocessedText);
+    const embedding = await this.embeddingClient.embedSingle(preprocessedText);
 
     const metadata = {
       threadId: email.threadId,
@@ -486,7 +485,7 @@ export class GmailSyncAdapter {
         email.subject,
         preprocessedText,
         contentHash,
-        JSON.stringify(embedding),
+        JSON.stringify(Array.from(embedding)),
         JSON.stringify(metadata),
         emailDate,
         emailDate,

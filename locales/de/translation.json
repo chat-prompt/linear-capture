@@ -9,6 +9,7 @@
     "close": "Schließen",
     "delete": "Löschen",
     "validate": "Überprüfen",
+    "validateAndSave": "Überprüfen & Speichern",
     "reset": "Zurücksetzen",
     "connect": "Verbinden",
     "disconnect": "Trennen",
@@ -114,7 +115,8 @@
     "languageHint": "App-Anzeigesprache auswählen",
     "integrations": "Integrationen",
     "integrationHint": "Verbinde Dienste, um verwandte Inhalte bei der Erstellung von Vorgängen zu suchen und anzuhängen",
-    "changeWorkspace": "Arbeitsbereich wechseln"
+    "changeWorkspace": "Arbeitsbereich wechseln",
+    "changeAccount": "Konto wechseln"
   },
   "hotkey": {
     "title": "Erfassungs-Tastenkürzel",
@@ -143,7 +145,18 @@
     "connecting": "Verbinden...",
     "disconnecting": "Trennen...",
     "connectFailed": "OAuth-Flow konnte nicht gestartet werden",
-    "disconnectFailed": "Trennen fehlgeschlagen"
+    "disconnectFailed": "Trennen fehlgeschlagen",
+    "channels": "Kanäle",
+    "selectChannels": "Kanäle auswählen",
+    "searchChannels": "Kanäle suchen...",
+    "selectAll": "Alle auswählen",
+    "deselectAll": "Alle abwählen",
+    "channelsSelected": "{{selected}} von {{total}} Kanälen ausgewählt",
+    "noChannels": "Keine Kanäle gefunden",
+    "save": "Speichern",
+    "skip": "Überspringen",
+    "editChannels": "Bearbeiten",
+    "saveAndSync": "Speichern & Synchronisieren"
   },
   "notion": {
     "title": "Notion",

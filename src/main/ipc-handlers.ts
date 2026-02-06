@@ -19,8 +19,6 @@ import {
   getLanguage,
   setLanguage,
   getSupportedLanguages,
-  getOpenaiApiKey,
-  setOpenaiApiKey,
   getSelectedSlackChannels,
   setSelectedSlackChannels,
   UserInfo as SettingsUserInfo,
@@ -783,15 +781,6 @@ export function registerIpcHandlers(): void {
       debug.push(`ERROR: ${String(error)}`);
       return { success: false, error: String(error), results: [], _debug: debug };
     }
-  });
-
-  ipcMain.handle('openai:get-key', () => {
-    return getOpenaiApiKey();
-  });
-
-  ipcMain.handle('openai:set-key', (_event, key: string) => {
-    setOpenaiApiKey(key);
-    return { success: true };
   });
 
   ipcMain.handle('sync:get-slack-channels', () => {

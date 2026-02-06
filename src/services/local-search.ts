@@ -11,14 +11,14 @@
 
 import type { ContextItem, SearchResult } from '../types/context-search';
 import { getDatabaseService } from './database';
-import { createEmbeddingService, EmbeddingService } from './embedding-service';
+import { getEmbeddingClient, EmbeddingClient } from './embedding-client';
 import { TextPreprocessor } from './text-preprocessor';
-import { getSelectedSlackChannels, getOpenaiApiKey } from './settings-store';
+import { getSelectedSlackChannels } from './settings-store';
 import { createSlackSyncAdapter } from './sync-adapters/slack-sync';
 import { createNotionSyncAdapter } from './sync-adapters/notion-sync';
 import { createLinearSyncAdapter } from './sync-adapters/linear-sync';
 import { createGmailSyncAdapter } from './sync-adapters/gmail-sync';
-import { rerank, type RerankDocument } from './reranker';
+import { rerank } from './reranker';
 import { applyRecencyBoost } from './recency-boost';
 
 export interface SyncResult {
@@ -64,34 +64,19 @@ export interface SyncStatus {
 
 export class LocalSearchService {
   private dbService = getDatabaseService();
-  private embeddingService: EmbeddingService | null = null;
+  private embeddingClient: EmbeddingClient;
   private preprocessor = new TextPreprocessor();
 
   constructor() {
-    this.initEmbeddingService();
-  }
-
-  private initEmbeddingService(): void {
-    try {
-      const apiKey = getOpenaiApiKey();
-      if (apiKey) {
-        this.embeddingService = createEmbeddingService();
-        console.log('[LocalSearch] EmbeddingService initialized');
-      } else {
-        console.warn('[LocalSearch] OpenAI API key not set - sync disabled');
-      }
-    } catch (error) {
-      console.error('[LocalSearch] EmbeddingService init failed:', error);
-      this.embeddingService = null;
-    }
+    this.embeddingClient = getEmbeddingClient();
+    console.log('[LocalSearch] EmbeddingClient initialized (Worker-based)');
   }
 
   reinitializeEmbedding(): void {
-    this.initEmbeddingService();
   }
 
   canSync(): boolean {
-    return this.embeddingService !== null && this.isInitialized();
+    return this.isInitialized();
   }
 
   isInitialized(): boolean {
@@ -251,14 +236,9 @@ export class LocalSearchService {
       return [];
     }
 
-    if (!this.embeddingService) {
-      console.warn('[LocalSearch] EmbeddingService not available, keyword search only');
-      return this.keywordSearch(query, limit, source);
-    }
-
     try {
       const preprocessedQuery = this.preprocessor.preprocess(query);
-      const queryEmbedding = await this.embeddingService.embed(preprocessedQuery);
+      const queryEmbedding = await this.embeddingClient.embedSingle(preprocessedQuery);
 
       const [semanticResults, keywordResults] = await Promise.all([
         this.semanticSearch(queryEmbedding, RETRIEVAL_LIMIT, source),
@@ -271,13 +251,11 @@ export class LocalSearchService {
 
       const merged = this.mergeWithRRF(semanticResults, keywordResults, RRF_K);
 
-      console.warn(`[LocalSearch] RRF merged: ${merged.length} results`);
-      const reranked = await this.applyRerank(query, merged);
-      console.warn(`[LocalSearch] Reranked: ${reranked.length} results`);
+      const reranked = await this.applyRerank(query, merged.slice(0, 30));
       const boosted = applyRecencyBoost(reranked);
-      console.warn(`[LocalSearch] RecencyBoosted: ${boosted.length} results`);
+      const sorted = [...boosted].sort((a, b) => b.score - a.score);
 
-      return boosted.slice(0, limit);
+      return sorted.slice(0, limit);
     } catch (error) {
       console.error('[LocalSearch] Search failed:', error);
       return [];
@@ -285,7 +263,7 @@ export class LocalSearchService {
   }
 
   private async semanticSearch(
-    queryEmbedding: number[],
+    queryEmbedding: Float32Array,
     limit: number,
     source?: string
   ): Promise<SearchResult[]> {
@@ -297,20 +275,25 @@ export class LocalSearchService {
     const db = this.dbService.getDb();
 
     const conditions = ['embedding IS NOT NULL'];
-    const params: any[] = [JSON.stringify(queryEmbedding), limit];
+    const params: any[] = [JSON.stringify(Array.from(queryEmbedding)), limit];
 
     if (source) {
       params.push(source);
       conditions.push(`source_type = $${params.length}`);
     }
 
-    // Filter by selected Slack channels (no selection = exclude Slack)
-    const selectedChannels = getSelectedSlackChannels();
-    if (selectedChannels.length > 0) {
-      const channelIds = selectedChannels.map(ch => ch.id);
-      params.push(JSON.stringify(channelIds));
+    // Filter by selected Slack channels
+    const allChannelsSemantic = getSelectedSlackChannels();
+    const selectedIdsSemantic = allChannelsSemantic.filter(ch => ch.selected).map(ch => ch.id);
+
+    if (allChannelsSemantic.length === 0) {
+      // No config = include all Slack (opt-out model)
+    } else if (selectedIdsSemantic.length > 0) {
+      // Some selected = include only selected channels
+      params.push(JSON.stringify(selectedIdsSemantic));
       conditions.push(`(source_type != 'slack' OR metadata->>'channelId' = ANY(SELECT jsonb_array_elements_text($${params.length}::jsonb)))`);
     } else {
+      // All deselected = exclude all Slack
       conditions.push(`source_type != 'slack'`);
     }
 
@@ -368,12 +351,18 @@ export class LocalSearchService {
       conditions.push(`source_type = $${params.length}`);
     }
 
-    const selectedChannels = getSelectedSlackChannels();
-    if (selectedChannels.length > 0) {
-      const channelIds = selectedChannels.map(ch => ch.id);
-      params.push(JSON.stringify(channelIds));
+    // Filter by selected Slack channels
+    const allChannelsFts = getSelectedSlackChannels();
+    const selectedIdsFts = allChannelsFts.filter(ch => ch.selected).map(ch => ch.id);
+
+    if (allChannelsFts.length === 0) {
+      // No config = include all Slack (opt-out model)
+    } else if (selectedIdsFts.length > 0) {
+      // Some selected = include only selected channels
+      params.push(JSON.stringify(selectedIdsFts));
       conditions.push(`(source_type != 'slack' OR metadata->>'channelId' = ANY(SELECT jsonb_array_elements_text($${params.length}::jsonb)))`);
     } else {
+      // All deselected = exclude all Slack
       conditions.push(`source_type != 'slack'`);
     }
 
@@ -418,12 +407,18 @@ export class LocalSearchService {
       conditions.push(`source_type = $${params.length}`);
     }
 
-    const selectedChannels = getSelectedSlackChannels();
-    if (selectedChannels.length > 0) {
-      const channelIds = selectedChannels.map(ch => ch.id);
-      params.push(JSON.stringify(channelIds));
+    // Filter by selected Slack channels
+    const allChannelsLike = getSelectedSlackChannels();
+    const selectedIdsLike = allChannelsLike.filter(ch => ch.selected).map(ch => ch.id);
+
+    if (allChannelsLike.length === 0) {
+      // No config = include all Slack (opt-out model)
+    } else if (selectedIdsLike.length > 0) {
+      // Some selected = include only selected channels
+      params.push(JSON.stringify(selectedIdsLike));
       conditions.push(`(source_type != 'slack' OR metadata->>'channelId' = ANY(SELECT jsonb_array_elements_text($${params.length}::jsonb)))`);
     } else {
+      // All deselected = exclude all Slack
       conditions.push(`source_type != 'slack'`);
     }
 
@@ -443,6 +438,32 @@ export class LocalSearchService {
     );
 
     return result.rows.map(row => this.rowToSearchResult(row));
+  }
+
+  private async applyRerank(
+    query: string,
+    results: SearchResult[]
+  ): Promise<SearchResult[]> {
+    try {
+      const documents = results.map((r) => ({
+        id: `${r.source}:${r.id}`,
+        text: `${r.title || ''} ${r.content}`.slice(0, 1000),
+      }));
+
+      const reranked = await rerank(query, documents, documents.length);
+
+      const scoreMap = new Map(
+        reranked.map((r) => [r.id, r.relevanceScore])
+      );
+
+      return results.map((result) => ({
+        ...result,
+        score: scoreMap.get(`${result.source}:${result.id}`) ?? result.score,
+      }));
+    } catch (error) {
+      console.error('[LocalSearch] Rerank failed, using original scores:', error);
+      return results;
+    }
   }
 
   private mergeWithRRF(
@@ -486,28 +507,9 @@ export class LocalSearchService {
     return merged;
   }
 
-  private async applyRerank(query: string, results: SearchResult[]): Promise<SearchResult[]> {
-    if (results.length <= 1) {
-      return results;
-    }
-
-    const documents: RerankDocument[] = results.map(r => ({
-      id: r.id,
-      text: `${r.title || ''} ${r.content}`.trim(),
-    }));
-
-    const reranked = await rerank(query, documents, results.length);
-
-    const resultMap = new Map(results.map(r => [r.id, r]));
-    return reranked
-      .map(r => {
-        const original = resultMap.get(r.id);
-        if (!original) return null;
-        return { ...original, score: r.relevanceScore };
-      })
-      .filter((r): r is SearchResult => r !== null);
-  }
-
+  /**
+   * Convert database row to SearchResult
+   */
   private rowToSearchResult(row: DatabaseRow): SearchResult {
     return {
       id: row.source_id,
