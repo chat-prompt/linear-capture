@@ -13,11 +13,10 @@ import * as crypto from 'crypto';
 import { getDatabaseService } from '../database';
 import { createLinearServiceFromEnv } from '../linear-client';
 import { createTextPreprocessor } from '../text-preprocessor';
-import { createEmbeddingService } from '../embedding-service';
+import { getEmbeddingClient, EmbeddingClient } from '../embedding-client';
 import type { LinearService } from '../linear-client';
 import type { DatabaseService } from '../database';
 import type { TextPreprocessor } from '../text-preprocessor';
-import type { EmbeddingService } from '../embedding-service';
 import type { SyncProgressCallback } from '../local-search';
 import type { Issue, Comment } from '@linear/sdk';
 
@@ -33,13 +32,13 @@ export class LinearSyncAdapter {
   private linearService: LinearService | null;
   private dbService: DatabaseService;
   private preprocessor: TextPreprocessor;
-  private embeddingService: EmbeddingService;
+  private embeddingClient: EmbeddingClient;
 
   constructor() {
     this.linearService = createLinearServiceFromEnv();
     this.dbService = getDatabaseService();
     this.preprocessor = createTextPreprocessor();
-    this.embeddingService = createEmbeddingService();
+    this.embeddingClient = getEmbeddingClient();
   }
 
   /**
@@ -246,7 +245,7 @@ export class LinearSyncAdapter {
       return;
     }
 
-    const embedding = await this.embeddingService.embed(preprocessedText);
+    const embedding = await this.embeddingClient.embedSingle(preprocessedText);
 
     const metadata = {
       identifier: issue.identifier,
@@ -286,7 +285,7 @@ export class LinearSyncAdapter {
         `${issue.identifier}: ${issue.title}`,
         preprocessedText,
         contentHash,
-        JSON.stringify(embedding),
+        JSON.stringify(Array.from(embedding)),
         JSON.stringify(metadata),
         issue.createdAt,
         issue.updatedAt,
@@ -373,7 +372,7 @@ export class LinearSyncAdapter {
       return;
     }
 
-    const embedding = await this.embeddingService.embed(preprocessedText);
+    const embedding = await this.embeddingClient.embedSingle(preprocessedText);
 
     // Fetch user info
     const user = await comment.user;
@@ -410,7 +409,7 @@ export class LinearSyncAdapter {
         `Comment on ${issue.identifier}`,
         preprocessedText,
         contentHash,
-        JSON.stringify(embedding),
+        JSON.stringify(Array.from(embedding)),
         JSON.stringify(metadata),
         comment.createdAt,
         comment.updatedAt,

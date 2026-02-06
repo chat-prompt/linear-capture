@@ -11,9 +11,9 @@
 
 import type { ContextItem, SearchResult } from '../types/context-search';
 import { getDatabaseService } from './database';
-import { createEmbeddingService, EmbeddingService } from './embedding-service';
+import { getEmbeddingClient, EmbeddingClient } from './embedding-client';
 import { TextPreprocessor } from './text-preprocessor';
-import { getSelectedSlackChannels, getOpenaiApiKey } from './settings-store';
+import { getSelectedSlackChannels } from './settings-store';
 import { createSlackSyncAdapter } from './sync-adapters/slack-sync';
 import { createNotionSyncAdapter } from './sync-adapters/notion-sync';
 import { createLinearSyncAdapter } from './sync-adapters/linear-sync';
@@ -62,34 +62,19 @@ export interface SyncStatus {
 
 export class LocalSearchService {
   private dbService = getDatabaseService();
-  private embeddingService: EmbeddingService | null = null;
+  private embeddingClient: EmbeddingClient;
   private preprocessor = new TextPreprocessor();
 
   constructor() {
-    this.initEmbeddingService();
-  }
-
-  private initEmbeddingService(): void {
-    try {
-      const apiKey = getOpenaiApiKey();
-      if (apiKey) {
-        this.embeddingService = createEmbeddingService();
-        console.log('[LocalSearch] EmbeddingService initialized');
-      } else {
-        console.warn('[LocalSearch] OpenAI API key not set - sync disabled');
-      }
-    } catch (error) {
-      console.error('[LocalSearch] EmbeddingService init failed:', error);
-      this.embeddingService = null;
-    }
+    this.embeddingClient = getEmbeddingClient();
+    console.log('[LocalSearch] EmbeddingClient initialized (Worker-based)');
   }
 
   reinitializeEmbedding(): void {
-    this.initEmbeddingService();
   }
 
   canSync(): boolean {
-    return this.embeddingService !== null && this.isInitialized();
+    return this.isInitialized();
   }
 
   isInitialized(): boolean {
@@ -249,14 +234,9 @@ export class LocalSearchService {
       return [];
     }
 
-    if (!this.embeddingService) {
-      console.warn('[LocalSearch] EmbeddingService not available, keyword search only');
-      return this.keywordSearch(query, limit, source);
-    }
-
     try {
       const preprocessedQuery = this.preprocessor.preprocess(query);
-      const queryEmbedding = await this.embeddingService.embed(preprocessedQuery);
+      const queryEmbedding = await this.embeddingClient.embedSingle(preprocessedQuery);
 
       const [semanticResults, keywordResults] = await Promise.all([
         this.semanticSearch(queryEmbedding, RETRIEVAL_LIMIT, source),
@@ -277,7 +257,7 @@ export class LocalSearchService {
   }
 
   private async semanticSearch(
-    queryEmbedding: number[],
+    queryEmbedding: Float32Array,
     limit: number,
     source?: string
   ): Promise<SearchResult[]> {
@@ -289,7 +269,7 @@ export class LocalSearchService {
     const db = this.dbService.getDb();
 
     const conditions = ['embedding IS NOT NULL'];
-    const params: any[] = [JSON.stringify(queryEmbedding), limit];
+    const params: any[] = [JSON.stringify(Array.from(queryEmbedding)), limit];
 
     if (source) {
       params.push(source);

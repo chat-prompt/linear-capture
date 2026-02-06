@@ -712,12 +712,6 @@
       <h2 data-i18n="settings.integrations">Integrations</h2>
       <p class="integration-hint" data-i18n="settings.integrationHint">Used for AI search to automatically find related conversations and documents when creating issues</p>
       
-      <!-- OpenAI API Key (moved here from sync-section) -->
-      <div class="sync-api-key" style="margin-bottom: 16px;">
-        <input type="password" id="openaiKeyInput" data-i18n-placeholder="sync.openaiPlaceholder" placeholder="sk-...">
-        <button id="saveOpenaiKeyBtn" data-i18n="common.save">Save</button>
-      </div>
-      
       <!-- Slack -->
       <div class="integration-row" id="slackRow" data-service="slack">
         <svg class="integration-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1550,44 +1544,11 @@
     loadGmailStatus();
 
     // ==================== Data Sync Settings ====================
-    const openaiKeyInput = document.getElementById('openaiKeyInput');
-    const saveOpenaiKeyBtn = document.getElementById('saveOpenaiKeyBtn');
     const syncLinearBtn = document.getElementById('syncLinearBtn');
     const linearRow = document.getElementById('linearRow');
     const linearDocCount = document.getElementById('linearDocCount');
     const linearLastSync = document.getElementById('linearLastSync');
     const linearStatusText = document.getElementById('linearStatusText');
-
-    async function loadOpenaiKey() {
-      try {
-        const key = await ipcRenderer.invoke('openai:get-key');
-        if (key) {
-          openaiKeyInput.value = key;
-        }
-      } catch (error) {
-        console.error('Failed to load OpenAI key:', error);
-      }
-    }
-    loadOpenaiKey();
-
-    saveOpenaiKeyBtn.addEventListener('click', async () => {
-      const key = openaiKeyInput.value.trim();
-      saveOpenaiKeyBtn.disabled = true;
-      saveOpenaiKeyBtn.textContent = await t('common.loading');
-
-      try {
-        await ipcRenderer.invoke('openai:set-key', key);
-        saveOpenaiKeyBtn.textContent = await t('settings.saved');
-        setTimeout(async () => {
-          saveOpenaiKeyBtn.textContent = await t('common.save');
-          saveOpenaiKeyBtn.disabled = false;
-        }, 1500);
-      } catch (error) {
-        console.error('Failed to save OpenAI key:', error);
-        saveOpenaiKeyBtn.textContent = await t('common.save');
-        saveOpenaiKeyBtn.disabled = false;
-      }
-    });
 
     function formatLastSync(timestamp) {
       if (!timestamp) return null;
