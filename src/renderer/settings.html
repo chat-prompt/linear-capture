@@ -2099,20 +2099,24 @@
         if (slackStatus.connected) {
           const src = syncStatus?.sources?.slack;
           slackDocCount.textContent = formatDocCount(src?.documentCount);
-          const lastSync = src?.lastSync;
-          if (lastSync) {
-            slackLastSync.textContent = formatLastSync(lastSync);
-            slackLastSync.style.display = '';
+          if (!activeSyncs.has('slack')) {
+            const lastSync = src?.lastSync;
+            if (lastSync) {
+              slackLastSync.textContent = formatLastSync(lastSync);
+              slackLastSync.style.display = '';
+            }
           }
         }
 
         if (notionStatus.connected) {
           const src = syncStatus?.sources?.notion;
           notionDocCount.textContent = formatDocCount(src?.documentCount);
-          const lastSync = src?.lastSync;
-          if (lastSync) {
-            notionLastSync.textContent = formatLastSync(lastSync);
-            notionLastSync.style.display = '';
+          if (!activeSyncs.has('notion')) {
+            const lastSync = src?.lastSync;
+            if (lastSync) {
+              notionLastSync.textContent = formatLastSync(lastSync);
+              notionLastSync.style.display = '';
+            }
           }
         }
 
@@ -2122,10 +2126,12 @@
           linearStatusText.style.display = 'none';
           const src = syncStatus?.sources?.linear;
           linearDocCount.textContent = formatDocCount(src?.documentCount);
-          const lastSync = src?.lastSync;
-          if (lastSync) {
-            linearLastSync.textContent = formatLastSync(lastSync);
-            linearLastSync.style.display = '';
+          if (!activeSyncs.has('linear')) {
+            const lastSync = src?.lastSync;
+            if (lastSync) {
+              linearLastSync.textContent = formatLastSync(lastSync);
+              linearLastSync.style.display = '';
+            }
           }
         } else {
           syncLinearBtn.disabled = true;
@@ -2139,10 +2145,12 @@
         if (gmailStatus.connected) {
           const src = syncStatus?.sources?.gmail;
           gmailDocCount.textContent = formatDocCount(src?.documentCount);
-          const lastSync = src?.lastSync;
-          if (lastSync) {
-            gmailLastSync.textContent = formatLastSync(lastSync);
-            gmailLastSync.style.display = '';
+          if (!activeSyncs.has('gmail')) {
+            const lastSync = src?.lastSync;
+            if (lastSync) {
+              gmailLastSync.textContent = formatLastSync(lastSync);
+              gmailLastSync.style.display = '';
+            }
           }
         }
       } catch (error) {
@@ -2205,7 +2213,9 @@
       if (progress.phase === 'complete') return;
 
       if (progress.total > 0) {
-        lastSyncEl.textContent = `(${progress.current}/${progress.total}) Syncing...`;
+        lastSyncEl.textContent = `(${progress.total} emails) Syncing...`;
+      } else if (progress.current > 0) {
+        lastSyncEl.textContent = `(${progress.current} emails) Syncing...`;
       } else {
         lastSyncEl.textContent = 'Discovering...';
       }
