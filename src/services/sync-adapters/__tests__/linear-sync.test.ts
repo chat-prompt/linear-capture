@@ -52,6 +52,14 @@ vi.mock('../../embedding-client', () => ({
 
 import { LinearSyncAdapter } from '../linear-sync';
 
+function createMockConnection(nodes: any[]) {
+  return {
+    nodes,
+    pageInfo: { hasNextPage: false, hasPreviousPage: false },
+    fetchNext: vi.fn(),
+  };
+}
+
 function createMockIssue(id: string, identifier: string, updatedAt: Date) {
   return {
     id,
@@ -91,7 +99,7 @@ describe('LinearSyncAdapter', () => {
         createMockIssue(`issue-${i}`, `TEST-${i}`, new Date('2024-01-15'))
       );
 
-      mockIssues.mockResolvedValue({ nodes: issues });
+      mockIssues.mockResolvedValue(createMockConnection(issues));
 
       const result = await adapter.sync();
 
@@ -101,7 +109,7 @@ describe('LinearSyncAdapter', () => {
     });
 
     it('should handle empty issue list', async () => {
-      mockIssues.mockResolvedValue({ nodes: [] });
+      mockIssues.mockResolvedValue(createMockConnection([]));
 
       const result = await adapter.sync();
 
@@ -114,7 +122,7 @@ describe('LinearSyncAdapter', () => {
   describe('parallel relation loading', () => {
     it('should load all relations in parallel', async () => {
       const issue = createMockIssue('issue-1', 'TEST-1', new Date('2024-01-15'));
-      mockIssues.mockResolvedValue({ nodes: [issue] });
+      mockIssues.mockResolvedValue(createMockConnection([issue]));
 
       await adapter.sync();
 
@@ -130,7 +138,7 @@ describe('LinearSyncAdapter', () => {
         createMockIssue('issue-1', 'TEST-1', new Date('2024-01-15')),
         createMockIssue('issue-2', 'TEST-2', new Date('2024-01-16')),
       ];
-      mockIssues.mockResolvedValue({ nodes: issues });
+      mockIssues.mockResolvedValue(createMockConnection(issues));
 
       mockEmbed.mockResolvedValue([
         new Float32Array(1536).fill(0.1),
@@ -156,7 +164,7 @@ describe('LinearSyncAdapter', () => {
       };
       const anotherSuccessIssue = createMockIssue('issue-3', 'TEST-3', new Date('2024-01-17'));
 
-      mockIssues.mockResolvedValue({ nodes: [successIssue, failIssue, anotherSuccessIssue] });
+      mockIssues.mockResolvedValue(createMockConnection([successIssue, failIssue, anotherSuccessIssue]));
 
       mockEmbed.mockResolvedValue([
         new Float32Array(1536).fill(0.1),
@@ -176,7 +184,7 @@ describe('LinearSyncAdapter', () => {
         ...createMockIssue('issue-1', 'TEST-1', new Date('2024-01-15')),
         team: Promise.reject(new Error('Custom error message')),
       };
-      mockIssues.mockResolvedValue({ nodes: [issue] });
+      mockIssues.mockResolvedValue(createMockConnection([issue]));
 
       const result = await adapter.sync();
 
@@ -188,7 +196,7 @@ describe('LinearSyncAdapter', () => {
   describe('content hash change detection', () => {
     it('should skip unchanged issues', async () => {
       const issue = createMockIssue('issue-1', 'TEST-1', new Date('2024-01-15'));
-      mockIssues.mockResolvedValue({ nodes: [issue] });
+      mockIssues.mockResolvedValue(createMockConnection([issue]));
 
       mockQuery.mockImplementation(async (sql: string) => {
         if (sql.includes('SELECT content_hash')) {
@@ -206,7 +214,7 @@ describe('LinearSyncAdapter', () => {
 
     it('should process new issues', async () => {
       const issue = createMockIssue('issue-1', 'TEST-1', new Date('2024-01-15'));
-      mockIssues.mockResolvedValue({ nodes: [issue] });
+      mockIssues.mockResolvedValue(createMockConnection([issue]));
 
       mockQuery.mockResolvedValue({ rows: [] });
 
@@ -223,7 +231,7 @@ describe('LinearSyncAdapter', () => {
         createMockIssue('issue-2', 'TEST-2', new Date('2024-01-20')),
         createMockIssue('issue-3', 'TEST-3', new Date('2024-01-15')),
       ];
-      mockIssues.mockResolvedValue({ nodes: issues });
+      mockIssues.mockResolvedValue(createMockConnection(issues));
 
       const result = await adapter.sync();
 
@@ -240,7 +248,7 @@ describe('LinearSyncAdapter', () => {
         return { rows: [] };
       });
 
-      mockIssues.mockResolvedValue({ nodes: [] });
+      mockIssues.mockResolvedValue(createMockConnection([]));
 
       await adapter.syncIncremental();
 
@@ -255,7 +263,7 @@ describe('LinearSyncAdapter', () => {
         createMockIssue('issue-1', 'TEST-1', new Date('2024-01-15')),
         createMockIssue('issue-2', 'TEST-2', new Date('2024-01-16')),
       ];
-      mockIssues.mockResolvedValue({ nodes: issues });
+      mockIssues.mockResolvedValue(createMockConnection(issues));
 
       const progressCallback = vi.fn();
       await adapter.syncIncremental(progressCallback);

@@ -79,14 +79,14 @@ export class LinearSyncAdapter {
       await this.updateSyncStatus('syncing');
 
       const client = (this.linearService as any).client;
-      const issues = await client.issues({ first: 100 });
+      const allIssues = await this.fetchAllIssues(client, {});
 
-      console.log(`[LinearSync] Found ${issues.nodes.length} issues`);
+      console.log(`[LinearSync] Found ${allIssues.length} issues`);
 
       let latestUpdatedAt: string | null = null;
 
-      for (let i = 0; i < issues.nodes.length; i += BATCH_SIZE) {
-        const batch = issues.nodes.slice(i, i + BATCH_SIZE);
+      for (let i = 0; i < allIssues.length; i += BATCH_SIZE) {
+        const batch = allIssues.slice(i, i + BATCH_SIZE);
         const batchResult = await this.processBatch(batch);
 
         result.itemsSynced += batchResult.synced;
@@ -145,16 +145,16 @@ export class LinearSyncAdapter {
         ? { updatedAt: { gt: new Date(lastCursor) } }
         : {};
 
-      const issues = await client.issues({ first: 100, filter });
-      const totalIssues = issues.nodes.length;
+      const allIssues = await this.fetchAllIssues(client, filter);
+      const totalIssues = allIssues.length;
 
       console.log(`[LinearSync] Found ${totalIssues} issues to sync`);
 
       let latestUpdatedAt: string | null = lastCursor;
       let processedCount = 0;
 
-      for (let i = 0; i < issues.nodes.length; i += BATCH_SIZE) {
-        const batch = issues.nodes.slice(i, i + BATCH_SIZE);
+      for (let i = 0; i < allIssues.length; i += BATCH_SIZE) {
+        const batch = allIssues.slice(i, i + BATCH_SIZE);
         onProgress?.({ source: 'linear', phase: 'syncing', current: processedCount, total: totalIssues });
 
         const batchResult = await this.processBatch(batch);
@@ -189,6 +189,20 @@ export class LinearSyncAdapter {
     }
 
     return result;
+  }
+
+  private async fetchAllIssues(client: any, filter: Record<string, unknown>): Promise<Issue[]> {
+    const allNodes: Issue[] = [];
+    let connection = await client.issues({ first: 100, filter });
+    allNodes.push(...connection.nodes);
+
+    while (connection.pageInfo.hasNextPage) {
+      console.log(`[LinearSync] Fetching next page... (${allNodes.length} issues so far)`);
+      connection = await connection.fetchNext();
+      allNodes.push(...connection.nodes);
+    }
+
+    return allNodes;
   }
 
   private async processBatch(issues: Issue[]): Promise<BatchResult> {
