@@ -17,6 +17,7 @@ import type { GmailService, GmailMessage } from '../gmail-client';
 import type { DatabaseService } from '../database';
 import type { TextPreprocessor } from '../text-preprocessor';
 import type { EmbeddingService } from '../embedding-service';
+import type { SyncProgressCallback } from '../local-search';
 
 const BATCH_SIZE = 40;
 const BATCH_DELAY_MS = 500;
@@ -131,7 +132,7 @@ export class GmailSyncAdapter {
     return result;
   }
 
-  async syncIncremental(): Promise<SyncResult> {
+  async syncIncremental(onProgress?: SyncProgressCallback): Promise<SyncResult> {
     console.log('[GmailSync] Starting incremental sync with batched requests');
 
     const result: SyncResult = {
@@ -143,6 +144,7 @@ export class GmailSyncAdapter {
 
     try {
       await this.updateSyncStatus('syncing');
+      onProgress?.({ source: 'gmail', phase: 'discovering', current: 0, total: 0 });
 
       const lastCursor = await this.getLastSyncCursor();
       console.log(`[GmailSync] Last sync cursor: ${lastCursor || 'none'}`);
@@ -174,6 +176,7 @@ export class GmailSyncAdapter {
         }
 
         console.log(`[GmailSync] Batch ${batchCount + 1}: ${searchResult.messages.length} emails`);
+        onProgress?.({ source: 'gmail', phase: 'syncing', current: batchCount + 1, total: MAX_BATCHES });
 
         const batchResult = await this.processBatchWithEmbedding(searchResult.messages);
         result.itemsSynced += batchResult.synced;
@@ -208,6 +211,7 @@ export class GmailSyncAdapter {
       }
 
       await this.updateSyncStatus('idle');
+      onProgress?.({ source: 'gmail', phase: 'complete', current: result.itemsSynced, total: result.itemsSynced });
 
       console.log(
         `[GmailSync] Incremental sync complete: ${result.itemsSynced} synced, ${result.itemsFailed} failed (${batchCount} batches)`
@@ -215,6 +219,7 @@ export class GmailSyncAdapter {
     } catch (error) {
       console.error('[GmailSync] Incremental sync failed:', error);
       result.success = false;
+      onProgress?.({ source: 'gmail', phase: 'complete', current: 0, total: 0 });
       await this.updateSyncStatus('error');
       throw error;
     }

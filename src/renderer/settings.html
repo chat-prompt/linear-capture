@@ -1566,12 +1566,15 @@
     }
     loadSyncStatus();
 
+    const activeSyncs = new Map();
+
     async function triggerSync(source, btn, statusEl) {
       btn.disabled = true;
       btn.classList.add('syncing');
       btn.textContent = await t('sync.syncing');
       statusEl.textContent = await t('sync.syncing');
       statusEl.classList.add('syncing');
+      activeSyncs.set(source, statusEl);
 
       try {
         const result = await ipcRenderer.invoke('sync:trigger', source);
@@ -1596,8 +1599,22 @@
         btn.classList.remove('syncing');
         btn.textContent = await t('sync.syncNow');
         btn.disabled = false;
+        activeSyncs.delete(source);
       }
     }
+
+    ipcRenderer.on('sync:progress', (_event, progress) => {
+      const statusEl = activeSyncs.get(progress.source);
+      if (!statusEl) return;
+
+      if (progress.phase === 'complete') return;
+
+      if (progress.total > 0) {
+        statusEl.textContent = `(${progress.current}/${progress.total}) Syncing...`;
+      } else {
+        statusEl.textContent = 'Discovering...';
+      }
+    });
 
     syncSlackBtn.addEventListener('click', () => triggerSync('slack', syncSlackBtn, syncSlackStatus));
     syncNotionBtn.addEventListener('click', () => triggerSync('notion', syncNotionBtn, syncNotionStatus));

@@ -817,12 +817,23 @@ export function registerIpcHandlers(): void {
   });
 
   ipcMain.handle('sync:trigger', async (_event, source: string) => {
+    logger.log(`[IPC] sync:trigger called with source: ${source}`);
     try {
       const localSearch = getLocalSearchService();
+      logger.log(`[IPC] localSearch: ${localSearch ? 'initialized' : 'null'}`);
       if (!localSearch) {
         return { success: false, error: 'LocalSearchService not initialized' };
       }
-      const result = await localSearch.syncSource(source);
+      logger.log(`[IPC] canSync: ${localSearch.canSync()}, isInitialized: ${localSearch.isInitialized()}`);
+
+      const onProgress = (progress: { source: string; phase: string; current: number; total: number }) => {
+        if (state.settingsWindow && !state.settingsWindow.isDestroyed()) {
+          state.settingsWindow.webContents.send('sync:progress', progress);
+        }
+      };
+
+      const result = await localSearch.syncSource(source, onProgress);
+      logger.log(`[IPC] syncSource result: itemsSynced=${result.itemsSynced}, itemsFailed=${result.itemsFailed}`);
       return {
         success: result.success,
         itemsSynced: result.itemsSynced,
@@ -830,6 +841,27 @@ export function registerIpcHandlers(): void {
       };
     } catch (error) {
       logger.error('sync:trigger error:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  // Reset sync cursor for a source (for debugging)
+  ipcMain.handle('sync:reset-cursor', async (_event, source: string) => {
+    logger.log(`[IPC] sync:reset-cursor called for: ${source}`);
+    try {
+      const { getDatabaseService } = await import('../services/database');
+      const dbService = getDatabaseService();
+      const db = dbService.getDb();
+      
+      await db.query(
+        `DELETE FROM sync_cursors WHERE source_type = $1`,
+        [source]
+      );
+      
+      logger.log(`[IPC] Cursor reset for ${source}`);
+      return { success: true };
+    } catch (error) {
+      logger.error('sync:reset-cursor error:', error);
       return { success: false, error: String(error) };
     }
   });

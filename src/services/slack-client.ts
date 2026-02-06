@@ -2,8 +2,8 @@ import { shell } from 'electron';
 import { getDeviceId } from './settings-store';
 import { logger } from './utils/logger';
 
-const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
-const SLACK_REDIRECT_URI = 'https://linear-capture-ai.ny-4f1.workers.dev/slack/oauth-redirect';
+const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
+const SLACK_REDIRECT_URI = 'https://linear-capture-ai.kangjun-f0f.workers.dev/slack/oauth-redirect';
 
 export interface SlackConnectionStatus {
   connected: boolean;

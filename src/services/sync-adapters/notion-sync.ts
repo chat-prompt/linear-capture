@@ -14,10 +14,12 @@ import { getDatabaseService } from '../database';
 import { createNotionService } from '../notion-client';
 import { createTextPreprocessor } from '../text-preprocessor';
 import { createEmbeddingService } from '../embedding-service';
+import { isNotionDbAvailable, getNotionLocalReader } from '../notion-local-reader';
 import type { NotionService, NotionPage } from '../notion-client';
 import type { DatabaseService } from '../database';
 import type { TextPreprocessor } from '../text-preprocessor';
 import type { EmbeddingService } from '../embedding-service';
+import type { SyncProgress, SyncProgressCallback } from '../local-search';
 
 export interface SyncResult {
   success: boolean;
@@ -67,7 +69,7 @@ export class NotionSyncAdapter {
       let latestTime: string | undefined;
 
       while (hasMore) {
-        const searchResult = await this.notionService.searchPages('', 100, cursor);
+        const searchResult = await this.notionService.searchPagesForSync(100, cursor);
 
         if (!searchResult.success || !searchResult.pages) {
           throw new Error(searchResult.error || 'Failed to fetch pages');
@@ -122,11 +124,25 @@ export class NotionSyncAdapter {
   }
 
   /**
-   * Incremental sync - fetch only pages modified after last sync
+   * Incremental sync - uses local reader if available, falls back to API
    */
-  async syncIncremental(): Promise<SyncResult> {
+  async syncIncremental(onProgress?: SyncProgressCallback): Promise<SyncResult> {
     console.log('[NotionSync] Starting incremental sync');
 
+    if (isNotionDbAvailable()) {
+      console.log('[NotionSync] Using local reader (optimized batch sync)');
+      return this.syncFromLocal(onProgress);
+    }
+
+    console.log('[NotionSync] Local reader unavailable, using API fallback');
+    return this.syncFromApi(onProgress);
+  }
+
+  /**
+   * Optimized sync using local Notion cache + batch embedding
+   */
+  private async syncFromLocal(onProgress?: SyncProgressCallback): Promise<SyncResult> {
+    const startTime = Date.now();
     const result: SyncResult = {
       success: true,
       itemsSynced: 0,
@@ -136,6 +152,161 @@ export class NotionSyncAdapter {
 
     try {
       await this.updateSyncStatus('syncing');
+      onProgress?.({ source: 'notion', phase: 'discovering', current: 0, total: 0 });
+
+      const localReader = getNotionLocalReader();
+      const pages = await localReader.getAllPagesForSync();
+      console.log(`[NotionSync] Local reader found ${pages.length} pages`);
+
+      if (pages.length === 0) {
+        onProgress?.({ source: 'notion', phase: 'complete', current: 0, total: 0 });
+        await this.updateSyncStatus('idle');
+        return result;
+      }
+
+      const lastSyncCursor = await this.getLastSyncCursor();
+      const pagesToProcess = lastSyncCursor
+        ? pages.filter(p => p.lastEditedTime > lastSyncCursor)
+        : pages;
+
+      console.log(`[NotionSync] ${pagesToProcess.length} pages to process (after cursor filter)`);
+
+      const MAX_TEXT_CHARS = 5000;
+      const pagesWithMeta = pagesToProcess.map(page => {
+        const fullText = `${page.title}\n\n${page.content}`;
+        let preprocessed = this.preprocessor.preprocess(fullText);
+        if (preprocessed.length > MAX_TEXT_CHARS) {
+          preprocessed = preprocessed.substring(0, MAX_TEXT_CHARS);
+        }
+        const hash = this.calculateContentHash(preprocessed);
+        return { ...page, preprocessed, hash };
+      });
+
+      const db = this.dbService.getDb();
+      const existingHashes = await db.query<{ source_id: string; content_hash: string }>(
+        `SELECT source_id, content_hash FROM documents WHERE source_type = $1`,
+        ['notion']
+      );
+      const hashMap = new Map(existingHashes.rows.map(r => [r.source_id, r.content_hash]));
+
+      const changedPages = pagesWithMeta.filter(p => 
+        hashMap.get(p.id) !== p.hash && p.preprocessed.trim().length > 0
+      );
+      console.log(`[NotionSync] ${changedPages.length} pages changed (need embedding)`);
+
+      if (changedPages.length === 0) {
+        await this.updateSyncStatus('idle');
+        console.log(`[NotionSync] No changes detected, sync complete in ${Date.now() - startTime}ms`);
+        return result;
+      }
+
+      const BATCH_SIZE = 300;
+      for (let i = 0; i < changedPages.length; i += BATCH_SIZE) {
+        const batch = changedPages.slice(i, i + BATCH_SIZE);
+        const texts = batch.map(p => p.preprocessed);
+
+        onProgress?.({ source: 'notion', phase: 'embedding', current: i, total: changedPages.length });
+        console.log(`[NotionSync] Embedding batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(changedPages.length / BATCH_SIZE)} (${batch.length} pages)`);
+
+        try {
+          const embeddings = await this.embeddingService.embedBatch(texts);
+
+          const savePromises = batch.map(async (page, idx) => {
+            try {
+              const metadata = { url: page.url };
+              await db.query(
+                `
+                INSERT INTO documents (
+                  source_type, source_id, title, content, content_hash,
+                  embedding, metadata, source_created_at, source_updated_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                ON CONFLICT (source_type, source_id) 
+                DO UPDATE SET
+                  title = EXCLUDED.title,
+                  content = EXCLUDED.content,
+                  content_hash = EXCLUDED.content_hash,
+                  embedding = EXCLUDED.embedding,
+                  metadata = EXCLUDED.metadata,
+                  source_updated_at = EXCLUDED.source_updated_at,
+                  indexed_at = NOW()
+                `,
+                [
+                  'notion',
+                  page.id,
+                  page.title,
+                  page.preprocessed,
+                  page.hash,
+                  JSON.stringify(embeddings[idx]),
+                  JSON.stringify(metadata),
+                  new Date(page.lastEditedTime),
+                  new Date(page.lastEditedTime)
+                ]
+              );
+              result.itemsSynced++;
+            } catch (error) {
+              result.itemsFailed++;
+              result.errors.push({
+                pageId: page.id,
+                error: error instanceof Error ? error.message : 'DB insert failed',
+              });
+            }
+          });
+
+          await Promise.all(savePromises);
+        } catch (error) {
+          console.error(`[NotionSync] Batch embedding failed:`, error);
+          for (const page of batch) {
+            result.itemsFailed++;
+            result.errors.push({
+              pageId: page.id,
+              error: error instanceof Error ? error.message : 'Embedding failed',
+            });
+          }
+        }
+      }
+
+      const latestTime = pagesToProcess.reduce((max, p) => 
+        p.lastEditedTime > max ? p.lastEditedTime : max, 
+        pagesToProcess[0]?.lastEditedTime || ''
+      );
+
+      if (latestTime) {
+        await this.updateSyncCursor(latestTime, result.itemsSynced);
+        result.lastCursor = latestTime;
+      }
+
+      await this.updateSyncStatus('idle');
+      onProgress?.({ source: 'notion', phase: 'complete', current: result.itemsSynced, total: result.itemsSynced });
+
+      const elapsed = Date.now() - startTime;
+      console.log(
+        `[NotionSync] Local sync complete: ${result.itemsSynced} synced, ${result.itemsFailed} failed in ${elapsed}ms`
+      );
+    } catch (error) {
+      console.error('[NotionSync] Local sync failed:', error);
+      result.success = false;
+      onProgress?.({ source: 'notion', phase: 'complete', current: 0, total: 0 });
+      await this.updateSyncStatus('error');
+      throw error;
+    }
+
+    return result;
+  }
+
+  /**
+   * Fallback sync using Notion API (when local cache unavailable)
+   */
+  private async syncFromApi(onProgress?: SyncProgressCallback): Promise<SyncResult> {
+    const result: SyncResult = {
+      success: true,
+      itemsSynced: 0,
+      itemsFailed: 0,
+      errors: [],
+    };
+
+    try {
+      await this.updateSyncStatus('syncing');
+      onProgress?.({ source: 'notion', phase: 'discovering', current: 0, total: 0 });
 
       const lastSyncCursor = await this.getLastSyncCursor();
       console.log(`[NotionSync] Last sync cursor: ${lastSyncCursor || 'none'}`);
@@ -145,7 +316,15 @@ export class NotionSyncAdapter {
       let latestTime: string | undefined;
 
       while (hasMore) {
-        const searchResult = await this.notionService.searchPages('', 100, cursor);
+        console.log(`[NotionSync] Calling searchPagesForSync with cursor: ${cursor || 'none'}`);
+        const searchResult = await this.notionService.searchPagesForSync(100, cursor);
+        console.log(`[NotionSync] searchPagesForSync result:`, JSON.stringify({
+          success: searchResult.success,
+          pagesCount: searchResult.pages?.length,
+          hasMore: searchResult.hasMore,
+          nextCursor: searchResult.nextCursor,
+          error: searchResult.error
+        }));
 
         if (!searchResult.success || !searchResult.pages) {
           throw new Error(searchResult.error || 'Failed to fetch pages');
@@ -161,6 +340,7 @@ export class NotionSyncAdapter {
 
         for (const page of pagesToSync) {
           try {
+            onProgress?.({ source: 'notion', phase: 'syncing', current: result.itemsSynced, total: pagesToSync.length });
             await this.syncPage(page);
             result.itemsSynced++;
           } catch (error) {
@@ -187,13 +367,15 @@ export class NotionSyncAdapter {
       }
 
       await this.updateSyncStatus('idle');
+      onProgress?.({ source: 'notion', phase: 'complete', current: result.itemsSynced, total: result.itemsSynced });
 
       console.log(
-        `[NotionSync] Incremental sync complete: ${result.itemsSynced} synced, ${result.itemsFailed} failed`
+        `[NotionSync] API sync complete: ${result.itemsSynced} synced, ${result.itemsFailed} failed`
       );
     } catch (error) {
-      console.error('[NotionSync] Incremental sync failed:', error);
+      console.error('[NotionSync] API sync failed:', error);
       result.success = false;
+      onProgress?.({ source: 'notion', phase: 'complete', current: 0, total: 0 });
       await this.updateSyncStatus('error');
       throw error;
     }

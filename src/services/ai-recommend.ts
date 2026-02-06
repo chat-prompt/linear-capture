@@ -1,7 +1,7 @@
 import { getDeviceId } from './settings-store';
 import { logger } from './utils/logger';
 
-const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
+const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
 
 interface Recommendation {
   source: string;

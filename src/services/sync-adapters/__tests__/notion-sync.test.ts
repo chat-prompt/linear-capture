@@ -21,6 +21,7 @@ const mockPreprocess = vi.fn();
 vi.mock('../../notion-client', () => ({
   createNotionService: () => ({
     searchPages: mockSearchPages,
+    searchPagesForSync: mockSearchPages,
     getPageContent: mockGetPageContent,
   }),
 }));
@@ -97,8 +98,8 @@ describe('NotionSyncAdapter', () => {
 
       await adapter.sync();
 
-      expect(mockSearchPages).toHaveBeenNthCalledWith(1, '', 100, undefined);
-      expect(mockSearchPages).toHaveBeenNthCalledWith(2, '', 100, 'cursor-abc');
+      expect(mockSearchPages).toHaveBeenNthCalledWith(1, 100, undefined);
+      expect(mockSearchPages).toHaveBeenNthCalledWith(2, 100, 'cursor-abc');
     });
 
     it('should stop when hasMore is false', async () => {
@@ -188,8 +189,8 @@ describe('NotionSyncAdapter', () => {
       await adapter.syncIncremental();
 
       expect(mockSearchPages).toHaveBeenCalledTimes(2);
-      expect(mockSearchPages).toHaveBeenNthCalledWith(1, '', 100, undefined);
-      expect(mockSearchPages).toHaveBeenNthCalledWith(2, '', 100, 'cursor-1');
+      expect(mockSearchPages).toHaveBeenNthCalledWith(1, 100, undefined);
+      expect(mockSearchPages).toHaveBeenNthCalledWith(2, 100, 'cursor-1');
     });
 
     it('should filter by lastCursor across all paginated results', async () => {
@@ -266,7 +267,7 @@ describe('NotionSyncAdapter', () => {
 
       await adapter.sync();
 
-      expect(mockSearchPages).toHaveBeenCalledWith('', 100, 'saved-cursor-123');
+      expect(mockSearchPages).toHaveBeenCalledWith(100, 'saved-cursor-123');
     });
   });
 });

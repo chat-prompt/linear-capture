@@ -27,6 +27,15 @@ export interface SyncResult {
   lastCursor?: string;
 }
 
+export interface SyncProgress {
+  source: 'notion' | 'slack' | 'linear' | 'gmail';
+  phase: 'discovering' | 'syncing' | 'embedding' | 'complete';
+  current: number;
+  total: number;
+}
+
+export type SyncProgressCallback = (progress: SyncProgress) => void;
+
 const RRF_K = 60; // Standard RRF constant
 const RETRIEVAL_LIMIT = 100; // Retrieve top 100 from each channel before RRF
 
@@ -128,7 +137,7 @@ export class LocalSearchService {
     }
   }
 
-  async syncSource(source: string): Promise<SyncResult> {
+  async syncSource(source: string, onProgress?: SyncProgressCallback): Promise<SyncResult> {
     console.log(`[LocalSearch] Starting sync for: ${source}`);
 
     if (!this.canSync()) {
@@ -143,7 +152,7 @@ export class LocalSearchService {
       switch (source) {
         case 'slack': {
           const adapter = createSlackSyncAdapter();
-          const adapterResult = await adapter.syncIncremental();
+          const adapterResult = await adapter.syncIncremental(onProgress);
           console.log(`[LocalSearch] Slack sync complete: ${adapterResult.itemsSynced} items, ${adapterResult.itemsFailed} failed`);
           return {
             success: adapterResult.success,
@@ -155,7 +164,7 @@ export class LocalSearchService {
         }
         case 'notion': {
           const adapter = createNotionSyncAdapter();
-          const adapterResult = await adapter.syncIncremental();
+          const adapterResult = await adapter.syncIncremental(onProgress);
           console.log(`[LocalSearch] Notion sync complete: ${adapterResult.itemsSynced} items, ${adapterResult.itemsFailed} failed`);
           return {
             success: adapterResult.success,
@@ -167,7 +176,7 @@ export class LocalSearchService {
         }
         case 'linear': {
           const adapter = createLinearSyncAdapter();
-          const adapterResult = await adapter.syncIncremental();
+          const adapterResult = await adapter.syncIncremental(onProgress);
           console.log(`[LocalSearch] Linear sync complete: ${adapterResult.itemsSynced} items, ${adapterResult.itemsFailed} failed`);
           return {
             success: adapterResult.success,
@@ -179,7 +188,7 @@ export class LocalSearchService {
         }
         case 'gmail': {
           const adapter = createGmailSyncAdapter();
-          const adapterResult = await adapter.syncIncremental();
+          const adapterResult = await adapter.syncIncremental(onProgress);
           console.log(`[LocalSearch] Gmail sync complete: ${adapterResult.itemsSynced} items, ${adapterResult.itemsFailed} failed`);
           return {
             success: adapterResult.success,

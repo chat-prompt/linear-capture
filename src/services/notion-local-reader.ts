@@ -573,6 +573,157 @@ export class NotionLocalReader {
    }
 
   /**
+   * Get full page content without character limit (for sync)
+   * Recursively fetches all child blocks
+   */
+  getFullPageContent(pageId: string): string {
+    if (!this.db) return '';
+
+    try {
+      const texts: string[] = [];
+      this.collectBlockTexts(pageId, texts, 0);
+      return texts.join('\n').trim();
+    } catch (error) {
+      logger.error('[NotionLocalReader] getFullPageContent error:', error);
+      return '';
+    }
+  }
+
+  /**
+   * Recursively collect text from blocks and their children
+   */
+  private collectBlockTexts(parentId: string, texts: string[], depth: number): void {
+    if (!this.db || depth > 10) return; // Max depth to prevent infinite loops
+
+    try {
+      const stmt = this.db.prepare(`
+        SELECT id, properties, type
+        FROM block
+        WHERE parent_id = ?
+          AND parent_table = 'block'
+          AND type IN ('text', 'bulleted_list', 'numbered_list', 'to_do', 'toggle', 'quote', 'callout', 'header', 'sub_header', 'sub_sub_header', 'code', 'page')
+          AND alive = 1
+        ORDER BY created_time ASC
+      `);
+      stmt.bind([parentId]);
+
+      const childBlocks: Array<{ id: string; type: string }> = [];
+
+      while (stmt.step()) {
+        const row = stmt.getAsObject() as {
+          id: string;
+          properties: string | null;
+          type: string;
+        };
+
+        if (row.properties) {
+          try {
+            const properties = JSON.parse(row.properties);
+            const blockText = extractBlockText(properties);
+            if (blockText) {
+              texts.push(blockText);
+            }
+          } catch {
+            continue;
+          }
+        }
+
+        if (row.type !== 'page') {
+          childBlocks.push({ id: row.id, type: row.type });
+        }
+      }
+      stmt.free();
+
+      for (const child of childBlocks) {
+        this.collectBlockTexts(child.id, texts, depth + 1);
+      }
+    } catch (error) {
+      logger.error('[NotionLocalReader] collectBlockTexts error:', error);
+    }
+  }
+
+  /**
+   * Get all pages with their full content for sync
+   * Returns pages sorted by last_edited_time (newest first)
+   */
+  async getAllPagesForSync(): Promise<Array<{
+    id: string;
+    title: string;
+    content: string;
+    lastEditedTime: string;
+    url: string;
+  }>> {
+    const initialized = await this.initialize();
+    if (!initialized || !this.db) return [];
+
+    const results: Array<{
+      id: string;
+      title: string;
+      content: string;
+      lastEditedTime: string;
+      url: string;
+    }> = [];
+
+    try {
+      const stmt = this.db.prepare(`
+        SELECT id, properties, last_edited_time
+        FROM block
+        WHERE type = 'page' AND alive = 1
+        ORDER BY last_edited_time DESC
+      `);
+
+      const pages: Array<{
+        id: string;
+        title: string;
+        lastEditedTime: number | null;
+      }> = [];
+
+      while (stmt.step()) {
+        const row = stmt.getAsObject() as {
+          id: string;
+          properties: string | null;
+          last_edited_time: number | null;
+        };
+
+        let properties: unknown = null;
+        try {
+          properties = row.properties ? JSON.parse(row.properties) : null;
+        } catch {
+          continue;
+        }
+
+        const title = extractTitle(properties);
+        if (!title) continue;
+
+        pages.push({
+          id: row.id,
+          title,
+          lastEditedTime: row.last_edited_time
+        });
+      }
+      stmt.free();
+
+      logger.log(`[NotionLocalReader] Found ${pages.length} pages for sync`);
+
+      for (const page of pages) {
+        const content = this.getFullPageContent(page.id);
+        results.push({
+          id: page.id,
+          title: page.title,
+          content,
+          lastEditedTime: formatTimestamp(page.lastEditedTime),
+          url: formatNotionUrl(page.id)
+        });
+      }
+
+      return results;
+    } catch (error) {
+      logger.error('[NotionLocalReader] getAllPagesForSync error:', error);
+      return [];
+    }
+  }
+
+  /**
    * Close the database connection
    */
   close(): void {

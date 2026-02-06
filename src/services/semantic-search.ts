@@ -6,7 +6,7 @@ import { slackUserCache } from './slack-user-cache';
 import { logger } from './utils/logger';
 import { getLocalSearchService } from './local-search';
 
-const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
+const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
 
 export class SemanticSearchService {
   private maxRetries = 2;

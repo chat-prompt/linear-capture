@@ -18,9 +18,10 @@ import type { SlackService, SlackChannel } from '../slack-client';
 import type { DatabaseService } from '../database';
 import type { TextPreprocessor } from '../text-preprocessor';
 import type { EmbeddingService } from '../embedding-service';
+import type { SyncProgressCallback } from '../local-search';
 import { getDeviceId, getSelectedSlackChannels } from '../settings-store';
 
-const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
+const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
 
 export interface SyncResult {
   success: boolean;
@@ -160,7 +161,7 @@ export class SlackSyncAdapter {
   /**
    * Incremental sync - fetch only messages after last sync
    */
-  async syncIncremental(): Promise<SyncResult> {
+  async syncIncremental(onProgress?: SyncProgressCallback): Promise<SyncResult> {
     console.log('[SlackSync] Starting incremental sync');
 
     const result: SyncResult = {
@@ -172,18 +173,17 @@ export class SlackSyncAdapter {
 
     try {
       await this.updateSyncStatus('syncing');
+      onProgress?.({ source: 'slack', phase: 'discovering', current: 0, total: 0 });
 
       const lastCursor = await this.getLastSyncCursor();
       console.log(`[SlackSync] Last sync cursor: ${lastCursor || 'none'}`);
 
-      // Check connection status
       const status = await this.slackService.getConnectionStatus();
       console.log('[SlackSync] Connection status:', JSON.stringify(status));
       if (!status.connected) {
         throw new Error('Slack not connected');
       }
 
-      // Get all channels
       console.log('[SlackSync] Fetching channels...');
       const channelsResult = await this.slackService.getChannels();
       console.log('[SlackSync] Channels result:', JSON.stringify(channelsResult));
@@ -204,14 +204,26 @@ export class SlackSyncAdapter {
       
       if (channelsToSync.length === 0) {
         console.log('[SlackSync] No channels selected for sync');
+        onProgress?.({ source: 'slack', phase: 'complete', current: 0, total: 0 });
         await this.updateSyncStatus('idle');
         return result;
       }
 
+      let syncedChannels = 0;
+      const totalChannels = channelsToSync.length;
+
       const syncPromises = channelsToSync.map(channel =>
         this.syncChannel(channel, lastCursor)
-          .then(channelResult => ({ channel, channelResult, success: true as const }))
-          .catch(error => ({ channel, error, success: false as const }))
+          .then(channelResult => {
+            syncedChannels++;
+            onProgress?.({ source: 'slack', phase: 'syncing', current: syncedChannels, total: totalChannels });
+            return { channel, channelResult, success: true as const };
+          })
+          .catch(error => {
+            syncedChannels++;
+            onProgress?.({ source: 'slack', phase: 'syncing', current: syncedChannels, total: totalChannels });
+            return { channel, error, success: false as const };
+          })
       );
 
       const syncResults = await Promise.all(syncPromises);
@@ -243,6 +255,7 @@ export class SlackSyncAdapter {
       }
 
       await this.updateSyncStatus('idle');
+      onProgress?.({ source: 'slack', phase: 'complete', current: result.itemsSynced, total: result.itemsSynced });
 
       console.log(
         `[SlackSync] Incremental sync complete: ${result.itemsSynced} synced, ${result.itemsFailed} failed`
@@ -250,6 +263,7 @@ export class SlackSyncAdapter {
     } catch (error) {
       console.error('[SlackSync] Incremental sync failed:', error);
       result.success = false;
+      onProgress?.({ source: 'slack', phase: 'complete', current: 0, total: 0 });
       await this.updateSyncStatus('error');
       throw error;
     }

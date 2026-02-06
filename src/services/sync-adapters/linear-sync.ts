@@ -18,6 +18,7 @@ import type { LinearService } from '../linear-client';
 import type { DatabaseService } from '../database';
 import type { TextPreprocessor } from '../text-preprocessor';
 import type { EmbeddingService } from '../embedding-service';
+import type { SyncProgressCallback } from '../local-search';
 import type { Issue, Comment } from '@linear/sdk';
 
 export interface SyncResult {
@@ -123,7 +124,7 @@ export class LinearSyncAdapter {
   /**
    * Incremental sync - fetch only issues modified after last sync
    */
-  async syncIncremental(): Promise<SyncResult> {
+  async syncIncremental(onProgress?: SyncProgressCallback): Promise<SyncResult> {
     console.log('[LinearSync] Starting incremental sync');
 
     const result: SyncResult = {
@@ -140,34 +141,36 @@ export class LinearSyncAdapter {
 
     try {
       await this.updateSyncStatus('syncing');
+      onProgress?.({ source: 'linear', phase: 'discovering', current: 0, total: 0 });
 
       const lastCursor = await this.getLastSyncCursor();
       console.log(`[LinearSync] Last sync cursor: ${lastCursor || 'none'}`);
 
-      // Fetch issues updated after last sync
       const client = (this.linearService as any).client;
       const filter = lastCursor
         ? { updatedAt: { gt: new Date(lastCursor) } }
         : {};
 
       const issues = await client.issues({ first: 100, filter });
+      const totalIssues = issues.nodes.length;
 
-      console.log(`[LinearSync] Found ${issues.nodes.length} issues to sync`);
+      console.log(`[LinearSync] Found ${totalIssues} issues to sync`);
 
       let latestUpdatedAt: string | null = lastCursor;
+      let processedCount = 0;
 
       for (const issue of issues.nodes) {
         try {
+          onProgress?.({ source: 'linear', phase: 'syncing', current: processedCount, total: totalIssues });
           await this.syncIssue(issue);
           result.itemsSynced++;
+          processedCount++;
 
-          // Track latest updatedAt
           const updatedAt = issue.updatedAt?.toISOString();
           if (updatedAt && (!latestUpdatedAt || updatedAt > latestUpdatedAt)) {
             latestUpdatedAt = updatedAt;
           }
 
-          // Sync comments for this issue
           const commentsResult = await this.syncComments(issue);
           result.itemsSynced += commentsResult.itemsSynced;
           result.itemsFailed += commentsResult.itemsFailed;
@@ -179,6 +182,7 @@ export class LinearSyncAdapter {
         } catch (error) {
           console.error(`[LinearSync] Failed to sync issue ${issue.id}:`, error);
           result.itemsFailed++;
+          processedCount++;
           result.errors.push({
             itemId: issue.id,
             error: error instanceof Error ? error.message : 'Unknown error',
@@ -192,6 +196,7 @@ export class LinearSyncAdapter {
       }
 
       await this.updateSyncStatus('idle');
+      onProgress?.({ source: 'linear', phase: 'complete', current: result.itemsSynced, total: result.itemsSynced });
 
       console.log(
         `[LinearSync] Incremental sync complete: ${result.itemsSynced} synced, ${result.itemsFailed} failed`
@@ -199,6 +204,7 @@ export class LinearSyncAdapter {
     } catch (error) {
       console.error('[LinearSync] Incremental sync failed:', error);
       result.success = false;
+      onProgress?.({ source: 'linear', phase: 'complete', current: 0, total: 0 });
       await this.updateSyncStatus('error');
       throw error;
     }

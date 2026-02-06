@@ -8,8 +8,8 @@ import {
  } from './notion-local-reader';
 import { logger } from './utils/logger';
 
-const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
-const NOTION_REDIRECT_URI = 'https://linear-capture-ai.ny-4f1.workers.dev/notion/oauth-redirect';
+const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
+const NOTION_REDIRECT_URI = 'https://linear-capture-ai.kangjun-f0f.workers.dev/notion/oauth-redirect';
 
 export interface NotionConnectionStatus {
   connected: boolean;
@@ -188,6 +188,14 @@ export class NotionService {
     }
 
     return this.searchPagesViaApi(query, limit, cursor);
+  }
+
+  /**
+   * Search pages for sync - always uses API, bypasses local reader
+   * This ensures pagination works correctly (hasMore/nextCursor from API)
+   */
+  async searchPagesForSync(pageSize: number = 100, cursor?: string): Promise<NotionSearchResult> {
+    return this.searchPagesViaApi('', pageSize, cursor);
   }
 
   private async searchPagesViaApi(query: string, pageSize: number, cursor?: string): Promise<NotionSearchResult> {

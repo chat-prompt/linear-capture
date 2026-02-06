@@ -3,7 +3,7 @@ import { getDeviceId } from './settings-store';
 import type { AnalyticsEvent, TrackRequest, TrackResponse } from '../types/context-search';
 import { logger } from './utils/logger';
 
-const WORKER_URL = 'https://linear-capture-ai.ny-4f1.workers.dev';
+const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
 const MAX_MESSAGE_LENGTH = 200;
 
 function truncate(str: string, maxLength: number): string {
