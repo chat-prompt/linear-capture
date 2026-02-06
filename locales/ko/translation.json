@@ -9,6 +9,7 @@
     "close": "닫기",
     "delete": "삭제",
     "validate": "검증",
+    "validateAndSave": "검증 및 저장",
     "reset": "초기화",
     "connect": "연결",
     "disconnect": "연결 해제",

@@ -934,8 +934,7 @@
 
     <div class="buttons">
       <button class="btn-danger" id="clearBtn" style="display: none;" data-i18n="common.delete">Delete</button>
-      <button class="btn-primary" id="validateBtn" data-i18n="common.validate">Validate</button>
-      <button class="btn-secondary" id="saveBtn" disabled data-i18n="common.save">Save</button>
+      <button class="btn-primary" id="validateBtn" data-i18n="common.validateAndSave">Validate & Save</button>
     </div>
 
     <!-- Integrations Section (Unified) -->
@@ -1168,7 +1167,6 @@
     const errorMessage = document.getElementById('errorMessage');
     const clearBtn = document.getElementById('clearBtn');
     const validateBtn = document.getElementById('validateBtn');
-    const saveBtn = document.getElementById('saveBtn');
     let isValidated = false;
     let validatedUser = null;
 
@@ -1184,7 +1182,7 @@
           if (settings.userInfo) {
             showSuccess(settings.userInfo);
             isValidated = true;
-            saveBtn.disabled = true; // 이미 저장된 상태
+            validateBtn.disabled = true; // 이미 저장된 상태
           }
         }
       } catch (error) {
@@ -1201,8 +1199,7 @@
       isValidated = false;
       validatedUser = null;
       validateBtn.className = 'btn-primary';
-      saveBtn.className = 'btn-secondary';
-      saveBtn.disabled = true;
+      validateBtn.disabled = false;
     }
 
     async function showValidating() {
@@ -1212,7 +1209,6 @@
       userInfoRow.style.display = 'none';
       errorMessage.style.display = 'none';
       validateBtn.disabled = true;
-      saveBtn.disabled = true;
     }
 
     async function showSuccess(user) {
@@ -1222,12 +1218,10 @@
       userInfoRow.style.display = 'flex';
       userInfo.textContent = user.name + ' (' + user.email + ')';
       errorMessage.style.display = 'none';
-      validateBtn.className = 'btn-secondary';
-      validateBtn.disabled = false;
+      validateBtn.className = 'btn-primary';
+      validateBtn.disabled = true;
       validatedUser = user;
       isValidated = true;
-      saveBtn.className = 'btn-primary';
-      saveBtn.disabled = false;
     }
 
     async function showError(message) {
@@ -1241,13 +1235,13 @@
       validateBtn.disabled = false;
       isValidated = false;
       validatedUser = null;
-      saveBtn.className = 'btn-secondary';
-      saveBtn.disabled = true;
     }
 
     // 토큰 입력 변경 핸들러
-    tokenInput.addEventListener('input', () => {
-      showPending();
+    tokenInput.addEventListener('input', async () => {
+      await showPending();
+      validateBtn.textContent = await t('common.validateAndSave');
+      validateBtn.disabled = false;
       if (tokenInput.value.trim()) {
         clearBtn.style.display = 'block';
       } else {
@@ -1262,52 +1256,50 @@
         return;
       }
 
+      // Phase 1: Validate
       await showValidating();
 
       try {
         const result = await ipcRenderer.invoke('validate-token', token);
 
         if (result.valid && result.user) {
-          await showSuccess(result.user);
+          // Phase 2: Save (auto-save after validation)
+          validateBtn.innerHTML = '<span class="loading"></span>' + await t('settings.saving');
+
+          try {
+            const saveResult = await ipcRenderer.invoke('save-settings', {
+              linearApiToken: token,
+              userInfo: result.user
+            });
+
+            if (saveResult.success) {
+              await showSuccess(result.user);
+              validateBtn.textContent = await t('settings.saved');
+
+              // Refresh sync status to activate Linear sync button
+              await loadSyncStatus();
+
+              setTimeout(async () => {
+                validateBtn.textContent = await t('common.validateAndSave');
+                validateBtn.disabled = true; // Already saved — disable until token changes
+              }, 1500);
+            } else {
+              await showError(saveResult.error || await t('settings.saveFailed'));
+              validateBtn.textContent = await t('common.validateAndSave');
+              validateBtn.disabled = false;
+            }
+          } catch (saveError) {
+            await showError(await t('errors.saveError'));
+            validateBtn.textContent = await t('common.validateAndSave');
+            validateBtn.disabled = false;
+          }
         } else {
-          showError(result.error || await t('settings.invalidToken'));
+          await showError(result.error || await t('settings.invalidToken'));
+          validateBtn.textContent = await t('common.validateAndSave');
         }
       } catch (error) {
-        showError(await t('errors.validationError'));
-      }
-    });
-
-    saveBtn.addEventListener('click', async () => {
-      const token = tokenInput.value.trim();
-      if (!token || !isValidated) {
-        return;
-      }
-
-      saveBtn.disabled = true;
-      const savingText = await t('settings.saving');
-      saveBtn.innerHTML = '<span class="loading"></span>' + savingText;
-
-      try {
-        const result = await ipcRenderer.invoke('save-settings', {
-          linearApiToken: token,
-          userInfo: validatedUser
-        });
-
-        if (result.success) {
-          saveBtn.textContent = await t('settings.saved');
-          setTimeout(async () => {
-            saveBtn.textContent = await t('common.save');
-            saveBtn.disabled = true;
-          }, 1500);
-        } else {
-          showError(result.error || await t('settings.saveFailed'));
-          saveBtn.textContent = await t('common.save');
-          saveBtn.disabled = false;
-        }
-      } catch (error) {
-        showError(await t('errors.saveError'));
-        saveBtn.textContent = await t('common.save');
-        saveBtn.disabled = false;
+        await showError(await t('errors.validationError'));
+        validateBtn.textContent = await t('common.validateAndSave');
       }
     });
 
@@ -1332,14 +1324,10 @@
       }
     });
 
-    // Enter로 검증/저장
+    // Enter로 검증 및 저장
     tokenInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        if (isValidated && !saveBtn.disabled) {
-          saveBtn.click();
-        } else {
-          validateBtn.click();
-        }
+        validateBtn.click();
       }
     });
 

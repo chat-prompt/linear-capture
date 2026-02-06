@@ -9,6 +9,7 @@
     "close": "Cerrar",
     "delete": "Eliminar",
     "validate": "Validar",
+    "validateAndSave": "Validar y guardar",
     "reset": "Restablecer",
     "connect": "Conectar",
     "disconnect": "Desconectar",
