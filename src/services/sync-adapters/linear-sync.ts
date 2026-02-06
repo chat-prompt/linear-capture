@@ -4,7 +4,8 @@
  * Features:
  * - Incremental sync based on updatedAt timestamp
  * - Issue fetching via Linear SDK
- * - Text preprocessing and embedding generation
+ * - Batch processing (10 issues at a time)
+ * - Batch embedding for performance
  * - Change detection via content_hash
  * - Per-item error tracking (don't block entire sync)
  */
@@ -20,12 +21,30 @@ import type { TextPreprocessor } from '../text-preprocessor';
 import type { SyncProgressCallback } from '../local-search';
 import type { Issue } from '@linear/sdk';
 
+const BATCH_SIZE = 10;
+
 export interface SyncResult {
   success: boolean;
   itemsSynced: number;
   itemsFailed: number;
   errors: Array<{ itemId: string; error: string }>;
   lastCursor?: string;
+}
+
+interface PreparedIssue {
+  issue: Issue;
+  preprocessedText: string;
+  contentHash: string;
+  metadata: Record<string, unknown>;
+  title: string;
+  needsUpdate: boolean;
+}
+
+interface BatchResult {
+  synced: number;
+  failed: number;
+  errors: Array<{ itemId: string; error: string }>;
+  latestUpdatedAt: string | null;
 }
 
 export class LinearSyncAdapter {
@@ -41,9 +60,6 @@ export class LinearSyncAdapter {
     this.embeddingClient = getEmbeddingClient();
   }
 
-  /**
-   * Full sync - fetch all issues (for initial sync)
-   */
   async sync(): Promise<SyncResult> {
     console.log('[LinearSync] Starting full sync');
 
@@ -62,7 +78,6 @@ export class LinearSyncAdapter {
     try {
       await this.updateSyncStatus('syncing');
 
-      // Fetch all issues via Linear SDK
       const client = (this.linearService as any).client;
       const issues = await client.issues({ first: 100 });
 
@@ -70,22 +85,16 @@ export class LinearSyncAdapter {
 
       let latestUpdatedAt: string | null = null;
 
-      for (const issue of issues.nodes) {
-        try {
-          await this.syncIssue(issue);
-          result.itemsSynced++;
+      for (let i = 0; i < issues.nodes.length; i += BATCH_SIZE) {
+        const batch = issues.nodes.slice(i, i + BATCH_SIZE);
+        const batchResult = await this.processBatch(batch);
 
-          const updatedAt = issue.updatedAt?.toISOString();
-          if (updatedAt && (!latestUpdatedAt || updatedAt > latestUpdatedAt)) {
-            latestUpdatedAt = updatedAt;
-          }
-        } catch (error) {
-          console.error(`[LinearSync] Failed to sync issue ${issue.id}:`, error);
-          result.itemsFailed++;
-          result.errors.push({
-            itemId: issue.id,
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
+        result.itemsSynced += batchResult.synced;
+        result.itemsFailed += batchResult.failed;
+        result.errors.push(...batchResult.errors);
+
+        if (batchResult.latestUpdatedAt && (!latestUpdatedAt || batchResult.latestUpdatedAt > latestUpdatedAt)) {
+          latestUpdatedAt = batchResult.latestUpdatedAt;
         }
       }
 
@@ -109,9 +118,6 @@ export class LinearSyncAdapter {
     return result;
   }
 
-  /**
-   * Incremental sync - fetch only issues modified after last sync
-   */
   async syncIncremental(onProgress?: SyncProgressCallback): Promise<SyncResult> {
     console.log('[LinearSync] Starting incremental sync');
 
@@ -147,25 +153,19 @@ export class LinearSyncAdapter {
       let latestUpdatedAt: string | null = lastCursor;
       let processedCount = 0;
 
-      for (const issue of issues.nodes) {
-        try {
-          onProgress?.({ source: 'linear', phase: 'syncing', current: processedCount, total: totalIssues });
-          await this.syncIssue(issue);
-          result.itemsSynced++;
-          processedCount++;
+      for (let i = 0; i < issues.nodes.length; i += BATCH_SIZE) {
+        const batch = issues.nodes.slice(i, i + BATCH_SIZE);
+        onProgress?.({ source: 'linear', phase: 'syncing', current: processedCount, total: totalIssues });
 
-          const updatedAt = issue.updatedAt?.toISOString();
-          if (updatedAt && (!latestUpdatedAt || updatedAt > latestUpdatedAt)) {
-            latestUpdatedAt = updatedAt;
-          }
-        } catch (error) {
-          console.error(`[LinearSync] Failed to sync issue ${issue.id}:`, error);
-          result.itemsFailed++;
-          processedCount++;
-          result.errors.push({
-            itemId: issue.id,
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
+        const batchResult = await this.processBatch(batch);
+
+        result.itemsSynced += batchResult.synced;
+        result.itemsFailed += batchResult.failed;
+        result.errors.push(...batchResult.errors);
+        processedCount += batch.length;
+
+        if (batchResult.latestUpdatedAt && (!latestUpdatedAt || batchResult.latestUpdatedAt > latestUpdatedAt)) {
+          latestUpdatedAt = batchResult.latestUpdatedAt;
         }
       }
 
@@ -191,9 +191,103 @@ export class LinearSyncAdapter {
     return result;
   }
 
-  private async syncIssue(issue: Issue): Promise<void> {
-    console.log(`[LinearSync] Syncing issue: ${issue.identifier} - ${issue.title}`);
+  private async processBatch(issues: Issue[]): Promise<BatchResult> {
+    const result: BatchResult = {
+      synced: 0,
+      failed: 0,
+      errors: [],
+      latestUpdatedAt: null,
+    };
 
+    if (issues.length === 0) return result;
+
+    const prepareResults = await Promise.allSettled(
+      issues.map(issue => this.prepareIssueData(issue))
+    );
+
+    const prepared: PreparedIssue[] = [];
+    for (let i = 0; i < prepareResults.length; i++) {
+      const prepResult = prepareResults[i];
+      if (prepResult.status === 'fulfilled') {
+        prepared.push(prepResult.value);
+      } else {
+        result.failed++;
+        result.errors.push({
+          itemId: issues[i].id,
+          error: prepResult.reason instanceof Error ? prepResult.reason.message : 'Prepare failed',
+        });
+      }
+    }
+
+    const needsUpdate = prepared.filter(p => p.needsUpdate);
+
+    if (needsUpdate.length === 0) {
+      for (const p of prepared) {
+        const updatedAt = p.issue.updatedAt?.toISOString();
+        if (updatedAt && (!result.latestUpdatedAt || updatedAt > result.latestUpdatedAt)) {
+          result.latestUpdatedAt = updatedAt;
+        }
+      }
+      result.synced = prepared.length;
+      return result;
+    }
+
+    const texts = needsUpdate.map(p => p.preprocessedText);
+    let embeddings: Float32Array[];
+
+    try {
+      embeddings = await this.embeddingClient.embed(texts);
+    } catch (error) {
+      console.error('[LinearSync] Batch embedding failed:', error);
+      for (const p of needsUpdate) {
+        result.failed++;
+        result.errors.push({
+          itemId: p.issue.id,
+          error: 'Embedding failed',
+        });
+      }
+      result.synced = prepared.length - needsUpdate.length;
+      return result;
+    }
+
+    const db = this.dbService.getDb();
+    const saveResults = await Promise.allSettled(
+      needsUpdate.map((p, idx) => this.saveIssueToDb(db, p, embeddings[idx]))
+    );
+
+    for (let i = 0; i < saveResults.length; i++) {
+      const saveResult = saveResults[i];
+      const p = needsUpdate[i];
+      const updatedAt = p.issue.updatedAt?.toISOString();
+
+      if (saveResult.status === 'fulfilled') {
+        result.synced++;
+        if (updatedAt && (!result.latestUpdatedAt || updatedAt > result.latestUpdatedAt)) {
+          result.latestUpdatedAt = updatedAt;
+        }
+      } else {
+        result.failed++;
+        result.errors.push({
+          itemId: p.issue.id,
+          error: saveResult.reason instanceof Error ? saveResult.reason.message : 'Save failed',
+        });
+      }
+    }
+
+    const unchangedCount = prepared.length - needsUpdate.length;
+    result.synced += unchangedCount;
+
+    for (const p of prepared.filter(x => !x.needsUpdate)) {
+      const updatedAt = p.issue.updatedAt?.toISOString();
+      if (updatedAt && (!result.latestUpdatedAt || updatedAt > result.latestUpdatedAt)) {
+        result.latestUpdatedAt = updatedAt;
+      }
+    }
+
+    return result;
+  }
+
+  private async prepareIssueData(issue: Issue): Promise<PreparedIssue> {
     const [team, project, state, assignee, labelsConnection] = await Promise.all([
       issue.team,
       issue.project,
@@ -222,12 +316,7 @@ export class LinearSyncAdapter {
       ['linear', issue.id]
     );
 
-    if (existingDoc.rows.length > 0 && existingDoc.rows[0].content_hash === contentHash) {
-      console.log(`[LinearSync] Issue ${issue.id} unchanged, skipping`);
-      return;
-    }
-
-    const embedding = await this.embeddingClient.embedSingle(preprocessedText);
+    const needsUpdate = existingDoc.rows.length === 0 || existingDoc.rows[0].content_hash !== contentHash;
 
     const metadata = {
       identifier: issue.identifier,
@@ -243,6 +332,21 @@ export class LinearSyncAdapter {
       url: issue.url,
     };
 
+    return {
+      issue,
+      preprocessedText,
+      contentHash,
+      metadata,
+      title: `${issue.identifier}: ${issue.title}`,
+      needsUpdate,
+    };
+  }
+
+  private async saveIssueToDb(
+    db: ReturnType<DatabaseService['getDb']>,
+    prepared: PreparedIssue,
+    embedding: Float32Array
+  ): Promise<void> {
     await db.query(
       `
       INSERT INTO documents (
@@ -262,24 +366,19 @@ export class LinearSyncAdapter {
     `,
       [
         'linear',
-        issue.id,
-        null, // parent_id is null for issues
-        `${issue.identifier}: ${issue.title}`,
-        preprocessedText,
-        contentHash,
+        prepared.issue.id,
+        null,
+        prepared.title,
+        prepared.preprocessedText,
+        prepared.contentHash,
         JSON.stringify(Array.from(embedding)),
-        JSON.stringify(metadata),
-        issue.createdAt,
-        issue.updatedAt,
+        JSON.stringify(prepared.metadata),
+        prepared.issue.createdAt,
+        prepared.issue.updatedAt,
       ]
     );
-
-    console.log(`[LinearSync] Issue ${issue.id} synced successfully`);
   }
 
-  /**
-   * Get last sync cursor from database
-   */
   private async getLastSyncCursor(): Promise<string | null> {
     const db = this.dbService.getDb();
     const result = await db.query<{ cursor_value: string }>(
@@ -290,9 +389,6 @@ export class LinearSyncAdapter {
     return result.rows[0]?.cursor_value || null;
   }
 
-  /**
-   * Update sync cursor in database
-   */
   private async updateSyncCursor(cursor: string, itemCount: number): Promise<void> {
     const db = this.dbService.getDb();
     await db.query(
@@ -309,9 +405,6 @@ export class LinearSyncAdapter {
     );
   }
 
-  /**
-   * Update sync status in database
-   */
   private async updateSyncStatus(status: 'idle' | 'syncing' | 'error'): Promise<void> {
     const db = this.dbService.getDb();
     if (status === 'idle') {
@@ -338,17 +431,11 @@ export class LinearSyncAdapter {
     }
   }
 
-  /**
-   * Calculate MD5 hash of content for change detection
-   */
   private calculateContentHash(content: string): string {
     return crypto.createHash('md5').update(content).digest('hex');
   }
 }
 
-/**
- * Factory function for creating LinearSyncAdapter instance
- */
 export function createLinearSyncAdapter(): LinearSyncAdapter {
   return new LinearSyncAdapter();
 }
