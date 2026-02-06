@@ -54,6 +54,8 @@ export function applyRecencyBoost<
   T extends { score: number; timestamp?: number; source: string }
 >(results: T[]): T[] {
   return results.map((result) => {
+    if (!result.timestamp) return result;
+
     const config = SOURCE_RECENCY_CONFIGS[result.source] || DEFAULT_CONFIG;
     const recencyScore = calculateRecencyScore(result.timestamp, result.source);
     const boostedScore =

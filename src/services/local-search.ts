@@ -446,7 +446,7 @@ export class LocalSearchService {
   ): Promise<SearchResult[]> {
     try {
       const documents = results.map((r) => ({
-        id: r.id,
+        id: `${r.source}:${r.id}`,
         text: `${r.title || ''} ${r.content}`.slice(0, 1000),
       }));
 
@@ -458,7 +458,7 @@ export class LocalSearchService {
 
       return results.map((result) => ({
         ...result,
-        score: scoreMap.get(result.id) ?? result.score,
+        score: scoreMap.get(`${result.source}:${result.id}`) ?? result.score,
       }));
     } catch (error) {
       console.error('[LocalSearch] Rerank failed, using original scores:', error);

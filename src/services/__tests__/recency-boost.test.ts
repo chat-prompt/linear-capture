@@ -127,7 +127,7 @@ describe('recency-boost', () => {
       expect(boosted[0].score).toBeLessThan(boosted[1].score);
     });
 
-    it('handles missing timestamp with neutral recency', () => {
+    it('skips recency boost when timestamp is missing', () => {
       const results = [
         { id: '1', score: 0.8, source: 'slack' },
         { id: '2', score: 0.8, timestamp: Date.now(), source: 'slack' },
@@ -135,11 +135,7 @@ describe('recency-boost', () => {
 
       const boosted = applyRecencyBoost(results);
 
-      // No timestamp: recency = 0.5
-      // (1-0.6)*0.8 + 0.6*0.5 = 0.32 + 0.30 = 0.62
-      expect(boosted[0].score).toBeCloseTo(0.62, 1);
-      // With current timestamp: recency ~1.0
-      // (1-0.6)*0.8 + 0.6*1.0 = 0.32 + 0.60 = 0.92
+      expect(boosted[0].score).toBe(0.8);
       expect(boosted[1].score).toBeCloseTo(0.92, 1);
     });
   });
