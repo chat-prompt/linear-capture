@@ -271,8 +271,11 @@ export class LocalSearchService {
 
       const merged = this.mergeWithRRF(semanticResults, keywordResults, RRF_K);
 
+      console.warn(`[LocalSearch] RRF merged: ${merged.length} results`);
       const reranked = await this.applyRerank(query, merged);
+      console.warn(`[LocalSearch] Reranked: ${reranked.length} results`);
       const boosted = applyRecencyBoost(reranked);
+      console.warn(`[LocalSearch] RecencyBoosted: ${boosted.length} results`);
 
       return boosted.slice(0, limit);
     } catch (error) {

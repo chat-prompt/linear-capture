@@ -40,7 +40,7 @@ export async function rerank(
   topN = 20
 ): Promise<RerankResult[]> {
   if (!query || documents.length === 0) {
-    logger.log('[Reranker] Empty query or documents, returning original order');
+    logger.warn('[Reranker] Empty query or documents, returning original order');
     return documents.map((doc, i) => ({
       id: doc.id,
       relevanceScore: 1 - (i / documents.length),
@@ -56,7 +56,7 @@ export async function rerank(
   const effectiveTopN = Math.min(topN, documents.length);
 
   try {
-    logger.log(`[Reranker] Reranking ${documents.length} documents for query: "${query.slice(0, 50)}..."`);
+    logger.warn(`[Reranker] Reranking ${documents.length} documents for query: "${query.slice(0, 50)}..."`);
     const startTime = Date.now();
 
     const response = await fetch(`${WORKER_URL}/rerank`, {
@@ -83,7 +83,7 @@ export async function rerank(
       return fallbackOrder(documents);
     }
 
-    logger.log(`[Reranker] Reranked ${data.results.length} documents in ${elapsed}ms`);
+    logger.warn(`[Reranker] Reranked ${data.results.length} documents in ${elapsed}ms`);
     return data.results;
   } catch (error) {
     logger.error('[Reranker] Failed:', error instanceof Error ? error.message : 'Unknown error');
