@@ -1,9 +1,9 @@
 /**
- * LinearSyncAdapter - Sync Linear issues and comments to local database
+ * LinearSyncAdapter - Sync Linear issues to local database
  *
  * Features:
  * - Incremental sync based on updatedAt timestamp
- * - Issue + comment fetching via Linear SDK
+ * - Issue fetching via Linear SDK
  * - Text preprocessing and embedding generation
  * - Change detection via content_hash
  * - Per-item error tracking (don't block entire sync)
@@ -18,7 +18,7 @@ import type { LinearService } from '../linear-client';
 import type { DatabaseService } from '../database';
 import type { TextPreprocessor } from '../text-preprocessor';
 import type { SyncProgressCallback } from '../local-search';
-import type { Issue, Comment } from '@linear/sdk';
+import type { Issue } from '@linear/sdk';
 
 export interface SyncResult {
   success: boolean;
@@ -75,20 +75,9 @@ export class LinearSyncAdapter {
           await this.syncIssue(issue);
           result.itemsSynced++;
 
-          // Track latest updatedAt
           const updatedAt = issue.updatedAt?.toISOString();
           if (updatedAt && (!latestUpdatedAt || updatedAt > latestUpdatedAt)) {
             latestUpdatedAt = updatedAt;
-          }
-
-          // Sync comments for this issue
-          const commentsResult = await this.syncComments(issue);
-          result.itemsSynced += commentsResult.itemsSynced;
-          result.itemsFailed += commentsResult.itemsFailed;
-          result.errors.push(...commentsResult.errors);
-
-          if (commentsResult.lastCursor && (!latestUpdatedAt || commentsResult.lastCursor > latestUpdatedAt)) {
-            latestUpdatedAt = commentsResult.lastCursor;
           }
         } catch (error) {
           console.error(`[LinearSync] Failed to sync issue ${issue.id}:`, error);
@@ -168,15 +157,6 @@ export class LinearSyncAdapter {
           const updatedAt = issue.updatedAt?.toISOString();
           if (updatedAt && (!latestUpdatedAt || updatedAt > latestUpdatedAt)) {
             latestUpdatedAt = updatedAt;
-          }
-
-          const commentsResult = await this.syncComments(issue);
-          result.itemsSynced += commentsResult.itemsSynced;
-          result.itemsFailed += commentsResult.itemsFailed;
-          result.errors.push(...commentsResult.errors);
-
-          if (commentsResult.lastCursor && (!latestUpdatedAt || commentsResult.lastCursor > latestUpdatedAt)) {
-            latestUpdatedAt = commentsResult.lastCursor;
           }
         } catch (error) {
           console.error(`[LinearSync] Failed to sync issue ${issue.id}:`, error);
@@ -293,130 +273,6 @@ export class LinearSyncAdapter {
     );
 
     console.log(`[LinearSync] Issue ${issue.id} synced successfully`);
-  }
-
-  /**
-   * Sync comments for a given issue
-   */
-  private async syncComments(issue: Issue): Promise<SyncResult> {
-    const result: SyncResult = {
-      success: true,
-      itemsSynced: 0,
-      itemsFailed: 0,
-      errors: [],
-    };
-
-    try {
-      const comments = await issue.comments();
-
-      if (!comments || comments.nodes.length === 0) {
-        return result;
-      }
-
-      console.log(`[LinearSync] Found ${comments.nodes.length} comments for issue ${issue.identifier}`);
-
-      let latestUpdatedAt: string | null = null;
-
-      for (const comment of comments.nodes) {
-        try {
-          await this.syncComment(comment, issue);
-          result.itemsSynced++;
-
-          const updatedAt = comment.updatedAt?.toISOString();
-          if (updatedAt && (!latestUpdatedAt || updatedAt > latestUpdatedAt)) {
-            latestUpdatedAt = updatedAt;
-          }
-        } catch (error) {
-          console.error(`[LinearSync] Failed to sync comment ${comment.id}:`, error);
-          result.itemsFailed++;
-          result.errors.push({
-            itemId: comment.id,
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
-        }
-      }
-
-      if (latestUpdatedAt) {
-        result.lastCursor = latestUpdatedAt;
-      }
-    } catch (error) {
-      console.error(`[LinearSync] Failed to fetch comments for issue ${issue.id}:`, error);
-      result.success = false;
-      result.errors.push({
-        itemId: issue.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-
-    return result;
-  }
-
-  /**
-   * Sync a single comment to database
-   */
-  private async syncComment(comment: Comment, issue: Issue): Promise<void> {
-    console.log(`[LinearSync] Syncing comment ${comment.id} on issue ${issue.identifier}`);
-
-    const fullText = comment.body || '';
-    const preprocessedText = this.preprocessor.preprocess(fullText);
-    const contentHash = this.calculateContentHash(preprocessedText);
-
-    const db = this.dbService.getDb();
-    const existingDoc = await db.query<{ content_hash: string }>(
-      `SELECT content_hash FROM documents WHERE source_type = $1 AND source_id = $2`,
-      ['linear', comment.id]
-    );
-
-    if (existingDoc.rows.length > 0 && existingDoc.rows[0].content_hash === contentHash) {
-      console.log(`[LinearSync] Comment ${comment.id} unchanged, skipping`);
-      return;
-    }
-
-    const embedding = await this.embeddingClient.embedSingle(preprocessedText);
-
-    // Fetch user info
-    const user = await comment.user;
-
-    const metadata = {
-      issueId: issue.id,
-      issueIdentifier: issue.identifier,
-      userId: user?.id,
-      userName: user?.name,
-      createdAt: comment.createdAt?.toISOString(),
-    };
-
-    await db.query(
-      `
-      INSERT INTO documents (
-        source_type, source_id, parent_id, title, content, content_hash,
-        embedding, metadata, source_created_at, source_updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      ON CONFLICT (source_type, source_id) 
-      DO UPDATE SET
-        title = EXCLUDED.title,
-        content = EXCLUDED.content,
-        content_hash = EXCLUDED.content_hash,
-        embedding = EXCLUDED.embedding,
-        metadata = EXCLUDED.metadata,
-        source_updated_at = EXCLUDED.source_updated_at,
-        indexed_at = NOW()
-      WHERE documents.content_hash != EXCLUDED.content_hash
-    `,
-      [
-        'linear',
-        comment.id,
-        issue.id, // Link to parent issue
-        `Comment on ${issue.identifier}`,
-        preprocessedText,
-        contentHash,
-        JSON.stringify(Array.from(embedding)),
-        JSON.stringify(metadata),
-        comment.createdAt,
-        comment.updatedAt,
-      ]
-    );
-
-    console.log(`[LinearSync] Comment ${comment.id} synced successfully`);
   }
 
   /**
