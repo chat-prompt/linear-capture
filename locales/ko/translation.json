@@ -114,7 +114,8 @@
     "languageHint": "앱 표시 언어 선택",
     "integrations": "연동",
     "integrationHint": "서비스를 연결하면 이슈 생성 시 관련 내용을 검색하고 첨부할 수 있습니다",
-    "changeWorkspace": "워크스페이스 변경"
+    "changeWorkspace": "워크스페이스 변경",
+    "changeAccount": "계정 변경"
   },
   "hotkey": {
     "title": "캡처 단축키",
@@ -143,7 +144,18 @@
     "connecting": "연결 중...",
     "disconnecting": "연결 해제 중...",
     "connectFailed": "OAuth 흐름 시작 실패",
-    "disconnectFailed": "연결 해제 실패"
+    "disconnectFailed": "연결 해제 실패",
+    "channels": "채널",
+    "selectChannels": "채널 선택",
+    "searchChannels": "채널 검색...",
+    "selectAll": "모두 선택",
+    "deselectAll": "모두 선택 해제",
+    "channelsSelected": "{{total}}개 채널 중 {{selected}}개 선택됨",
+    "noChannels": "채널을 찾을 수 없습니다.",
+    "save": "저장",
+    "skip": "건너뛰기",
+    "editChannels": "채널 편집",
+    "saveAndSync": "저장 및 동기화"
   },
   "notion": {
     "title": "Notion",

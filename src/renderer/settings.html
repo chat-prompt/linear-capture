@@ -616,6 +616,29 @@
       text-align: right;
     }
 
+    .integration-channel-hint {
+      font-size: 12px;
+      color: #888;
+      padding-left: 28px;
+      margin-top: 2px;
+      margin-bottom: 6px;
+    }
+
+    .integration-channel-hint .hint-separator {
+      margin: 0 4px;
+      color: #ccc;
+    }
+
+    .integration-channel-hint .hint-link {
+      color: #5e6ad2;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .integration-channel-hint .hint-link:hover {
+      color: #4c5abd;
+    }
+
     /* Channel Selection Modal */
     .modal-overlay {
       position: fixed;
@@ -939,35 +962,17 @@
         <div class="integration-menu" id="slackMenu" style="display: none;">
           <button class="btn-menu-trigger" id="slackMenuBtn">&#8942;</button>
           <div class="menu-dropdown" id="slackMenuDropdown">
+            <button class="menu-item" data-action="edit-channels" data-i18n="slack.editChannels">Edit</button>
             <button class="menu-item" data-action="reconnect" data-i18n="settings.changeWorkspace">Change workspace</button>
             <button class="menu-item" data-action="disconnect" data-i18n="common.disconnect">Disconnect</button>
           </div>
         </div>
       </div>
       <div id="slackError" class="integration-error" style="display: none;"></div>
-      
-      <!-- Slack Channel Selector (Collapsible) -->
-      <div id="slackChannelSelector" class="channel-selector collapsed" style="display: none;">
-        <div class="channel-selector-toggle" onclick="toggleChannelSelector()">
-          <div class="channel-toggle-left">
-            <span class="channel-toggle-icon">▼</span>
-            <span data-i18n="slack.channels">Channels</span>
-          </div>
-          <span id="channelSummary" class="channel-selector-summary"></span>
-        </div>
-        <div class="channel-selector-body">
-          <div class="channel-selector-header">
-            <input type="text" id="channelSearch" class="channel-search-input" data-i18n-placeholder="slack.searchChannels" placeholder="Search channels...">
-            <div class="channel-actions">
-              <button id="selectAllChannels" class="btn-xs" data-i18n="slack.selectAll">Select All</button>
-              <button id="deselectAllChannels" class="btn-xs" data-i18n="slack.deselectAll">Deselect All</button>
-            </div>
-          </div>
-          <div id="channelList" class="channel-list">
-            <!-- Channels will be rendered here -->
-          </div>
-          <div id="channelCount" class="channel-count"></div>
-        </div>
+      <div id="slackChannelHint" class="integration-channel-hint" style="display: none;">
+        <span id="channelSummaryText"></span>
+        <span class="hint-separator">·</span>
+        <a href="#" id="editChannelsBtn" class="hint-link" data-i18n="slack.editChannels">Edit</a>
       </div>
       
       <!-- Notion -->
@@ -1009,7 +1014,7 @@
         <div class="integration-menu" id="gmailMenu" style="display: none;">
           <button class="btn-menu-trigger" id="gmailMenuBtn">&#8942;</button>
           <div class="menu-dropdown" id="gmailMenuDropdown">
-            <button class="menu-item" data-action="reconnect" data-i18n="settings.changeWorkspace">Change workspace</button>
+            <button class="menu-item" data-action="reconnect" data-i18n="settings.changeAccount">Change account</button>
             <button class="menu-item" data-action="disconnect" data-i18n="common.disconnect">Disconnect</button>
           </div>
         </div>
@@ -1559,21 +1564,13 @@
     const slackMenu = document.getElementById('slackMenu');
     const syncSlackBtn = document.getElementById('syncSlackBtn');
     
-    // Channel Selector Elements
-    const slackChannelSelector = document.getElementById('slackChannelSelector');
-    const channelSummary = document.getElementById('channelSummary');
-    const channelSearch = document.getElementById('channelSearch');
-    const selectAllChannelsBtn = document.getElementById('selectAllChannels');
-    const deselectAllChannelsBtn = document.getElementById('deselectAllChannels');
-    const channelList = document.getElementById('channelList');
-    const channelCount = document.getElementById('channelCount');
+    const slackChannelHint = document.getElementById('slackChannelHint');
+    const channelSummaryText = document.getElementById('channelSummaryText');
+    const editChannelsBtn = document.getElementById('editChannelsBtn');
     
     let allSlackChannels = [];
     let selectedChannelIds = new Set();
-
-    function toggleChannelSelector() {
-      slackChannelSelector.classList.toggle('collapsed');
-    }
+    let channelSelectionDone = false;
 
     // Reusable function to render channel list
     function renderChannelList(container, channels, selectedIds, options = {}) {
@@ -1641,8 +1638,7 @@
         syncSlackBtn.disabled = false;
         slackMenu.style.display = '';
         
-        // Show channel selector and load channels
-        slackChannelSelector.style.display = 'block';
+        slackChannelHint.style.display = 'block';
         loadSlackChannels();
       } else {
         slackWorkspace.style.display = 'none';
@@ -1655,8 +1651,7 @@
         syncSlackBtn.style.display = 'none';
         slackMenu.style.display = 'none';
         
-        // Hide channel selector
-        slackChannelSelector.style.display = 'none';
+        slackChannelHint.style.display = 'none';
       }
       slackError.style.display = 'none';
     }
@@ -1672,111 +1667,42 @@
         if (channelsResult.success) {
           allSlackChannels = channelsResult.channels.sort((a, b) => a.name.localeCompare(b.name));
           
-          // Initialize selection
           selectedChannelIds = new Set();
           
           if (!savedChannels || savedChannels.length === 0) {
-            // Default: Select all if no saved selection (opt-out model)
             allSlackChannels.forEach(c => selectedChannelIds.add(c.id));
+            channelSelectionDone = false;
           } else {
-            // Use saved selection
+            channelSelectionDone = true;
+            selectedChannelIds.clear();
             savedChannels.forEach(c => {
               if (c.selected) selectedChannelIds.add(c.id);
             });
-            
-            // If saved selection exists but is empty (user deselected all), it's valid.
-            // However, if it's the first load ever, we might want to default to all.
-            // The backend usually returns empty array if never set.
-            // Let's assume if savedChannels is empty array, it means "default to all".
-            // If user explicitly deselected all, we should probably store a flag or handle it.
-            // For now, let's stick to: empty saved = all selected.
-            // Wait, if user deselects all and saves, savedChannels will be:
-            // [{id: '...', selected: false}, ...] or just empty?
-            // `sync:get-slack-channels` returns `[{id, name, selected}, ...]`
-            // So if user deselected all, we get list with selected: false.
-            // If we get empty array, it means no config saved yet.
-            
-            if (savedChannels.length > 0) {
-               // Re-build set from saved config
-               selectedChannelIds.clear();
-               savedChannels.forEach(c => {
-                 if (c.selected) selectedChannelIds.add(c.id);
-               });
-            }
           }
           
-          updateChannelList();
+          updateChannelSummary();
         }
       } catch (error) {
         console.error('Failed to load Slack channels:', error);
       }
     }
 
-    function updateChannelList() {
-      const count = renderChannelList(channelList, allSlackChannels, selectedChannelIds, {
-        searchFilter: channelSearch.value,
-        onToggle: (id, checked) => {
-          if (checked) {
-            selectedChannelIds.add(id);
-          } else {
-            selectedChannelIds.delete(id);
-          }
-          saveChannelSelection();
-          updateChannelCount();
-        }
-      });
-      updateChannelCount();
-    }
-    
-    async function updateChannelCount() {
+    async function updateChannelSummary() {
       const total = allSlackChannels.length;
       const selected = selectedChannelIds.size;
-      const text = await t('slack.channelsSelected', { selected, total });
-      const summaryText = `${selected}/${total}`;
-      channelCount.textContent = text || `${selected}/${total} selected`;
-      channelSummary.textContent = summaryText;
-    }
-
-    async function saveChannelSelection() {
-      // Prepare data for save: list of all channels with selected status
-      const channelsToSave = allSlackChannels.map(c => ({
-        id: c.id,
-        name: c.name,
-        selected: selectedChannelIds.has(c.id)
-      }));
       
-      try {
-        await ipcRenderer.invoke('sync:set-slack-channels', channelsToSave);
-      } catch (error) {
-        console.error('Failed to save channel selection:', error);
+      if (total === 0) {
+        channelSummaryText.textContent = await t('common.loading');
+        return;
       }
+      
+      const text = await t('slack.channelsSelected', { selected, total });
+      channelSummaryText.textContent = text || `${selected}/${total} selected`;
     }
 
-    // Channel Selector Event Listeners
-    channelSearch.addEventListener('input', () => {
-      updateChannelList();
-    });
-
-    selectAllChannelsBtn.addEventListener('click', () => {
-      const filter = channelSearch.value.toLowerCase();
-      allSlackChannels.forEach(c => {
-        if (c.name.toLowerCase().includes(filter)) {
-          selectedChannelIds.add(c.id);
-        }
-      });
-      updateChannelList();
-      saveChannelSelection();
-    });
-
-    deselectAllChannelsBtn.addEventListener('click', () => {
-      const filter = channelSearch.value.toLowerCase();
-      allSlackChannels.forEach(c => {
-        if (c.name.toLowerCase().includes(filter)) {
-          selectedChannelIds.delete(c.id);
-        }
-      });
-      updateChannelList();
-      saveChannelSelection();
+    editChannelsBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      showChannelSelectionModal(allSlackChannels, 'edit');
     });
 
     // ==================== Channel Selection Modal Logic ====================
@@ -1792,16 +1718,33 @@
 
     let modalChannels = [];
     let modalSelectedIds = new Set();
+    let modalMode = 'post-oauth'; // 'post-oauth' | 'edit' | 'first-sync'
+    let modalPreviousSelection = new Set();
+    let pendingSyncAfterChannelSelection = false;
 
-    function showChannelSelectionModal(channels) {
+    async function showChannelSelectionModal(channels, mode = 'post-oauth') {
+      modalMode = mode;
       modalChannels = channels.sort((a, b) => a.name.localeCompare(b.name));
       modalSelectedIds = new Set();
       
-      // Default: Select all
-      modalChannels.forEach(c => modalSelectedIds.add(c.id));
+      if (mode === 'edit') {
+        selectedChannelIds.forEach(id => modalSelectedIds.add(id));
+        modalPreviousSelection = new Set(selectedChannelIds);
+        modalSkipBtn.textContent = await t('common.cancel');
+        modalSaveBtn.textContent = await t('common.save');
+      } else if (mode === 'first-sync') {
+        modalChannels.forEach(c => modalSelectedIds.add(c.id));
+        modalSkipBtn.textContent = await t('common.cancel');
+        modalSaveBtn.textContent = await t('slack.saveAndSync');
+      } else {
+        modalChannels.forEach(c => modalSelectedIds.add(c.id));
+        modalSkipBtn.textContent = await t('slack.skip');
+        modalSaveBtn.textContent = await t('slack.save');
+      }
       
       updateModalChannelList();
       channelSelectionModal.style.display = 'flex';
+      modalChannelSearch.value = '';
       modalChannelSearch.focus();
     }
 
@@ -1828,7 +1771,13 @@
     }
 
     async function closeModalWithDefault() {
-      // Save all channels as selected (default opt-out behavior)
+      if (modalMode === 'edit' || modalMode === 'first-sync') {
+        channelSelectionModal.style.display = 'none';
+        modalChannelSearch.value = '';
+        pendingSyncAfterChannelSelection = false;
+        return;
+      }
+      
       const channelsToSave = modalChannels.map(c => ({
         id: c.id,
         name: c.name,
@@ -1838,14 +1787,13 @@
       try {
         await ipcRenderer.invoke('sync:set-slack-channels', channelsToSave);
         channelSelectionModal.style.display = 'none';
-        loadSlackChannels(); // Refresh settings UI
+        loadSlackChannels();
       } catch (error) {
         console.error('Failed to save default channels:', error);
       }
     }
 
     async function closeModalWithSelection() {
-      // Save current selection
       const channelsToSave = modalChannels.map(c => ({
         id: c.id,
         name: c.name,
@@ -1855,7 +1803,18 @@
       try {
         await ipcRenderer.invoke('sync:set-slack-channels', channelsToSave);
         channelSelectionModal.style.display = 'none';
-        loadSlackChannels(); // Refresh settings UI
+        modalChannelSearch.value = '';
+        
+        selectedChannelIds = new Set(modalSelectedIds);
+        allSlackChannels = [...modalChannels];
+        channelSelectionDone = true;
+        
+        updateChannelSummary();
+        
+        if (pendingSyncAfterChannelSelection) {
+          pendingSyncAfterChannelSelection = false;
+          triggerSync('slack', syncSlackBtn, slackLastSync);
+        }
       } catch (error) {
         console.error('Failed to save channel selection:', error);
       }
@@ -1929,7 +1888,7 @@
       try {
         const channelsResult = await ipcRenderer.invoke('slack-channels');
         if (channelsResult.success && channelsResult.channels?.length > 0) {
-          showChannelSelectionModal(channelsResult.channels);
+          showChannelSelectionModal(channelsResult.channels, 'post-oauth');
         }
       } catch (error) {
         console.error('Failed to load channels for modal:', error);
@@ -2264,7 +2223,14 @@
       }
     });
 
-    syncSlackBtn.addEventListener('click', () => triggerSync('slack', syncSlackBtn, slackLastSync));
+    syncSlackBtn.addEventListener('click', () => {
+      if (!channelSelectionDone && allSlackChannels.length > 0) {
+        pendingSyncAfterChannelSelection = true;
+        showChannelSelectionModal(allSlackChannels, 'first-sync');
+        return;
+      }
+      triggerSync('slack', syncSlackBtn, slackLastSync);
+    });
     syncNotionBtn.addEventListener('click', () => triggerSync('notion', syncNotionBtn, notionLastSync));
     syncLinearBtn.addEventListener('click', () => triggerSync('linear', syncLinearBtn, linearLastSync));
     syncGmailBtn.addEventListener('click', () => triggerSync('gmail', syncGmailBtn, gmailLastSync));
@@ -2297,7 +2263,11 @@
         
         item.closest('.menu-dropdown').classList.remove('open');
         
-        if (action === 'reconnect') {
+        if (action === 'edit-channels') {
+          if (service === 'slack' && allSlackChannels.length > 0) {
+            showChannelSelectionModal(allSlackChannels, 'edit');
+          }
+        } else if (action === 'reconnect') {
           await ipcRenderer.invoke(`${service}-connect`);
         } else if (action === 'disconnect') {
           const result = await ipcRenderer.invoke(`${service}-disconnect`);
