@@ -112,7 +112,9 @@
     "updateCheckFailed": "Update-Prüfung fehlgeschlagen",
     "language": "Sprache",
     "languageHint": "App-Anzeigesprache auswählen",
-    "integrations": "Integrationen"
+    "integrations": "Integrationen",
+    "integrationHint": "Verbinde Dienste, um verwandte Inhalte bei der Erstellung von Vorgängen zu suchen und anzuhängen",
+    "changeWorkspace": "Arbeitsbereich wechseln"
   },
   "hotkey": {
     "title": "Erfassungs-Tastenkürzel",
@@ -219,14 +221,17 @@
     "noResultsHint": "Verwenden Sie andere Schlüsselwörter oder überprüfen Sie die Verbindungen",
     "enterQuery": "Geben Sie einen Titel oder Suchbegriff ein",
     "insertToDescription": "In Beschreibung einfügen",
-    "selected": "{{count}} ausgewählt"
+    "selected": "{{count}} ausgewählt",
+    "findFrom": "Verwandte Inhalte von Slack/Notion/Gmail suchen",
+    "notConnectedHint": "Verbinde Slack, Notion oder Gmail, um verwandte Inhalte zu suchen",
+    "openSettings": "Einstellungen öffnen"
   },
   "sync": {
     "title": "Datensynchronisierung",
     "hint": "Verbundene Dienste lokal synchronisieren, um die semantische Suche zu beschleunigen. Automatische Synchronisierung alle 5 Minuten.",
     "openaiPlaceholder": "sk-...",
     "notConnected": "Nicht verbunden",
-    "syncNow": "Jetzt synchronisieren",
+    "syncNow": "Sync",
     "ready": "Bereit zur Synchronisierung",
     "syncing": "Synchronisierung läuft...",
     "failed": "Synchronisierung fehlgeschlagen"

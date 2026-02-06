@@ -1308,6 +1308,50 @@
       font-size: 13px;
     }
 
+    .related-context-not-connected-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      background: #fff8e6;
+      border: 1px solid #ffe0a3;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+
+    .not-connected-content {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .not-connected-icon {
+      font-size: 16px;
+    }
+
+    .not-connected-text {
+      font-size: 13px;
+      color: #8a6d3b;
+    }
+
+    .not-connected-btn {
+      padding: 6px 12px;
+      background: white;
+      border: 1px solid #ffe0a3;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #8a6d3b;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s;
+    }
+
+    .not-connected-btn:hover {
+      background: #fff8e6;
+    }
+
     .related-context-actions {
       display: flex;
       align-items: center;
@@ -1413,13 +1457,21 @@
       <div id="relatedContextSection" class="related-context-section">
         <div class="related-context-header" id="relatedContextHeader">
           <div class="related-context-header-left">
-            <span class="related-context-header-icon">🔗</span>
-            <span class="related-context-header-title" data-i18n="relatedContext.title">Related Context</span>
+            <span class="related-context-header-icon">📎</span>
+            <span class="related-context-header-title" data-i18n="relatedContext.findFrom">Find related content from Slack/Notion/Gmail</span>
             <span class="related-context-header-badge" id="relatedContextBadge" style="display: none;">0</span>
           </div>
           <span class="related-context-header-toggle">▼</span>
         </div>
         <div class="related-context-body">
+          <!-- Not Connected Banner -->
+          <div id="relatedContextNotConnected" class="related-context-not-connected-banner" style="display: none;">
+            <div class="not-connected-content">
+              <span class="not-connected-icon">🔌</span>
+              <span class="not-connected-text" data-i18n="relatedContext.notConnectedHint">Connect Slack, Notion, or Gmail to search related content</span>
+            </div>
+            <button type="button" class="not-connected-btn" id="relatedContextOpenSettings" data-i18n="relatedContext.openSettings">Open Settings</button>
+          </div>
           <!-- Search Row -->
           <div class="related-context-search-row">
             <input type="text" 
@@ -2740,7 +2792,6 @@ updateTeamDependentDropdowns(teamSelect.value);
       } else {
         slackNotConnected.style.display = 'block';
         slackConnected.style.display = 'none';
-        // Update text with translation
         const notConnectedText = document.getElementById('slackNotConnectedText');
         const connectBtnText = document.getElementById('slackConnectBtnText');
         if (notConnectedText) {
@@ -2749,6 +2800,9 @@ updateTeamDependentDropdowns(teamSelect.value);
         if (connectBtnText) {
           connectBtnText.textContent = await t('context.connectButton', { service: 'Slack' });
         }
+      }
+      if (typeof updateRelatedContextConnectionBanner === 'function') {
+        updateRelatedContextConnectionBanner();
       }
     }
 
@@ -2776,7 +2830,6 @@ updateTeamDependentDropdowns(teamSelect.value);
       } else {
         notionNotConnected.style.display = 'block';
         notionConnected.style.display = 'none';
-        // Update text with translation
         const notConnectedText = document.getElementById('notionNotConnectedText');
         const connectBtnText = document.getElementById('notionConnectBtnText');
         if (notConnectedText) {
@@ -2785,6 +2838,9 @@ updateTeamDependentDropdowns(teamSelect.value);
         if (connectBtnText) {
           connectBtnText.textContent = await t('context.connectButton', { service: 'Notion' });
         }
+      }
+      if (typeof updateRelatedContextConnectionBanner === 'function') {
+        updateRelatedContextConnectionBanner();
       }
     }
 
@@ -2811,6 +2867,9 @@ updateTeamDependentDropdowns(teamSelect.value);
       } else {
         gmailNotConnected.style.display = 'block';
         gmailConnected.style.display = 'none';
+      }
+      if (typeof updateRelatedContextConnectionBanner === 'function') {
+        updateRelatedContextConnectionBanner();
       }
     }
 
@@ -3670,11 +3729,28 @@ updateTeamDependentDropdowns(teamSelect.value);
     const relatedContextInsertBtn = document.getElementById('relatedContextInsertBtn');
     const relatedContextBadge = document.getElementById('relatedContextBadge');
     const relatedContextStatus = document.getElementById('relatedContextStatus');
+    const relatedContextNotConnected = document.getElementById('relatedContextNotConnected');
+    const relatedContextOpenSettings = document.getElementById('relatedContextOpenSettings');
 
     let relatedContextSelectedItems = [];
     let userModifiedSearch = false;
     let relatedContextDebounceTimer = null;
     let lastRelatedQuery = '';
+
+    // Check if any service is connected and update banner visibility
+    function updateRelatedContextConnectionBanner() {
+      const anyConnected = slackConnectedStatus || notionConnectedStatus || gmailConnectedStatus;
+      if (anyConnected) {
+        relatedContextNotConnected.style.display = 'none';
+      } else {
+        relatedContextNotConnected.style.display = 'flex';
+      }
+    }
+
+    // Open settings button handler
+    relatedContextOpenSettings.addEventListener('click', () => {
+      ipcRenderer.invoke('open-settings');
+    });
 
     // Toggle section expand/collapse
     relatedContextHeader.addEventListener('click', () => {

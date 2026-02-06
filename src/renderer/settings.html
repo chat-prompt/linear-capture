@@ -565,6 +565,114 @@
       border-color: #5e6ad2;
       color: #5e6ad2;
     }
+
+    /* Dropdown Menu for Integration Row */
+    .integration-menu {
+      position: relative;
+      margin-left: 8px;
+      width: 24px;
+      flex-shrink: 0;
+    }
+
+    .integration-menu-placeholder {
+      width: 24px;
+      margin-left: 8px;
+      flex-shrink: 0;
+    }
+
+    .btn-menu-trigger {
+      background: transparent;
+      border: none;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      font-size: 16px;
+      color: #888;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .btn-menu-trigger:hover {
+      color: #333;
+    }
+
+    .menu-dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 1000;
+      min-width: 140px;
+      margin-top: 4px;
+    }
+
+    .menu-dropdown.open {
+      display: block;
+    }
+
+    .menu-item {
+      display: block;
+      width: 100%;
+      padding: 8px 12px;
+      border: none;
+      background: transparent;
+      text-align: left;
+      font-size: 13px;
+      color: #333;
+      cursor: pointer;
+    }
+
+    .menu-item:hover {
+      background: #f5f5f5;
+    }
+
+    .menu-item:first-child {
+      border-radius: 6px 6px 0 0;
+    }
+
+    .menu-item:last-child {
+      border-radius: 0 0 6px 6px;
+      color: #dc2626;
+    }
+
+    /* Integration row enhancements for unified layout */
+    .integration-workspace {
+      font-size: 13px;
+      color: #666;
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-left: 8px;
+    }
+
+    .integration-doc-count {
+      font-size: 11px;
+      color: #999;
+      margin-left: 6px;
+    }
+
+    .integration-spacer {
+      flex: 1;
+    }
+
+    .integration-last-sync {
+      font-size: 12px;
+      color: #888;
+      margin-right: 12px;
+    }
+
+    .integration-hint {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 12px;
+    }
   </style>
 </head>
 <body>
@@ -599,12 +707,19 @@
       <button class="btn-secondary" id="saveBtn" disabled data-i18n="common.save">Save</button>
     </div>
 
-    <!-- Integrations Section -->
+    <!-- Integrations Section (Unified) -->
     <div class="integrations-section">
       <h2 data-i18n="settings.integrations">Integrations</h2>
+      <p class="integration-hint" data-i18n="settings.integrationHint">Used for AI search to automatically find related conversations and documents when creating issues</p>
+      
+      <!-- OpenAI API Key (moved here from sync-section) -->
+      <div class="sync-api-key" style="margin-bottom: 16px;">
+        <input type="password" id="openaiKeyInput" data-i18n-placeholder="sync.openaiPlaceholder" placeholder="sk-...">
+        <button id="saveOpenaiKeyBtn" data-i18n="common.save">Save</button>
+      </div>
       
       <!-- Slack -->
-      <div class="integration-row">
+      <div class="integration-row" id="slackRow" data-service="slack">
         <svg class="integration-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313z" fill="#E01E5A"/>
           <path d="M8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312z" fill="#36C5F0"/>
@@ -612,93 +727,81 @@
           <path d="M15.165 18.956a2.528 2.528 0 0 1 2.521 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.27a2.527 2.527 0 0 1-2.52-2.522 2.527 2.527 0 0 1 2.52-2.52h6.313A2.528 2.528 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.521h-6.313z" fill="#ECB22E"/>
         </svg>
         <span class="integration-name" data-i18n="slack.title">Slack</span>
+        <span class="integration-workspace" id="slackWorkspace" style="display: none;"></span>
+        <span class="integration-doc-count" id="slackDocCount"></span>
+        <span class="integration-spacer"></span>
+        <span class="integration-last-sync" id="slackLastSync" style="display: none;"></span>
         <span class="integration-status" id="slackStatusText" data-i18n="slack.notConnected">Not connected</span>
         <button class="btn-integration" id="slackConnectBtn" data-i18n="common.connect">Connect</button>
+        <button class="btn-sync" id="syncSlackBtn" style="display: none;" data-i18n="sync.syncNow">Sync Now</button>
+        <div class="integration-menu" id="slackMenu" style="display: none;">
+          <button class="btn-menu-trigger" id="slackMenuBtn">&#8942;</button>
+          <div class="menu-dropdown" id="slackMenuDropdown">
+            <button class="menu-item" data-action="reconnect" data-i18n="settings.changeWorkspace">Change workspace</button>
+            <button class="menu-item" data-action="disconnect" data-i18n="common.disconnect">Disconnect</button>
+          </div>
+        </div>
       </div>
       <div id="slackError" class="integration-error" style="display: none;"></div>
       
       <!-- Notion -->
-      <div class="integration-row">
+      <div class="integration-row" id="notionRow" data-service="notion">
         <svg class="integration-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.98-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466l1.823 1.447zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.934-.56.934-1.166V6.354c0-.606-.233-.933-.747-.886l-15.177.887c-.56.046-.747.326-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.747 0-.934-.234-1.495-.933l-4.577-7.186v6.952l1.448.327s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.886.747-.933l3.222-.186zM2.877.466L16.039.014c1.635-.14 2.055.093 2.755.606l3.596 2.521c.56.373.746.466.746 1.072v17.04c0 .72-.28 1.19-1.12 1.236L6.03 23.466c-.653.046-1.025-.046-1.4-.56l-3.5-4.624c-.374-.56-.514-.98-.514-1.493V1.906c0-.653.28-1.12.98-1.16l1.281-.28z" fill="#000"/>
         </svg>
         <span class="integration-name" data-i18n="notion.title">Notion</span>
+        <span class="integration-workspace" id="notionWorkspace" style="display: none;"></span>
+        <span class="integration-doc-count" id="notionDocCount"></span>
+        <span class="integration-spacer"></span>
+        <span class="integration-last-sync" id="notionLastSync" style="display: none;"></span>
         <span class="integration-status" id="notionStatusText" data-i18n="notion.notConnected">Not connected</span>
         <button class="btn-integration" id="notionConnectBtn" data-i18n="common.connect">Connect</button>
+        <button class="btn-sync" id="syncNotionBtn" style="display: none;" data-i18n="sync.syncNow">Sync Now</button>
+        <div class="integration-menu" id="notionMenu" style="display: none;">
+          <button class="btn-menu-trigger" id="notionMenuBtn">&#8942;</button>
+          <div class="menu-dropdown" id="notionMenuDropdown">
+            <button class="menu-item" data-action="reconnect" data-i18n="settings.changeWorkspace">Change workspace</button>
+            <button class="menu-item" data-action="disconnect" data-i18n="common.disconnect">Disconnect</button>
+          </div>
+        </div>
       </div>
       <div id="notionError" class="integration-error" style="display: none;"></div>
       
       <!-- Gmail -->
-      <div class="integration-row">
+      <div class="integration-row" id="gmailRow" data-service="gmail">
         <svg class="integration-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/>
         </svg>
         <span class="integration-name" data-i18n="gmail.title">Gmail</span>
+        <span class="integration-workspace" id="gmailWorkspace" style="display: none;"></span>
+        <span class="integration-doc-count" id="gmailDocCount"></span>
+        <span class="integration-spacer"></span>
+        <span class="integration-last-sync" id="gmailLastSync" style="display: none;"></span>
         <span class="integration-status" id="gmailStatusText" data-i18n="gmail.notConnected">Not connected</span>
         <button class="btn-integration" id="gmailConnectBtn" data-i18n="common.connect">Connect</button>
+        <button class="btn-sync" id="syncGmailBtn" style="display: none;" data-i18n="sync.syncNow">Sync Now</button>
+        <div class="integration-menu" id="gmailMenu" style="display: none;">
+          <button class="btn-menu-trigger" id="gmailMenuBtn">&#8942;</button>
+          <div class="menu-dropdown" id="gmailMenuDropdown">
+            <button class="menu-item" data-action="reconnect" data-i18n="settings.changeWorkspace">Change workspace</button>
+            <button class="menu-item" data-action="disconnect" data-i18n="common.disconnect">Disconnect</button>
+          </div>
+        </div>
       </div>
       <div id="gmailError" class="integration-error" style="display: none;"></div>
-    </div>
-
-    <!-- Data Sync Section -->
-    <div class="sync-section">
-      <h2 data-i18n="sync.title">Data Sync</h2>
-      <p class="sync-hint" data-i18n="sync.hint">Sync connected services locally for faster semantic search. Auto-syncs every 5 minutes.</p>
       
-      <!-- OpenAI API Key -->
-      <div class="sync-api-key">
-        <input type="password" id="openaiKeyInput" data-i18n-placeholder="sync.openaiPlaceholder" placeholder="sk-...">
-        <button id="saveOpenaiKeyBtn" data-i18n="common.save">Save</button>
-      </div>
-      
-      <!-- Sync Sources -->
-      <div class="sync-sources">
-        <!-- Slack -->
-        <div class="sync-source-row" id="syncSlackRow" data-source="slack">
-          <svg class="sync-source-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313z" fill="#E01E5A"/>
-            <path d="M8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312z" fill="#36C5F0"/>
-            <path d="M18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.27 0a2.528 2.528 0 0 1-2.522 2.521 2.528 2.528 0 0 1-2.52-2.521V2.522A2.528 2.528 0 0 1 15.165 0a2.528 2.528 0 0 1 2.521 2.522v6.312z" fill="#2EB67D"/>
-            <path d="M15.165 18.956a2.528 2.528 0 0 1 2.521 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.27a2.527 2.527 0 0 1-2.52-2.522 2.527 2.527 0 0 1 2.52-2.52h6.313A2.528 2.528 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.521h-6.313z" fill="#ECB22E"/>
-          </svg>
-          <span class="sync-source-name">Slack</span>
-          <span class="sync-source-count" id="syncSlackCount"></span>
-          <span class="sync-source-status" id="syncSlackStatus" data-i18n="sync.notConnected">Not connected</span>
-          <button class="btn-sync" id="syncSlackBtn" disabled data-i18n="sync.syncNow">Sync Now</button>
-        </div>
-
-        <!-- Notion -->
-        <div class="sync-source-row" id="syncNotionRow" data-source="notion">
-          <svg class="sync-source-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.98-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466l1.823 1.447zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.934-.56.934-1.166V6.354c0-.606-.233-.933-.747-.886l-15.177.887c-.56.046-.747.326-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.747 0-.934-.234-1.495-.933l-4.577-7.186v6.952l1.448.327s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.886.747-.933l3.222-.186zM2.877.466L16.039.014c1.635-.14 2.055.093 2.755.606l3.596 2.521c.56.373.746.466.746 1.072v17.04c0 .72-.28 1.19-1.12 1.236L6.03 23.466c-.653.046-1.025-.046-1.4-.56l-3.5-4.624c-.374-.56-.514-.98-.514-1.493V1.906c0-.653.28-1.12.98-1.16l1.281-.28z" fill="#000"/>
-          </svg>
-          <span class="sync-source-name">Notion</span>
-          <span class="sync-source-count" id="syncNotionCount"></span>
-          <span class="sync-source-status" id="syncNotionStatus" data-i18n="sync.notConnected">Not connected</span>
-          <button class="btn-sync" id="syncNotionBtn" disabled data-i18n="sync.syncNow">Sync Now</button>
-        </div>
-
-        <!-- Linear -->
-        <div class="sync-source-row" id="syncLinearRow" data-source="linear">
-          <svg class="sync-source-icon" viewBox="0 0 24 24" fill="#5E6AD2" xmlns="http://www.w3.org/2000/svg">
-            <path d="M2.886 4.18A11.982 11.982 0 0 1 11.99 0C18.624 0 24 5.376 24 12.009c0 3.64-1.62 6.903-4.18 9.105L2.887 4.18ZM1.817 5.626l16.556 16.556c-.524.33-1.075.62-1.65.866L.951 7.277c.247-.575.537-1.126.866-1.65ZM.322 9.163l14.515 14.515c-.71.172-1.443.282-2.195.322L0 11.358a12 12 0 0 1 .322-2.195Zm-.17 4.862 9.823 9.824a12.02 12.02 0 0 1-9.824-9.824Z"/>
-          </svg>
-          <span class="sync-source-name">Linear</span>
-          <span class="sync-source-count" id="syncLinearCount"></span>
-          <span class="sync-source-status" id="syncLinearStatus" data-i18n="sync.notConnected">Not connected</span>
-          <button class="btn-sync" id="syncLinearBtn" disabled data-i18n="sync.syncNow">Sync Now</button>
-        </div>
-
-        <!-- Gmail -->
-        <div class="sync-source-row" id="syncGmailRow" data-source="gmail">
-          <svg class="sync-source-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/>
-          </svg>
-          <span class="sync-source-name">Gmail</span>
-          <span class="sync-source-count" id="syncGmailCount"></span>
-          <span class="sync-source-status" id="syncGmailStatus" data-i18n="sync.notConnected">Not connected</span>
-          <button class="btn-sync" id="syncGmailBtn" disabled data-i18n="sync.syncNow">Sync Now</button>
-        </div>
+      <!-- Linear (NO dropdown menu - API token based, not OAuth) -->
+      <div class="integration-row" id="linearRow" data-service="linear">
+        <svg class="integration-logo" viewBox="0 0 24 24" fill="#5E6AD2" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2.886 4.18A11.982 11.982 0 0 1 11.99 0C18.624 0 24 5.376 24 12.009c0 3.64-1.62 6.903-4.18 9.105L2.887 4.18ZM1.817 5.626l16.556 16.556c-.524.33-1.075.62-1.65.866L.951 7.277c.247-.575.537-1.126.866-1.65ZM.322 9.163l14.515 14.515c-.71.172-1.443.282-2.195.322L0 11.358a12 12 0 0 1 .322-2.195Zm-.17 4.862 9.823 9.824a12.02 12.02 0 0 1-9.824-9.824Z"/>
+        </svg>
+        <span class="integration-name">Linear</span>
+        <span class="integration-doc-count" id="linearDocCount"></span>
+        <span class="integration-spacer"></span>
+        <span class="integration-last-sync" id="linearLastSync" style="display: none;"></span>
+        <span class="integration-status" id="linearStatusText" data-i18n="sync.notConnected">Not connected</span>
+        <button class="btn-sync" id="syncLinearBtn" disabled data-i18n="sync.syncNow">Sync</button>
+        <div class="integration-menu-placeholder"></div>
       </div>
     </div>
 
@@ -1199,6 +1302,11 @@
     const slackStatusText = document.getElementById('slackStatusText');
     const slackConnectBtn = document.getElementById('slackConnectBtn');
     const slackError = document.getElementById('slackError');
+    const slackWorkspace = document.getElementById('slackWorkspace');
+    const slackDocCount = document.getElementById('slackDocCount');
+    const slackLastSync = document.getElementById('slackLastSync');
+    const slackMenu = document.getElementById('slackMenu');
+    const syncSlackBtn = document.getElementById('syncSlackBtn');
 
     async function loadSlackStatus() {
       try {
@@ -1212,43 +1320,38 @@
     async function updateSlackUI(status) {
       if (status.connected) {
         const workspaceName = status.workspace?.name || 'Workspace';
-        slackStatusText.textContent = await t('slack.connectedTo', { workspace: workspaceName });
-        slackStatusText.className = 'integration-status connected';
-        slackConnectBtn.textContent = await t('common.disconnect');
-        slackConnectBtn.className = 'btn-integration disconnect';
+        slackWorkspace.textContent = workspaceName;
+        slackWorkspace.style.display = '';
+        slackStatusText.style.display = 'none';
+        slackConnectBtn.style.display = 'none';
+        syncSlackBtn.style.display = '';
+        syncSlackBtn.disabled = false;
+        slackMenu.style.display = '';
       } else {
+        slackWorkspace.style.display = 'none';
+        slackDocCount.textContent = '';
+        slackLastSync.style.display = 'none';
         slackStatusText.textContent = await t('slack.notConnected');
-        slackStatusText.className = 'integration-status';
+        slackStatusText.style.display = '';
         slackConnectBtn.textContent = await t('common.connect');
-        slackConnectBtn.className = 'btn-integration';
+        slackConnectBtn.style.display = '';
+        syncSlackBtn.style.display = 'none';
+        slackMenu.style.display = 'none';
       }
       slackError.style.display = 'none';
     }
 
     slackConnectBtn.addEventListener('click', async () => {
-      const isConnected = slackStatusText.classList.contains('connected');
-      
       slackConnectBtn.disabled = true;
       slackError.style.display = 'none';
 
       try {
-        if (isConnected) {
-          slackConnectBtn.textContent = await t('slack.disconnecting');
-          const result = await ipcRenderer.invoke('slack-disconnect');
-          if (result.success) {
-            await updateSlackUI({ connected: false });
-          } else {
-            slackError.textContent = result.error || await t('slack.disconnectFailed');
-            slackError.style.display = 'block';
-          }
-        } else {
-          slackConnectBtn.textContent = await t('slack.connecting');
-          const result = await ipcRenderer.invoke('slack-connect');
-          if (!result.success) {
-            slackError.textContent = result.error || await t('slack.connectFailed');
-            slackError.style.display = 'block';
-            await updateSlackUI({ connected: false });
-          }
+        slackConnectBtn.textContent = await t('slack.connecting');
+        const result = await ipcRenderer.invoke('slack-connect');
+        if (!result.success) {
+          slackError.textContent = result.error || await t('slack.connectFailed');
+          slackError.style.display = 'block';
+          await updateSlackUI({ connected: false });
         }
       } catch (error) {
         console.error('Slack action error:', error);
@@ -1256,11 +1359,7 @@
         slackError.style.display = 'block';
       } finally {
         slackConnectBtn.disabled = false;
-        if (!slackStatusText.classList.contains('connected')) {
-          slackConnectBtn.textContent = await t('common.connect');
-        } else {
-          slackConnectBtn.textContent = await t('common.disconnect');
-        }
+        slackConnectBtn.textContent = await t('common.connect');
       }
     });
 
@@ -1271,6 +1370,7 @@
         workspace: result.workspace,
         user: result.user,
       });
+      loadSyncStatus();
     });
 
     ipcRenderer.on('slack-oauth-error', (_event, data) => {
@@ -1286,6 +1386,11 @@
     const notionStatusText = document.getElementById('notionStatusText');
     const notionConnectBtn = document.getElementById('notionConnectBtn');
     const notionError = document.getElementById('notionError');
+    const notionWorkspace = document.getElementById('notionWorkspace');
+    const notionDocCount = document.getElementById('notionDocCount');
+    const notionLastSync = document.getElementById('notionLastSync');
+    const notionMenu = document.getElementById('notionMenu');
+    const syncNotionBtn = document.getElementById('syncNotionBtn');
 
     async function loadNotionStatus() {
       try {
@@ -1299,43 +1404,38 @@
     async function updateNotionUI(status) {
       if (status.connected) {
         const workspaceName = status.workspace?.name || 'Workspace';
-        notionStatusText.textContent = await t('notion.connectedTo', { workspace: workspaceName });
-        notionStatusText.className = 'integration-status connected';
-        notionConnectBtn.textContent = await t('common.disconnect');
-        notionConnectBtn.className = 'btn-integration disconnect';
+        notionWorkspace.textContent = workspaceName;
+        notionWorkspace.style.display = '';
+        notionStatusText.style.display = 'none';
+        notionConnectBtn.style.display = 'none';
+        syncNotionBtn.style.display = '';
+        syncNotionBtn.disabled = false;
+        notionMenu.style.display = '';
       } else {
+        notionWorkspace.style.display = 'none';
+        notionDocCount.textContent = '';
+        notionLastSync.style.display = 'none';
         notionStatusText.textContent = await t('notion.notConnected');
-        notionStatusText.className = 'integration-status';
+        notionStatusText.style.display = '';
         notionConnectBtn.textContent = await t('common.connect');
-        notionConnectBtn.className = 'btn-integration';
+        notionConnectBtn.style.display = '';
+        syncNotionBtn.style.display = 'none';
+        notionMenu.style.display = 'none';
       }
       notionError.style.display = 'none';
     }
 
     notionConnectBtn.addEventListener('click', async () => {
-      const isConnected = notionStatusText.classList.contains('connected');
-      
       notionConnectBtn.disabled = true;
       notionError.style.display = 'none';
 
       try {
-        if (isConnected) {
-          notionConnectBtn.textContent = await t('notion.disconnecting');
-          const result = await ipcRenderer.invoke('notion-disconnect');
-          if (result.success) {
-            await updateNotionUI({ connected: false });
-          } else {
-            notionError.textContent = result.error || await t('notion.disconnectFailed');
-            notionError.style.display = 'block';
-          }
-        } else {
-          notionConnectBtn.textContent = await t('notion.connecting');
-          const result = await ipcRenderer.invoke('notion-connect');
-          if (!result.success) {
-            notionError.textContent = result.error || await t('notion.connectFailed');
-            notionError.style.display = 'block';
-            await updateNotionUI({ connected: false });
-          }
+        notionConnectBtn.textContent = await t('notion.connecting');
+        const result = await ipcRenderer.invoke('notion-connect');
+        if (!result.success) {
+          notionError.textContent = result.error || await t('notion.connectFailed');
+          notionError.style.display = 'block';
+          await updateNotionUI({ connected: false });
         }
       } catch (error) {
         console.error('Notion action error:', error);
@@ -1343,11 +1443,7 @@
         notionError.style.display = 'block';
       } finally {
         notionConnectBtn.disabled = false;
-        if (!notionStatusText.classList.contains('connected')) {
-          notionConnectBtn.textContent = await t('common.connect');
-        } else {
-          notionConnectBtn.textContent = await t('common.disconnect');
-        }
+        notionConnectBtn.textContent = await t('common.connect');
       }
     });
 
@@ -1358,6 +1454,7 @@
         workspace: result.workspace,
         user: result.user,
       });
+      loadSyncStatus();
     });
 
     ipcRenderer.on('notion-oauth-error', (_event, data) => {
@@ -1373,6 +1470,11 @@
     const gmailStatusText = document.getElementById('gmailStatusText');
     const gmailConnectBtn = document.getElementById('gmailConnectBtn');
     const gmailError = document.getElementById('gmailError');
+    const gmailWorkspace = document.getElementById('gmailWorkspace');
+    const gmailDocCount = document.getElementById('gmailDocCount');
+    const gmailLastSync = document.getElementById('gmailLastSync');
+    const gmailMenu = document.getElementById('gmailMenu');
+    const syncGmailBtn = document.getElementById('syncGmailBtn');
 
     async function loadGmailStatus() {
       try {
@@ -1386,43 +1488,38 @@
     async function updateGmailUI(status) {
       if (status.connected) {
         const email = status.user?.email || 'Connected';
-        gmailStatusText.textContent = await t('gmail.connectedTo', { email: email });
-        gmailStatusText.className = 'integration-status connected';
-        gmailConnectBtn.textContent = await t('common.disconnect');
-        gmailConnectBtn.className = 'btn-integration disconnect';
+        gmailWorkspace.textContent = email;
+        gmailWorkspace.style.display = '';
+        gmailStatusText.style.display = 'none';
+        gmailConnectBtn.style.display = 'none';
+        syncGmailBtn.style.display = '';
+        syncGmailBtn.disabled = false;
+        gmailMenu.style.display = '';
       } else {
+        gmailWorkspace.style.display = 'none';
+        gmailDocCount.textContent = '';
+        gmailLastSync.style.display = 'none';
         gmailStatusText.textContent = await t('gmail.notConnected');
-        gmailStatusText.className = 'integration-status';
+        gmailStatusText.style.display = '';
         gmailConnectBtn.textContent = await t('common.connect');
-        gmailConnectBtn.className = 'btn-integration';
+        gmailConnectBtn.style.display = '';
+        syncGmailBtn.style.display = 'none';
+        gmailMenu.style.display = 'none';
       }
       gmailError.style.display = 'none';
     }
 
     gmailConnectBtn.addEventListener('click', async () => {
-      const isConnected = gmailStatusText.classList.contains('connected');
-      
       gmailConnectBtn.disabled = true;
       gmailError.style.display = 'none';
 
       try {
-        if (isConnected) {
-          gmailConnectBtn.textContent = await t('gmail.disconnecting');
-          const result = await ipcRenderer.invoke('gmail-disconnect');
-          if (result.success) {
-            await updateGmailUI({ connected: false });
-          } else {
-            gmailError.textContent = result.error || await t('gmail.disconnectFailed');
-            gmailError.style.display = 'block';
-          }
-        } else {
-          gmailConnectBtn.textContent = await t('gmail.connecting');
-          const result = await ipcRenderer.invoke('gmail-connect');
-          if (!result.success) {
-            gmailError.textContent = result.error || await t('gmail.connectFailed');
-            gmailError.style.display = 'block';
-            await updateGmailUI({ connected: false });
-          }
+        gmailConnectBtn.textContent = await t('gmail.connecting');
+        const result = await ipcRenderer.invoke('gmail-connect');
+        if (!result.success) {
+          gmailError.textContent = result.error || await t('gmail.connectFailed');
+          gmailError.style.display = 'block';
+          await updateGmailUI({ connected: false });
         }
       } catch (error) {
         console.error('Gmail action error:', error);
@@ -1430,11 +1527,7 @@
         gmailError.style.display = 'block';
       } finally {
         gmailConnectBtn.disabled = false;
-        if (!gmailStatusText.classList.contains('connected')) {
-          gmailConnectBtn.textContent = await t('common.connect');
-        } else {
-          gmailConnectBtn.textContent = await t('common.disconnect');
-        }
+        gmailConnectBtn.textContent = await t('common.connect');
       }
     });
 
@@ -1444,6 +1537,7 @@
         connected: true,
         user: result.user,
       });
+      loadSyncStatus();
     });
 
     ipcRenderer.on('gmail-oauth-error', (_event, data) => {
@@ -1458,22 +1552,11 @@
     // ==================== Data Sync Settings ====================
     const openaiKeyInput = document.getElementById('openaiKeyInput');
     const saveOpenaiKeyBtn = document.getElementById('saveOpenaiKeyBtn');
-    const syncSlackBtn = document.getElementById('syncSlackBtn');
-    const syncNotionBtn = document.getElementById('syncNotionBtn');
     const syncLinearBtn = document.getElementById('syncLinearBtn');
-    const syncGmailBtn = document.getElementById('syncGmailBtn');
-    const syncSlackStatus = document.getElementById('syncSlackStatus');
-    const syncNotionStatus = document.getElementById('syncNotionStatus');
-    const syncLinearStatus = document.getElementById('syncLinearStatus');
-    const syncGmailStatus = document.getElementById('syncGmailStatus');
-    const syncSlackCount = document.getElementById('syncSlackCount');
-    const syncNotionCount = document.getElementById('syncNotionCount');
-    const syncLinearCount = document.getElementById('syncLinearCount');
-    const syncGmailCount = document.getElementById('syncGmailCount');
-    const syncSlackRow = document.getElementById('syncSlackRow');
-    const syncNotionRow = document.getElementById('syncNotionRow');
-    const syncLinearRow = document.getElementById('syncLinearRow');
-    const syncGmailRow = document.getElementById('syncGmailRow');
+    const linearRow = document.getElementById('linearRow');
+    const linearDocCount = document.getElementById('linearDocCount');
+    const linearLastSync = document.getElementById('linearLastSync');
+    const linearStatusText = document.getElementById('linearStatusText');
 
     async function loadOpenaiKey() {
       try {
@@ -1537,59 +1620,53 @@
         const linearConnected = !!(await ipcRenderer.invoke('get-settings'))?.linearApiToken;
 
         if (slackStatus.connected) {
-          syncSlackBtn.disabled = false;
-          syncSlackRow.classList.remove('disabled');
           const src = syncStatus?.sources?.slack;
-          syncSlackCount.textContent = formatDocCount(src?.documentCount);
+          slackDocCount.textContent = formatDocCount(src?.documentCount);
           const lastSync = src?.lastSync;
-          syncSlackStatus.textContent = lastSync ? formatLastSync(lastSync) : await t('sync.ready');
-        } else {
-          syncSlackBtn.disabled = true;
-          syncSlackRow.classList.add('disabled');
-          syncSlackCount.textContent = '';
-          syncSlackStatus.textContent = await t('sync.notConnected');
+          if (lastSync) {
+            slackLastSync.textContent = formatLastSync(lastSync);
+            slackLastSync.style.display = '';
+          }
         }
 
         if (notionStatus.connected) {
-          syncNotionBtn.disabled = false;
-          syncNotionRow.classList.remove('disabled');
           const src = syncStatus?.sources?.notion;
-          syncNotionCount.textContent = formatDocCount(src?.documentCount);
+          notionDocCount.textContent = formatDocCount(src?.documentCount);
           const lastSync = src?.lastSync;
-          syncNotionStatus.textContent = lastSync ? formatLastSync(lastSync) : await t('sync.ready');
-        } else {
-          syncNotionBtn.disabled = true;
-          syncNotionRow.classList.add('disabled');
-          syncNotionCount.textContent = '';
-          syncNotionStatus.textContent = await t('sync.notConnected');
+          if (lastSync) {
+            notionLastSync.textContent = formatLastSync(lastSync);
+            notionLastSync.style.display = '';
+          }
         }
 
         if (linearConnected) {
           syncLinearBtn.disabled = false;
-          syncLinearRow.classList.remove('disabled');
+          linearRow.classList.remove('disabled');
+          linearStatusText.style.display = 'none';
           const src = syncStatus?.sources?.linear;
-          syncLinearCount.textContent = formatDocCount(src?.documentCount);
+          linearDocCount.textContent = formatDocCount(src?.documentCount);
           const lastSync = src?.lastSync;
-          syncLinearStatus.textContent = lastSync ? formatLastSync(lastSync) : await t('sync.ready');
+          if (lastSync) {
+            linearLastSync.textContent = formatLastSync(lastSync);
+            linearLastSync.style.display = '';
+          }
         } else {
           syncLinearBtn.disabled = true;
-          syncLinearRow.classList.add('disabled');
-          syncLinearCount.textContent = '';
-          syncLinearStatus.textContent = await t('sync.notConnected');
+          linearRow.classList.add('disabled');
+          linearDocCount.textContent = '';
+          linearLastSync.style.display = 'none';
+          linearStatusText.textContent = await t('sync.notConnected');
+          linearStatusText.style.display = '';
         }
 
         if (gmailStatus.connected) {
-          syncGmailBtn.disabled = false;
-          syncGmailRow.classList.remove('disabled');
           const src = syncStatus?.sources?.gmail;
-          syncGmailCount.textContent = formatDocCount(src?.documentCount);
+          gmailDocCount.textContent = formatDocCount(src?.documentCount);
           const lastSync = src?.lastSync;
-          syncGmailStatus.textContent = lastSync ? formatLastSync(lastSync) : await t('sync.ready');
-        } else {
-          syncGmailBtn.disabled = true;
-          syncGmailRow.classList.add('disabled');
-          syncGmailCount.textContent = '';
-          syncGmailStatus.textContent = await t('sync.notConnected');
+          if (lastSync) {
+            gmailLastSync.textContent = formatLastSync(lastSync);
+            gmailLastSync.style.display = '';
+          }
         }
       } catch (error) {
         console.error('Failed to load sync status:', error);
@@ -1599,34 +1676,43 @@
     setInterval(() => loadSyncStatus(), 60000);
 
     const activeSyncs = new Map();
+    const lastSyncElements = {
+      slack: slackLastSync,
+      notion: notionLastSync,
+      gmail: gmailLastSync,
+      linear: linearLastSync
+    };
 
-    async function triggerSync(source, btn, statusEl) {
+    async function triggerSync(source, btn, lastSyncEl) {
       btn.disabled = true;
       btn.classList.add('syncing');
       btn.textContent = await t('sync.syncing');
-      statusEl.textContent = await t('sync.syncing');
-      statusEl.classList.add('syncing');
-      activeSyncs.set(source, statusEl);
+      if (lastSyncEl) {
+        lastSyncEl.textContent = await t('sync.syncing');
+        lastSyncEl.style.display = '';
+      }
+      activeSyncs.set(source, lastSyncEl);
 
       try {
         const result = await ipcRenderer.invoke('sync:trigger', source);
         if (result.success) {
           const itemsText = result.itemsSynced === 1 ? 'item' : 'items';
-          statusEl.textContent = `Synced ${result.itemsSynced} ${itemsText}`;
-          statusEl.classList.remove('syncing', 'error');
+          if (lastSyncEl) {
+            lastSyncEl.textContent = `Synced ${result.itemsSynced} ${itemsText}`;
+          }
           setTimeout(() => {
             loadSyncStatus();
           }, 3000);
         } else {
-          statusEl.textContent = result.error || await t('sync.failed');
-          statusEl.classList.remove('syncing');
-          statusEl.classList.add('error');
+          if (lastSyncEl) {
+            lastSyncEl.textContent = result.error || await t('sync.failed');
+          }
         }
       } catch (error) {
         console.error(`Sync ${source} error:`, error);
-        statusEl.textContent = await t('sync.failed');
-        statusEl.classList.remove('syncing');
-        statusEl.classList.add('error');
+        if (lastSyncEl) {
+          lastSyncEl.textContent = await t('sync.failed');
+        }
       } finally {
         btn.classList.remove('syncing');
         btn.textContent = await t('sync.syncNow');
@@ -1636,27 +1722,63 @@
     }
 
     ipcRenderer.on('sync:progress', (_event, progress) => {
-      const statusEl = activeSyncs.get(progress.source);
-      if (!statusEl) return;
+      const lastSyncEl = activeSyncs.get(progress.source);
+      if (!lastSyncEl) return;
 
       if (progress.phase === 'complete') return;
 
       if (progress.total > 0) {
-        statusEl.textContent = `(${progress.current}/${progress.total}) Syncing...`;
+        lastSyncEl.textContent = `(${progress.current}/${progress.total}) Syncing...`;
       } else {
-        statusEl.textContent = 'Discovering...';
+        lastSyncEl.textContent = 'Discovering...';
       }
     });
 
-    syncSlackBtn.addEventListener('click', () => triggerSync('slack', syncSlackBtn, syncSlackStatus));
-    syncNotionBtn.addEventListener('click', () => triggerSync('notion', syncNotionBtn, syncNotionStatus));
-    syncLinearBtn.addEventListener('click', () => triggerSync('linear', syncLinearBtn, syncLinearStatus));
-    syncGmailBtn.addEventListener('click', () => triggerSync('gmail', syncGmailBtn, syncGmailStatus));
+    syncSlackBtn.addEventListener('click', () => triggerSync('slack', syncSlackBtn, slackLastSync));
+    syncNotionBtn.addEventListener('click', () => triggerSync('notion', syncNotionBtn, notionLastSync));
+    syncLinearBtn.addEventListener('click', () => triggerSync('linear', syncLinearBtn, linearLastSync));
+    syncGmailBtn.addEventListener('click', () => triggerSync('gmail', syncGmailBtn, gmailLastSync));
 
-    ipcRenderer.on('slack-connected', () => loadSyncStatus());
-    ipcRenderer.on('notion-connected', () => loadSyncStatus());
-    ipcRenderer.on('gmail-connected', () => loadSyncStatus());
     ipcRenderer.on('settings-updated', () => loadSyncStatus());
+
+    // ==================== Dropdown Menu Toggle ====================
+    document.querySelectorAll('.btn-menu-trigger').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const dropdown = btn.nextElementSibling;
+        const isOpen = dropdown.classList.contains('open');
+        
+        document.querySelectorAll('.menu-dropdown.open').forEach(d => d.classList.remove('open'));
+        
+        if (!isOpen) dropdown.classList.add('open');
+      });
+    });
+
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.menu-dropdown.open').forEach(d => d.classList.remove('open'));
+    });
+
+    document.querySelectorAll('.menu-item').forEach(item => {
+      item.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const action = item.dataset.action;
+        const row = item.closest('.integration-row');
+        const service = row.dataset.service;
+        
+        item.closest('.menu-dropdown').classList.remove('open');
+        
+        if (action === 'reconnect') {
+          await ipcRenderer.invoke(`${service}-connect`);
+        } else if (action === 'disconnect') {
+          const result = await ipcRenderer.invoke(`${service}-disconnect`);
+          if (result.success) {
+            if (service === 'slack') await updateSlackUI({ connected: false });
+            else if (service === 'notion') await updateNotionUI({ connected: false });
+            else if (service === 'gmail') await updateGmailUI({ connected: false });
+          }
+        }
+      });
+    });
 
     // ==================== Language Settings ====================
     const languageSelect = document.getElementById('languageSelect');

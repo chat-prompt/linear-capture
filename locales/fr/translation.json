@@ -112,7 +112,9 @@
     "updateCheckFailed": "Échec de la vérification des mises à jour",
     "language": "Langue",
     "languageHint": "Sélectionner la langue d'affichage de l'application",
-    "integrations": "Intégrations"
+    "integrations": "Intégrations",
+    "integrationHint": "Connectez des services pour rechercher et joindre du contenu connexe lors de la création de problèmes",
+    "changeWorkspace": "Changer d'espace de travail"
   },
   "hotkey": {
     "title": "Raccourci de capture",
@@ -219,14 +221,17 @@
     "noResultsHint": "Essayez d'autres mots-clés ou vérifiez les connexions",
     "enterQuery": "Saisir un titre ou un terme de recherche",
     "insertToDescription": "Insérer dans la description",
-    "selected": "{{count}} sélectionné(s)"
+    "selected": "{{count}} sélectionné(s)",
+    "findFrom": "Trouver du contenu connexe depuis Slack/Notion/Gmail",
+    "notConnectedHint": "Connectez Slack, Notion ou Gmail pour rechercher du contenu connexe",
+    "openSettings": "Ouvrir les paramètres"
   },
   "sync": {
     "title": "Synchronisation des données",
     "hint": "Synchronisez les services connectés localement pour une recherche sémantique plus rapide. Synchronisation automatique toutes les 5 minutes.",
     "openaiPlaceholder": "sk-...",
     "notConnected": "Non connecté",
-    "syncNow": "Synchroniser maintenant",
+    "syncNow": "Sync",
     "ready": "Prêt à synchroniser",
     "syncing": "Synchronisation...",
     "failed": "Échec de la synchronisation"

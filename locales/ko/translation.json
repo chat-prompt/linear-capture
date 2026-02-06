@@ -112,7 +112,9 @@
     "updateCheckFailed": "업데이트 확인에 실패했습니다",
     "language": "언어",
     "languageHint": "앱 표시 언어 선택",
-    "integrations": "연동"
+    "integrations": "연동",
+    "integrationHint": "서비스를 연결하면 이슈 생성 시 관련 내용을 검색하고 첨부할 수 있습니다",
+    "changeWorkspace": "워크스페이스 변경"
   },
   "hotkey": {
     "title": "캡처 단축키",
@@ -212,6 +214,7 @@
   },
   "relatedContext": {
     "title": "관련 컨텍스트",
+    "findFrom": "Slack/Notion/Gmail에서 관련 내용 찾기",
     "searchPlaceholder": "관련 컨텍스트 검색...",
     "hint": "검색어를 수정하여 결과를 구체화하세요.",
     "searching": "Slack, Notion 검색 중...",
@@ -219,14 +222,16 @@
     "noResultsHint": "다른 키워드를 사용하거나 연결을 확인하세요.",
     "enterQuery": "제목 또는 검색어를 입력하세요.",
     "insertToDescription": "설명에 삽입",
-    "selected": "{{count}}개 선택됨"
+    "selected": "{{count}}개 선택됨",
+    "notConnectedHint": "Slack, Notion, Gmail을 연결하면 관련 내용을 검색할 수 있습니다",
+    "openSettings": "설정 열기"
   },
   "sync": {
     "title": "데이터 동기화",
     "hint": "더 빠른 시맨틱 검색을 위해 연결된 서비스를 로컬로 동기화합니다. 5분마다 자동 동기화됩니다.",
     "openaiPlaceholder": "sk-...",
     "notConnected": "연결되지 않음",
-    "syncNow": "지금 동기화",
+    "syncNow": "동기화",
     "ready": "동기화 준비 완료",
     "syncing": "동기화 중...",
     "failed": "동기화 실패"

@@ -67,7 +67,7 @@ export function createSettingsWindow(): void {
   }
 
   state.settingsWindow = new BrowserWindow({
-    width: 540,
+    width: 620,
     height: 800,
     show: false,
     frame: true,

@@ -112,7 +112,9 @@
     "updateCheckFailed": "Update check failed",
     "language": "Language",
     "languageHint": "Select app display language",
-    "integrations": "Integrations"
+    "integrations": "Integrations",
+    "integrationHint": "Connect services to search and attach related content when creating issues",
+    "changeWorkspace": "Change Workspace"
   },
   "hotkey": {
     "title": "Capture Hotkey",
@@ -212,6 +214,7 @@
   },
   "relatedContext": {
     "title": "Related Context",
+    "findFrom": "Find related content from Slack/Notion/Gmail",
     "searchPlaceholder": "Search related context...",
     "hint": "Edit search to refine results",
     "searching": "Searching Slack, Notion...",
@@ -219,14 +222,16 @@
     "noResultsHint": "Try different keywords or check connections",
     "enterQuery": "Enter a title or search term",
     "insertToDescription": "Insert to Description",
-    "selected": "{{count}} selected"
+    "selected": "{{count}} selected",
+    "notConnectedHint": "Connect Slack, Notion, or Gmail to search related content",
+    "openSettings": "Open Settings"
   },
   "sync": {
     "title": "Data Sync",
     "hint": "Sync connected services locally for faster semantic search. Auto-syncs every 5 minutes.",
     "openaiPlaceholder": "sk-...",
     "notConnected": "Not connected",
-    "syncNow": "Sync Now",
+    "syncNow": "Sync",
     "ready": "Ready to sync",
     "syncing": "Syncing...",
     "failed": "Sync failed"
