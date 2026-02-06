@@ -360,7 +360,44 @@ describe('GmailSyncAdapter', () => {
       const result = await syncPromise;
 
       expect(mockEmbedBatch).not.toHaveBeenCalled();
+      expect(result.itemsSynced).toBe(0);
+    });
+
+    it('should track skipped count separately from synced', async () => {
+      const email1 = createMockEmail('email-1', '2025-02-01T10:00:00Z');
+      const email2 = createMockEmail('email-2', '2025-02-01T09:00:00Z');
+      const email3 = createMockEmail('email-3', '2025-02-01T08:00:00Z');
+
+      const hash1 = crypto.createHash('md5').update(`${email1.subject}\n\n${email1.snippet}`).digest('hex');
+
+      mockSearchEmails.mockResolvedValue({
+        success: true,
+        messages: [email1, email2, email3],
+      });
+
+      mockQuery.mockImplementation((sql: string) => {
+        if (sql.includes('SELECT source_id, content_hash FROM documents')) {
+          return Promise.resolve({
+            rows: [
+              { source_id: 'email-1', content_hash: hash1 },
+            ],
+          });
+        }
+        return Promise.resolve({ rows: [] });
+      });
+
+      mockEmbedBatch.mockResolvedValue([
+        new Array(1536).fill(0.1),
+        new Array(1536).fill(0.2),
+      ]);
+
+      const syncPromise = adapter.sync();
+      await vi.runAllTimersAsync();
+      const result = await syncPromise;
+
       expect(result.itemsSynced).toBe(2);
+      expect(result.itemsFailed).toBe(0);
+      expect(mockEmbedBatch).toHaveBeenCalledWith(expect.arrayContaining([expect.any(String)]));
     });
 
     it('should use reduced batch delay of 50ms', async () => {
