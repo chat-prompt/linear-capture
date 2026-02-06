@@ -2080,9 +2080,9 @@
       return `${days}d ago`;
     }
 
-    function formatDocCount(count) {
+    function formatDocCount(count, unit = 'docs') {
       if (!count) return '';
-      return `${count.toLocaleString()} docs`;
+      return `${count.toLocaleString()} ${unit}`;
     }
 
     async function loadSyncStatus() {
@@ -2096,9 +2096,9 @@
 
         const linearConnected = !!(await ipcRenderer.invoke('get-settings'))?.linearApiToken;
 
-        if (slackStatus.connected) {
-          const src = syncStatus?.sources?.slack;
-          slackDocCount.textContent = formatDocCount(src?.documentCount);
+         if (slackStatus.connected) {
+           const src = syncStatus?.sources?.slack;
+           slackDocCount.textContent = formatDocCount(src?.documentCount, 'messages');
           const lastSync = src?.lastSync;
           if (lastSync) {
             slackLastSync.textContent = formatLastSync(lastSync);
@@ -2106,9 +2106,9 @@
           }
         }
 
-        if (notionStatus.connected) {
-          const src = syncStatus?.sources?.notion;
-          notionDocCount.textContent = formatDocCount(src?.documentCount);
+         if (notionStatus.connected) {
+           const src = syncStatus?.sources?.notion;
+           notionDocCount.textContent = formatDocCount(src?.documentCount, 'docs');
           const lastSync = src?.lastSync;
           if (lastSync) {
             notionLastSync.textContent = formatLastSync(lastSync);
@@ -2116,12 +2116,12 @@
           }
         }
 
-        if (linearConnected) {
-          syncLinearBtn.disabled = false;
-          linearRow.classList.remove('disabled');
-          linearStatusText.style.display = 'none';
-          const src = syncStatus?.sources?.linear;
-          linearDocCount.textContent = formatDocCount(src?.documentCount);
+         if (linearConnected) {
+           syncLinearBtn.disabled = false;
+           linearRow.classList.remove('disabled');
+           linearStatusText.style.display = 'none';
+           const src = syncStatus?.sources?.linear;
+           linearDocCount.textContent = formatDocCount(src?.documentCount, 'issues');
           const lastSync = src?.lastSync;
           if (lastSync) {
             linearLastSync.textContent = formatLastSync(lastSync);
@@ -2136,9 +2136,9 @@
           linearStatusText.style.display = '';
         }
 
-        if (gmailStatus.connected) {
-          const src = syncStatus?.sources?.gmail;
-          gmailDocCount.textContent = formatDocCount(src?.documentCount);
+         if (gmailStatus.connected) {
+           const src = syncStatus?.sources?.gmail;
+           gmailDocCount.textContent = formatDocCount(src?.documentCount, 'emails');
           const lastSync = src?.lastSync;
           if (lastSync) {
             gmailLastSync.textContent = formatLastSync(lastSync);
