@@ -13,18 +13,97 @@ import { getDatabaseService } from '../database';
 import { createGmailService } from '../gmail-client';
 import { createTextPreprocessor } from '../text-preprocessor';
 import { createEmbeddingService } from '../embedding-service';
-import type { GmailService, GmailMessage } from '../gmail-client';
+import type { GmailService, GmailMessage, GmailSearchResult } from '../gmail-client';
 import type { DatabaseService } from '../database';
 import type { TextPreprocessor } from '../text-preprocessor';
 import type { EmbeddingService } from '../embedding-service';
 import type { SyncProgressCallback } from '../local-search';
 
-const BATCH_SIZE = 40;
-const BATCH_DELAY_MS = 500;
+const BATCH_SIZE = 100;
+const BATCH_DELAY_MS = 200;
 const MAX_BATCHES = 25;
+
+const RETRY_MAX_ATTEMPTS = 3;
+const RETRY_INITIAL_DELAY_MS = 1000;
+const RETRY_BACKOFF_MULTIPLIER = 2;
+const NON_RETRYABLE_STATUS_CODES = ['401', '403'];
+const RETRYABLE_ERROR_PATTERNS = ['network', 'timeout', 'ECONNREFUSED', 'ENOTFOUND', '429', '500', '502', '503', '504'];
 
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isRetryableError(error: string): boolean {
+  const errorLower = error.toLowerCase();
+  
+  if (NON_RETRYABLE_STATUS_CODES.some(code => error.includes(code))) {
+    return false;
+  }
+  
+  return RETRYABLE_ERROR_PATTERNS.some(pattern => errorLower.includes(pattern.toLowerCase()));
+}
+
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  validateResult: (result: T) => { valid: boolean; error?: string },
+  context: string
+): Promise<{ result: T; retryCount: number }> {
+  let lastError = '';
+  
+  for (let attempt = 0; attempt < RETRY_MAX_ATTEMPTS; attempt++) {
+    try {
+      const result = await fn();
+      const validation = validateResult(result);
+      
+      if (validation.valid) {
+        return { result, retryCount: attempt };
+      }
+      
+      lastError = validation.error || 'Unknown error';
+      
+      if (!isRetryableError(lastError)) {
+        console.log(`[GmailSync] ${context}: Non-retryable error (${lastError}), failing immediately`);
+        throw new GmailSyncError(lastError, attempt + 1, false);
+      }
+      
+      if (attempt < RETRY_MAX_ATTEMPTS - 1) {
+        const delayMs = RETRY_INITIAL_DELAY_MS * Math.pow(RETRY_BACKOFF_MULTIPLIER, attempt);
+        console.log(`[GmailSync] ${context}: Attempt ${attempt + 1} failed (${lastError}), retrying in ${delayMs}ms...`);
+        await delay(delayMs);
+      }
+    } catch (error) {
+      if (error instanceof GmailSyncError) {
+        throw error;
+      }
+      lastError = error instanceof Error ? error.message : 'Unknown error';
+      
+      if (!isRetryableError(lastError)) {
+        throw new GmailSyncError(lastError, attempt + 1, false);
+      }
+      
+      if (attempt < RETRY_MAX_ATTEMPTS - 1) {
+        const delayMs = RETRY_INITIAL_DELAY_MS * Math.pow(RETRY_BACKOFF_MULTIPLIER, attempt);
+        console.log(`[GmailSync] ${context}: Attempt ${attempt + 1} threw error (${lastError}), retrying in ${delayMs}ms...`);
+        await delay(delayMs);
+      }
+    }
+  }
+  
+  throw new GmailSyncError(lastError, RETRY_MAX_ATTEMPTS, true);
+}
+
+export class GmailSyncError extends Error {
+  constructor(
+    message: string,
+    public readonly retryCount: number,
+    public readonly exhaustedRetries: boolean
+  ) {
+    super(exhaustedRetries 
+      ? `${message} (failed after ${retryCount} attempts)`
+      : message
+    );
+    this.name = 'GmailSyncError';
+  }
 }
 
 export interface SyncResult {
@@ -66,45 +145,50 @@ export class GmailSyncAdapter {
       let latestDateOverall: string | null = null;
 
       while (batchCount < MAX_BATCHES) {
-        const query = oldestDate
+        const query: string = oldestDate
           ? `in:inbox before:${oldestDate}`
           : 'in:inbox';
 
         console.log(`[GmailSync] Batch ${batchCount + 1}: "${query}"`);
 
-        const searchResult = await this.gmailService.searchEmails(query, BATCH_SIZE);
+        const { result: searchResult } = await retryWithBackoff<GmailSearchResult>(
+          () => this.gmailService.searchEmails(query, BATCH_SIZE),
+          (res) => ({
+            valid: res.success && !!res.messages,
+            error: res.error || 'Failed to fetch emails',
+          }),
+          `Full sync batch ${batchCount + 1}`
+        );
 
-        if (!searchResult.success || !searchResult.messages) {
-          throw new Error(searchResult.error || 'Failed to fetch emails');
-        }
-
-        if (searchResult.messages.length === 0) {
+        const messages = searchResult.messages!;
+        if (messages.length === 0) {
           console.log('[GmailSync] No more emails to fetch');
           break;
         }
 
-        console.log(`[GmailSync] Batch ${batchCount + 1}: ${searchResult.messages.length} emails`);
+        console.log(`[GmailSync] Batch ${batchCount + 1}: ${messages.length} emails`);
 
-        const batchResult = await this.processBatchWithEmbedding(searchResult.messages);
+        const batchResult = await this.processBatchWithEmbedding(messages);
         result.itemsSynced += batchResult.synced;
         result.itemsFailed += batchResult.failed;
         result.errors.push(...batchResult.errors);
 
-        for (const email of searchResult.messages) {
+        for (const email of messages) {
           if (!latestDateOverall || email.date > latestDateOverall) {
             latestDateOverall = email.date;
           }
         }
 
-        const oldestInBatch = searchResult.messages.reduce((oldest, email) => {
-          return email.date < oldest ? email.date : oldest;
-        }, searchResult.messages[0].date);
+        const oldestInBatch: string = messages.reduce(
+          (oldest: string, email: GmailMessage) => (email.date < oldest ? email.date : oldest),
+          messages[0].date
+        );
 
         oldestDate = new Date(oldestInBatch).toISOString().split('T')[0].replace(/-/g, '/');
 
         batchCount++;
 
-        if (searchResult.messages.length < BATCH_SIZE) {
+        if (messages.length < BATCH_SIZE) {
           console.log('[GmailSync] Last batch (fewer than batch size)');
           break;
         }
@@ -158,46 +242,51 @@ export class GmailSyncAdapter {
       let latestDateOverall: string | null = null;
 
       while (batchCount < MAX_BATCHES) {
-        let query = 'in:inbox';
+        let query: string = 'in:inbox';
         if (afterDate) query += ` after:${afterDate}`;
         if (oldestDate) query += ` before:${oldestDate}`;
 
         console.log(`[GmailSync] Batch ${batchCount + 1}: "${query}"`);
 
-        const searchResult = await this.gmailService.searchEmails(query, BATCH_SIZE);
+        const { result: searchResult } = await retryWithBackoff<GmailSearchResult>(
+          () => this.gmailService.searchEmails(query, BATCH_SIZE),
+          (res) => ({
+            valid: res.success && !!res.messages,
+            error: res.error || 'Failed to fetch emails',
+          }),
+          `Incremental sync batch ${batchCount + 1}`
+        );
 
-        if (!searchResult.success || !searchResult.messages) {
-          throw new Error(searchResult.error || 'Failed to fetch emails');
-        }
-
-        if (searchResult.messages.length === 0) {
+        const messages = searchResult.messages!;
+        if (messages.length === 0) {
           console.log('[GmailSync] No more emails to fetch');
           break;
         }
 
-        console.log(`[GmailSync] Batch ${batchCount + 1}: ${searchResult.messages.length} emails`);
+        console.log(`[GmailSync] Batch ${batchCount + 1}: ${messages.length} emails`);
         onProgress?.({ source: 'gmail', phase: 'syncing', current: batchCount + 1, total: MAX_BATCHES });
 
-        const batchResult = await this.processBatchWithEmbedding(searchResult.messages);
+        const batchResult = await this.processBatchWithEmbedding(messages);
         result.itemsSynced += batchResult.synced;
         result.itemsFailed += batchResult.failed;
         result.errors.push(...batchResult.errors);
 
-        for (const email of searchResult.messages) {
+        for (const email of messages) {
           if (!latestDateOverall || email.date > latestDateOverall) {
             latestDateOverall = email.date;
           }
         }
 
-        const oldestInBatch = searchResult.messages.reduce((oldest, email) => {
-          return email.date < oldest ? email.date : oldest;
-        }, searchResult.messages[0].date);
+        const oldestInBatch: string = messages.reduce(
+          (oldest: string, email: GmailMessage) => (email.date < oldest ? email.date : oldest),
+          messages[0].date
+        );
 
         oldestDate = new Date(oldestInBatch).toISOString().split('T')[0].replace(/-/g, '/');
 
         batchCount++;
 
-        if (searchResult.messages.length < BATCH_SIZE) {
+        if (messages.length < BATCH_SIZE) {
           console.log('[GmailSync] Last batch (fewer than batch size)');
           break;
         }

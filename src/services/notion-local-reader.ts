@@ -11,7 +11,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { app } from 'electron';
+import * as electron from 'electron';
 import initSqlJs, { Database } from 'sql.js';
 import { logger } from './utils/logger';
 
@@ -38,10 +38,20 @@ export interface LocalSearchResult {
   error?: string;
 }
 
+export interface NotionLocalStatus {
+  available: boolean;
+  initialized: boolean;
+  error?: string;
+}
+
 /**
  * Get the path to Notion's local SQLite database
  */
 function getNotionDbPath(): string {
+  const app = electron.app;
+  if (!app || typeof app.getPath !== 'function') {
+    return '';
+  }
   if (process.platform === 'darwin') {
     return path.join(
       app.getPath('home'),
@@ -752,5 +762,28 @@ export function closeNotionLocalReader(): void {
   if (readerInstance) {
     readerInstance.close();
     readerInstance = null;
+  }
+}
+
+export async function getNotionLocalStatus(): Promise<NotionLocalStatus> {
+  const available = isNotionDbAvailable();
+  if (!available) {
+    return { available: false, initialized: false, error: 'Database not accessible' };
+  }
+
+  try {
+    const reader = getNotionLocalReader();
+    const initialized = await reader.initialize();
+    return {
+      available: true,
+      initialized,
+      error: initialized ? undefined : 'Failed to initialize local reader'
+    };
+  } catch (error) {
+    return {
+      available: true,
+      initialized: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
   }
 }

@@ -44,14 +44,13 @@ export class NotionAdapter implements ContextAdapter {
   private localPageToContextItem(page: LocalNotionPage): ContextItem {
     return {
       id: page.id,
-      content: page.matchContext || '',
+      content: page.matchContext || page.title || '',
       title: page.title,
       url: page.url,
       source: 'notion',
       timestamp: new Date(page.lastEditedTime).getTime(),
       metadata: {
         isContentMatch: page.isContentMatch || false,
-        source: 'local',
       },
     };
   }
@@ -59,14 +58,13 @@ export class NotionAdapter implements ContextAdapter {
   private toContextItem(page: NotionPage): ContextItem {
     return {
       id: page.id,
-      content: page.matchContext || '',
+      content: page.matchContext || page.title || '',
       title: page.title,
       url: page.url,
       source: 'notion',
       timestamp: new Date(page.lastEditedTime).getTime(),
       metadata: {
         isContentMatch: page.isContentMatch || false,
-        source: 'api',
       },
     };
   }

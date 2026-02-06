@@ -22,6 +22,7 @@ vi.mock('../services/gmail-client', () => ({
 
 vi.mock('electron', () => ({
   shell: { openExternal: vi.fn() },
+  app: { getPath: vi.fn(() => '/tmp') },
 }));
 
 import { NotionAdapter } from '../services/context-adapters/notion-adapter';
