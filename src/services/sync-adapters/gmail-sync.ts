@@ -21,7 +21,7 @@ import type { SyncProgressCallback } from '../local-search';
 
 const BATCH_SIZE = 100;
 const BATCH_DELAY_MS = 50;
-const MAX_BATCHES = 25;
+const MAX_BATCHES = 100;  // 10,000 emails max (100 batches × 100 per batch)
 
 const RETRY_MAX_ATTEMPTS = 3;
 const RETRY_INITIAL_DELAY_MS = 1000;
@@ -185,7 +185,7 @@ export class GmailSyncAdapter {
           messages[0].date
         );
 
-        oldestDate = new Date(oldestInBatch).toISOString().split('T')[0].replace(/-/g, '/');
+        oldestDate = String(Math.floor(new Date(oldestInBatch).getTime() / 1000));
 
         batchCount++;
 
@@ -195,6 +195,10 @@ export class GmailSyncAdapter {
         }
 
         await delay(BATCH_DELAY_MS);
+      }
+
+      if (batchCount >= MAX_BATCHES) {
+        console.log(`[GmailSync] Reached MAX_BATCHES limit (${MAX_BATCHES}). Some older emails may not be synced.`);
       }
 
       if (latestDateOverall) {
@@ -234,18 +238,19 @@ export class GmailSyncAdapter {
       const lastCursor = await this.getLastSyncCursor();
       console.log(`[GmailSync] Last sync cursor: ${lastCursor || 'none'}`);
 
-      const afterDate = lastCursor
-        ? new Date(lastCursor).toISOString().split('T')[0].replace(/-/g, '/')
+      const afterEpoch = lastCursor
+        ? Math.floor(new Date(lastCursor).getTime() / 1000)
         : null;
 
       let oldestDate: string | null = null;
       let batchCount = 0;
       let latestDateOverall: string | null = null;
-      let totalFetched = 0;
+      let totalNew = 0;
+      let totalSkipped = 0;
 
       while (batchCount < MAX_BATCHES) {
         let query: string = 'in:inbox';
-        if (afterDate) query += ` after:${afterDate}`;
+        if (afterEpoch) query += ` after:${afterEpoch}`;
         if (oldestDate) query += ` before:${oldestDate}`;
 
         console.log(`[GmailSync] Batch ${batchCount + 1}: "${query}"`);
@@ -265,14 +270,15 @@ export class GmailSyncAdapter {
           break;
         }
 
-        totalFetched += messages.length;
-        console.log(`[GmailSync] Batch ${batchCount + 1}: ${messages.length} emails (total: ${totalFetched})`);
-        onProgress?.({ source: 'gmail', phase: 'syncing', current: totalFetched, total: 0 });
+        console.log(`[GmailSync] Batch ${batchCount + 1}: ${messages.length} emails`);
 
         const batchResult = await this.processBatchWithEmbedding(messages);
         result.itemsSynced += batchResult.synced;
         result.itemsFailed += batchResult.failed;
         result.errors.push(...batchResult.errors);
+        totalNew += batchResult.synced;
+        totalSkipped += batchResult.skipped;
+        onProgress?.({ source: 'gmail', phase: 'syncing', current: totalNew, total: totalNew + totalSkipped });
 
         for (const email of messages) {
           if (!latestDateOverall || email.date > latestDateOverall) {
@@ -285,7 +291,7 @@ export class GmailSyncAdapter {
           messages[0].date
         );
 
-        oldestDate = new Date(oldestInBatch).toISOString().split('T')[0].replace(/-/g, '/');
+        oldestDate = String(Math.floor(new Date(oldestInBatch).getTime() / 1000));
 
         batchCount++;
 
@@ -295,6 +301,10 @@ export class GmailSyncAdapter {
         }
 
         await delay(BATCH_DELAY_MS);
+      }
+
+      if (batchCount >= MAX_BATCHES) {
+        console.log(`[GmailSync] Reached MAX_BATCHES limit (${MAX_BATCHES}). Some older emails may not be synced.`);
       }
 
       if (latestDateOverall) {
@@ -321,8 +331,8 @@ export class GmailSyncAdapter {
 
   private async processBatchWithEmbedding(
     emails: GmailMessage[]
-  ): Promise<{ synced: number; failed: number; errors: Array<{ emailId: string; error: string }> }> {
-    const result = { synced: 0, failed: 0, errors: [] as Array<{ emailId: string; error: string }> };
+  ): Promise<{ synced: number; skipped: number; failed: number; errors: Array<{ emailId: string; error: string }> }> {
+    const result = { synced: 0, skipped: 0, failed: 0, errors: [] as Array<{ emailId: string; error: string }> };
 
     if (emails.length === 0) return result;
 
@@ -343,7 +353,7 @@ export class GmailSyncAdapter {
       const contentHash = this.calculateContentHash(preprocessedText);
 
       if (hashMap.get(email.id) === contentHash) {
-        result.synced++;
+        result.skipped++;
         continue;
       }
 
