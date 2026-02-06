@@ -1735,13 +1735,10 @@
 
       if (progress.phase === 'complete') return;
 
-      if (progress.total > 0 && progress.current !== progress.total) {
-        const cached = progress.total - progress.current;
-        lastSyncEl.textContent = `(${progress.current} new, ${cached} cached) Syncing...`;
-      } else if (progress.total > 0) {
-        lastSyncEl.textContent = `(${progress.current}/${progress.total}) Syncing...`;
+      if (progress.total > 0) {
+        lastSyncEl.textContent = `(${progress.total} emails) Syncing...`;
       } else if (progress.current > 0) {
-        lastSyncEl.textContent = `(${progress.current}) Syncing...`;
+        lastSyncEl.textContent = `(${progress.current} emails) Syncing...`;
       } else {
         lastSyncEl.textContent = 'Discovering...';
       }
