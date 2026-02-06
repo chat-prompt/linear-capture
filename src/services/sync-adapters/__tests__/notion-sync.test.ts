@@ -241,6 +241,97 @@ describe('NotionSyncAdapter', () => {
     });
   });
 
+  describe('syncFromApi - batch embedding', () => {
+    it('should use embedBatch instead of individual embed calls', async () => {
+      mockQuery.mockResolvedValue({ rows: [] });
+
+      mockSearchPages.mockResolvedValueOnce({
+        success: true,
+        pages: [
+          createMockPage('page-1', '2024-01-01T00:00:00Z'),
+          createMockPage('page-2', '2024-01-02T00:00:00Z'),
+        ],
+        hasMore: false,
+        nextCursor: null,
+      });
+
+      mockEmbedBatch.mockResolvedValueOnce([
+        new Array(1536).fill(0.1),
+        new Array(1536).fill(0.2),
+      ]);
+
+      await adapter.syncIncremental();
+
+      expect(mockEmbedBatch).toHaveBeenCalled();
+      expect(mockEmbed).not.toHaveBeenCalled();
+    });
+
+    it('should truncate content to MAX_TEXT_CHARS (5000)', async () => {
+      mockQuery.mockResolvedValue({ rows: [] });
+
+      const longContent = 'x'.repeat(10000);
+      mockGetPageContent.mockResolvedValue({ success: true, content: longContent, blockCount: 1 });
+
+      mockSearchPages.mockResolvedValueOnce({
+        success: true,
+        pages: [createMockPage('page-long', '2024-01-01T00:00:00Z')],
+        hasMore: false,
+        nextCursor: null,
+      });
+
+      mockPreprocess.mockImplementation((text: string) => text);
+      mockEmbedBatch.mockResolvedValueOnce([new Array(1536).fill(0.1)]);
+
+      await adapter.syncIncremental();
+
+      const embedBatchCalls = mockEmbedBatch.mock.calls;
+      if (embedBatchCalls.length > 0) {
+        const texts = embedBatchCalls[0][0] as string[];
+        for (const text of texts) {
+          expect(text.length).toBeLessThanOrEqual(5000);
+        }
+      }
+    });
+
+    it('should limit getPageContent concurrency to 3', async () => {
+      mockQuery.mockResolvedValue({ rows: [] });
+
+      const pages = Array.from({ length: 10 }, (_, i) =>
+        createMockPage(`page-${i}`, `2024-01-${String(i + 1).padStart(2, '0')}T00:00:00Z`)
+      );
+
+      mockSearchPages.mockResolvedValueOnce({
+        success: true,
+        pages,
+        hasMore: false,
+        nextCursor: null,
+      });
+
+      let maxConcurrent = 0;
+      let currentConcurrent = 0;
+
+      mockGetPageContent.mockImplementation(async () => {
+        currentConcurrent++;
+        if (currentConcurrent > maxConcurrent) {
+          maxConcurrent = currentConcurrent;
+        }
+        await new Promise(resolve => setTimeout(resolve, 10));
+        currentConcurrent--;
+        return { success: true, content: 'Test content', blockCount: 1 };
+      });
+
+      mockEmbedBatch.mockResolvedValue(
+        pages.map(() => new Array(1536).fill(0.1))
+      );
+
+      vi.useRealTimers();
+      await adapter.syncIncremental();
+      vi.useFakeTimers();
+
+      expect(maxConcurrent).toBeLessThanOrEqual(3);
+    });
+  });
+
   describe('error handling', () => {
     it('should save pagination cursor on mid-sync failure', async () => {
       mockSearchPages
