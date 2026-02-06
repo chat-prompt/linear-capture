@@ -21,7 +21,7 @@ import type { TextPreprocessor } from '../text-preprocessor';
 import type { SyncProgressCallback } from '../local-search';
 import type { Issue } from '@linear/sdk';
 
-const BATCH_SIZE = 10;
+const BATCH_SIZE = 25;
 
 export interface SyncResult {
   success: boolean;
@@ -302,22 +302,9 @@ export class LinearSyncAdapter {
   }
 
   private async prepareIssueData(issue: Issue): Promise<PreparedIssue> {
-    const [team, project, state, assignee, labelsConnection] = await Promise.all([
-      issue.team,
-      issue.project,
-      issue.state,
-      issue.assignee,
-      issue.labels(),
-    ]);
-    const labels = labelsConnection?.nodes.map(l => l.name).join(', ') || '';
-
     const contentParts = [
       `${issue.identifier}: ${issue.title}`,
       issue.description || '',
-      assignee?.name ? `담당자: ${assignee.name}` : '',
-      project?.name ? `프로젝트: ${project.name}` : '',
-      team?.name ? `팀: ${team.name}` : '',
-      labels ? `라벨: ${labels}` : '',
     ].filter(Boolean);
 
     const fullText = contentParts.join('\n');
@@ -334,14 +321,6 @@ export class LinearSyncAdapter {
 
     const metadata = {
       identifier: issue.identifier,
-      teamId: team?.id,
-      teamName: team?.name,
-      projectId: project?.id,
-      projectName: project?.name,
-      assigneeId: assignee?.id,
-      assigneeName: assignee?.name,
-      labels,
-      state: state?.name,
       priority: issue.priority,
       url: issue.url,
     };

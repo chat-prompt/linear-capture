@@ -104,7 +104,7 @@ describe('LinearSyncAdapter', () => {
       const result = await adapter.sync();
 
       expect(result.itemsSynced).toBe(15);
-      expect(mockEmbed).toHaveBeenCalledTimes(2);
+      expect(mockEmbed).toHaveBeenCalledTimes(1);
       expect(mockEmbed).toHaveBeenNthCalledWith(1, expect.arrayContaining([expect.any(String)]));
     });
 
@@ -156,40 +156,31 @@ describe('LinearSyncAdapter', () => {
   });
 
   describe('partial failure handling', () => {
-    it('should continue processing when one issue fails', async () => {
-      const successIssue = createMockIssue('issue-1', 'TEST-1', new Date('2024-01-15'));
-      const failIssue = {
-        ...createMockIssue('issue-2', 'TEST-2', new Date('2024-01-16')),
-        team: Promise.reject(new Error('Network error')),
-      };
-      const anotherSuccessIssue = createMockIssue('issue-3', 'TEST-3', new Date('2024-01-17'));
+    it('should handle embedding failure gracefully', async () => {
+      const issues = [
+        createMockIssue('issue-1', 'TEST-1', new Date('2024-01-15')),
+        createMockIssue('issue-2', 'TEST-2', new Date('2024-01-16')),
+      ];
+      mockIssues.mockResolvedValue(createMockConnection(issues));
 
-      mockIssues.mockResolvedValue(createMockConnection([successIssue, failIssue, anotherSuccessIssue]));
-
-      mockEmbed.mockResolvedValue([
-        new Float32Array(1536).fill(0.1),
-        new Float32Array(1536).fill(0.3),
-      ]);
+      mockEmbed.mockRejectedValue(new Error('Embedding API error'));
 
       const result = await adapter.sync();
 
-      expect(result.itemsSynced).toBe(2);
-      expect(result.itemsFailed).toBe(1);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].itemId).toBe('issue-2');
+      expect(result.itemsFailed).toBe(2);
+      expect(result.errors).toHaveLength(2);
     });
 
     it('should track errors correctly', async () => {
-      const issue = {
-        ...createMockIssue('issue-1', 'TEST-1', new Date('2024-01-15')),
-        team: Promise.reject(new Error('Custom error message')),
-      };
+      const issue = createMockIssue('issue-1', 'TEST-1', new Date('2024-01-15'));
       mockIssues.mockResolvedValue(createMockConnection([issue]));
+
+      mockEmbed.mockRejectedValue(new Error('Custom error message'));
 
       const result = await adapter.sync();
 
       expect(result.itemsFailed).toBe(1);
-      expect(result.errors[0].error).toContain('Custom error message');
+      expect(result.errors[0].error).toBe('Embedding failed');
     });
   });
 
