@@ -1729,6 +1729,8 @@
 
       if (progress.total > 0) {
         lastSyncEl.textContent = `(${progress.current}/${progress.total}) Syncing...`;
+      } else if (progress.current > 0) {
+        lastSyncEl.textContent = `(${progress.current}) Syncing...`;
       } else {
         lastSyncEl.textContent = 'Discovering...';
       }

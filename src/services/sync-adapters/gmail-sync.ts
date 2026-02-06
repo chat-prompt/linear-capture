@@ -20,7 +20,7 @@ import type { EmbeddingService } from '../embedding-service';
 import type { SyncProgressCallback } from '../local-search';
 
 const BATCH_SIZE = 100;
-const BATCH_DELAY_MS = 200;
+const BATCH_DELAY_MS = 50;
 const MAX_BATCHES = 25;
 
 const RETRY_MAX_ATTEMPTS = 3;
@@ -143,6 +143,7 @@ export class GmailSyncAdapter {
       let oldestDate: string | null = null;
       let batchCount = 0;
       let latestDateOverall: string | null = null;
+      let totalFetched = 0;
 
       while (batchCount < MAX_BATCHES) {
         const query: string = oldestDate
@@ -240,6 +241,7 @@ export class GmailSyncAdapter {
       let oldestDate: string | null = null;
       let batchCount = 0;
       let latestDateOverall: string | null = null;
+      let totalFetched = 0;
 
       while (batchCount < MAX_BATCHES) {
         let query: string = 'in:inbox';
@@ -263,8 +265,9 @@ export class GmailSyncAdapter {
           break;
         }
 
-        console.log(`[GmailSync] Batch ${batchCount + 1}: ${messages.length} emails`);
-        onProgress?.({ source: 'gmail', phase: 'syncing', current: batchCount + 1, total: MAX_BATCHES });
+        totalFetched += messages.length;
+        console.log(`[GmailSync] Batch ${batchCount + 1}: ${messages.length} emails (total: ${totalFetched})`);
+        onProgress?.({ source: 'gmail', phase: 'syncing', current: totalFetched, total: 0 });
 
         const batchResult = await this.processBatchWithEmbedding(messages);
         result.itemsSynced += batchResult.synced;
@@ -326,18 +329,20 @@ export class GmailSyncAdapter {
     const db = this.dbService.getDb();
     const emailsToProcess: Array<{ email: GmailMessage; text: string; hash: string }> = [];
 
+    // Step 1: Batch hash check - single query to get ALL gmail document hashes
+    const existingHashes = await db.query<{ source_id: string; content_hash: string }>(
+      `SELECT source_id, content_hash FROM documents WHERE source_type = $1`,
+      ['gmail']
+    );
+    const hashMap = new Map(existingHashes.rows.map(r => [r.source_id, r.content_hash]));
+
+    // Step 2: Filter changed emails - pure CPU comparison using the map
     for (const email of emails) {
       const fullText = `${email.subject}\n\n${email.snippet}`;
       const preprocessedText = this.preprocessor.preprocess(fullText);
       const contentHash = this.calculateContentHash(preprocessedText);
 
-      const existingDoc = await db.query<{ content_hash: string }>(
-        `SELECT content_hash FROM documents WHERE source_type = $1 AND source_id = $2`,
-        ['gmail', email.id]
-      );
-
-      if (existingDoc.rows.length > 0 && existingDoc.rows[0].content_hash === contentHash) {
-        console.log(`[GmailSync] Email ${email.id} unchanged, skipping`);
+      if (hashMap.get(email.id) === contentHash) {
         result.synced++;
         continue;
       }
@@ -347,16 +352,15 @@ export class GmailSyncAdapter {
 
     if (emailsToProcess.length === 0) return result;
 
+    // Step 3: Embedding generation
     console.log(`[GmailSync] Generating embeddings for ${emailsToProcess.length} emails in batch`);
     const texts = emailsToProcess.map(e => e.text);
     const embeddings = await this.embeddingService.embedBatch(texts);
 
-    for (let i = 0; i < emailsToProcess.length; i++) {
-      const { email, text, hash } = emailsToProcess[i];
-      const embedding = embeddings[i];
-
+    // Step 4: Parallel saves
+    const savePromises = emailsToProcess.map(async ({ email, text, hash }, i) => {
       try {
-        await this.saveEmailWithEmbedding(email, text, hash, embedding);
+        await this.saveEmailWithEmbedding(email, text, hash, embeddings[i]);
         result.synced++;
       } catch (error) {
         console.error(`[GmailSync] Failed to save email ${email.id}:`, error);
@@ -366,7 +370,8 @@ export class GmailSyncAdapter {
           error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
-    }
+    });
+    await Promise.all(savePromises);
 
     return result;
   }
