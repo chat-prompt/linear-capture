@@ -94,9 +94,18 @@ export class LinearSyncAdapter {
         }
       }
 
+      const totalFetched = allIssues.length;
+      const syncRatio = totalFetched > 0 ? result.itemsSynced / totalFetched : 1;
+
       if (latestUpdatedAt) {
-        await this.updateSyncCursor(latestUpdatedAt, result.itemsSynced);
-        result.lastCursor = latestUpdatedAt;
+        if (syncRatio >= 0.8) {
+          await this.updateSyncCursor(latestUpdatedAt, result.itemsSynced);
+          result.lastCursor = latestUpdatedAt;
+        } else {
+          console.warn(
+            `[LinearSync] Cursor not advanced: only ${result.itemsSynced}/${totalFetched} items synced (${(syncRatio * 100).toFixed(1)}% < 80% threshold)`
+          );
+        }
       }
 
       await this.updateSyncStatus('idle');
@@ -166,9 +175,18 @@ export class LinearSyncAdapter {
         }
       }
 
+      const totalFetched = allIssues.length;
+      const syncRatio = totalFetched > 0 ? result.itemsSynced / totalFetched : 1;
+
       if (latestUpdatedAt && latestUpdatedAt !== lastCursor) {
-        await this.updateSyncCursor(latestUpdatedAt, result.itemsSynced);
-        result.lastCursor = latestUpdatedAt;
+        if (syncRatio >= 0.8) {
+          await this.updateSyncCursor(latestUpdatedAt, result.itemsSynced);
+          result.lastCursor = latestUpdatedAt;
+        } else {
+          console.warn(
+            `[LinearSync] Cursor not advanced: only ${result.itemsSynced}/${totalFetched} items synced (${(syncRatio * 100).toFixed(1)}% < 80% threshold)`
+          );
+        }
       }
 
       await this.updateSyncStatus('idle');
