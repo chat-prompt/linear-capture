@@ -17,6 +17,7 @@ import type { GmailService, GmailMessage, GmailSearchResult } from '../gmail-cli
 import type { DatabaseService } from '../database';
 import type { TextPreprocessor } from '../text-preprocessor';
 import type { SyncProgressCallback } from '../local-search';
+import type { SyncResult } from '../../types';
 
 const BATCH_SIZE = 100;
 const BATCH_DELAY_MS = 50;
@@ -105,13 +106,8 @@ export class GmailSyncError extends Error {
   }
 }
 
-export interface SyncResult {
-  success: boolean;
-  itemsSynced: number;
-  itemsFailed: number;
-  errors: Array<{ emailId: string; error: string }>;
-  lastCursor?: string;
-}
+// Re-export for backwards compatibility
+export type { SyncResult } from '../../types';
 
 export class GmailSyncAdapter {
   private gmailService: GmailService;
@@ -330,8 +326,8 @@ export class GmailSyncAdapter {
 
   private async processBatchWithEmbedding(
     emails: GmailMessage[]
-  ): Promise<{ synced: number; skipped: number; failed: number; errors: Array<{ emailId: string; error: string }> }> {
-    const result = { synced: 0, skipped: 0, failed: 0, errors: [] as Array<{ emailId: string; error: string }> };
+  ): Promise<{ synced: number; skipped: number; failed: number; errors: Array<{ id: string; error: string }> }> {
+    const result = { synced: 0, skipped: 0, failed: 0, errors: [] as Array<{ id: string; error: string }> };
 
     if (emails.length === 0) return result;
 
@@ -375,7 +371,7 @@ export class GmailSyncAdapter {
         console.error(`[GmailSync] Failed to save email ${email.id}:`, error);
         result.failed++;
         result.errors.push({
-          emailId: email.id,
+          id: email.id,
           error: error instanceof Error ? error.message : 'Unknown error',
         });
       }

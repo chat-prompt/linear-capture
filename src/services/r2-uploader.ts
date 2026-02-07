@@ -1,21 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from './utils/logger';
+import type { UploadResult, MultiUploadResult } from '../types';
+
+// Re-export for backwards compatibility
+export type { UploadResult, MultiUploadResult } from '../types';
 
 // Cloudflare Worker URL
 const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
-
-export interface UploadResult {
-  success: boolean;
-  url?: string;
-  error?: string;
-}
-
-export interface MultiUploadResult {
-  success: boolean;
-  urls?: string[];
-  error?: string;
-}
 
 export class R2Uploader {
    constructor() {

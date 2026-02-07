@@ -3,18 +3,10 @@ import * as path from 'path';
 import { LinearClient } from '@linear/sdk';
 import { getLinearToken } from './settings-store';
 import { logger } from './utils/logger';
+import type { UploadResult, MultiUploadResult } from '../types';
 
-export interface UploadResult {
-  success: boolean;
-  url?: string;
-  error?: string;
-}
-
-export interface MultiUploadResult {
-  success: boolean;
-  urls?: string[];
-  error?: string;
-}
+// Re-export for backwards compatibility
+export type { UploadResult, MultiUploadResult } from '../types';
 
 export class LinearUploader {
   private client: LinearClient;

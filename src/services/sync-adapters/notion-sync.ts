@@ -19,14 +19,10 @@ import type { NotionService, NotionPage } from '../notion-client';
 import type { DatabaseService } from '../database';
 import type { TextPreprocessor } from '../text-preprocessor';
 import type { SyncProgress, SyncProgressCallback } from '../local-search';
+import type { SyncResult } from '../../types';
 
-export interface SyncResult {
-  success: boolean;
-  itemsSynced: number;
-  itemsFailed: number;
-  errors: Array<{ pageId: string; error: string }>;
-  lastCursor?: string;
-}
+// Re-export for backwards compatibility
+export type { SyncResult } from '../../types';
 
 export class NotionSyncAdapter {
   private notionService: NotionService;
@@ -84,7 +80,7 @@ export class NotionSyncAdapter {
             console.error(`[NotionSync] Failed to sync page ${page.id}:`, error);
             result.itemsFailed++;
             result.errors.push({
-              pageId: page.id,
+              id: page.id,
               error: error instanceof Error ? error.message : 'Unknown error',
             });
           }
@@ -245,7 +241,7 @@ export class NotionSyncAdapter {
             } catch (error) {
               result.itemsFailed++;
               result.errors.push({
-                pageId: page.id,
+                id: page.id,
                 error: error instanceof Error ? error.message : 'DB insert failed',
               });
             }
@@ -257,7 +253,7 @@ export class NotionSyncAdapter {
           for (const page of batch) {
             result.itemsFailed++;
             result.errors.push({
-              pageId: page.id,
+              id: page.id,
               error: error instanceof Error ? error.message : 'Embedding failed',
             });
           }

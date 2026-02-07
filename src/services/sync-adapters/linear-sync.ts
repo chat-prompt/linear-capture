@@ -20,16 +20,12 @@ import type { DatabaseService } from '../database';
 import type { TextPreprocessor } from '../text-preprocessor';
 import type { SyncProgressCallback } from '../local-search';
 import type { Issue } from '@linear/sdk';
+import type { SyncResult } from '../../types';
+
+// Re-export for backwards compatibility
+export type { SyncResult } from '../../types';
 
 const BATCH_SIZE = 25;
-
-export interface SyncResult {
-  success: boolean;
-  itemsSynced: number;
-  itemsFailed: number;
-  errors: Array<{ itemId: string; error: string }>;
-  lastCursor?: string;
-}
 
 interface PreparedIssue {
   issue: Issue;

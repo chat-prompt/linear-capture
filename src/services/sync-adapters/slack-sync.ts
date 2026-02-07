@@ -19,16 +19,12 @@ import type { DatabaseService } from '../database';
 import type { TextPreprocessor } from '../text-preprocessor';
 import type { SyncProgressCallback } from '../local-search';
 import { getDeviceId, getSelectedSlackChannels } from '../settings-store';
+import type { SyncResult } from '../../types';
+
+// Re-export for backwards compatibility
+export type { SyncResult } from '../../types';
 
 const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
-
-export interface SyncResult {
-  success: boolean;
-  itemsSynced: number;
-  itemsFailed: number;
-  errors: Array<{ messageId: string; error: string }>;
-  lastCursor?: string;
-}
 
 interface SlackMessageHistoryResponse {
   success: boolean;
@@ -131,7 +127,7 @@ export class SlackSyncAdapter {
           console.error(`[SlackSync] Failed to sync channel ${syncResult.channel.name}:`, syncResult.error);
           result.itemsFailed++;
           result.errors.push({
-            messageId: syncResult.channel.id,
+            id: syncResult.channel.id,
             error: syncResult.error instanceof Error ? syncResult.error.message : 'Unknown error',
           });
         }
@@ -242,7 +238,7 @@ export class SlackSyncAdapter {
           console.error(`[SlackSync] Failed to sync channel ${syncResult.channel.name}:`, syncResult.error);
           result.itemsFailed++;
           result.errors.push({
-            messageId: syncResult.channel.id,
+            id: syncResult.channel.id,
             error: syncResult.error instanceof Error ? syncResult.error.message : 'Unknown error',
           });
         }
@@ -317,7 +313,7 @@ export class SlackSyncAdapter {
                 console.error(`[SlackSync] Failed to sync reply ${reply.ts}:`, error);
                 result.itemsFailed++;
                 result.errors.push({
-                  messageId: reply.ts,
+                  id: reply.ts,
                   error: error instanceof Error ? error.message : 'Unknown error',
                 });
               }
@@ -327,7 +323,7 @@ export class SlackSyncAdapter {
           console.error(`[SlackSync] Failed to sync message ${message.ts}:`, error);
           result.itemsFailed++;
           result.errors.push({
-            messageId: message.ts,
+            id: message.ts,
             error: error instanceof Error ? error.message : 'Unknown error',
           });
         }

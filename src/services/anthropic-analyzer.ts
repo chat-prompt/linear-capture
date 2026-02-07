@@ -2,27 +2,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { trackAnalysisFailed } from './analytics';
 import { logger } from './utils/logger';
+import type { AnalysisResult, AnalysisContext } from '../types';
+
+// Re-export for backwards compatibility (consumers that import from this file)
+export type { AnalysisResult, AnalysisContext } from '../types';
 
 const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
-
-export interface AnalysisResult {
-  title: string;
-  description: string;
-  success: boolean;
-  suggestedProjectId?: string;
-  suggestedAssigneeId?: string;
-  suggestedPriority?: number;
-  suggestedEstimate?: number;
-  error?: string;
-}
-
-export interface AnalysisContext {
-  projects: Array<{ id: string; name: string; description?: string; recentIssueTitles?: string[] }>;
-  users: Array<{ id: string; name: string }>;
-  defaultTeamId?: string;
-  instruction?: string;
-  language: string;
-}
 
 export class AnthropicAnalyzer {
   private maxRetries = 3;
