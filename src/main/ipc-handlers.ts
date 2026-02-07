@@ -28,7 +28,6 @@ import { getLocalSearchService } from '../services/local-search';
 import { checkForUpdates } from '../services/auto-updater';
 import { getAiRecommendations } from '../services/ai-recommend';
 import { getAdapter } from '../services/context-adapters';
-import { getSemanticSearchService } from '../services/semantic-search';
 import { createGmailService } from '../services/gmail-client';
 import { trackIssueCreated } from '../services/analytics';
 import { updateHotkey, validateHotkey, formatHotkeyForDisplay } from './hotkey';
@@ -578,81 +577,51 @@ export function registerIpcHandlers(): void {
   });
 
   ipcMain.handle('context-semantic-search', async (_event, { query, source }: { query: string; source: string }) => {
-    const debug: string[] = [];
-    debug.push(`query="${query}", source="${source}"`);
-    logger.log(`[SemanticSearch] Handler called! query="${query}", source="${source}"`);
-    
+    logger.log(`[SemanticSearch] Handler called: query="${query}", source="${source}"`);
+
     try {
-      debug.push('Getting adapter...');
-      logger.log(`[SemanticSearch] Getting adapter for ${source}...`);
       const adapter = getAdapter(source as ContextSource);
-      
-      debug.push('Checking connection...');
-      logger.log(`[SemanticSearch] Got adapter, checking connection...`);
       const isConnected = await adapter.isConnected();
-      debug.push(`isConnected=${isConnected}`);
-      logger.log(`[SemanticSearch] ${source} connected: ${isConnected}`);
-      
+
       if (!isConnected) {
-        debug.push('Not connected, returning early');
-        logger.log(`[SemanticSearch] ${source} not connected, returning empty results`);
-        return { success: true, results: [], notConnected: true, _debug: debug };
+        return { success: true, results: [], notConnected: true };
       }
-      
-      debug.push('Fetching items...');
-      const items = await adapter.fetchItems(query);
-      debug.push(`fetchedItems=${items.length}`);
-      logger.log(`[SemanticSearch] Fetched ${items.length} items from ${source}`);
-      
-      if (items.length === 0) {
-        debug.push('No items found, returning empty');
-        logger.log('[SemanticSearch] No items to search, returning empty results');
-        return { success: true, results: [], _debug: debug };
+
+      const localSearch = getLocalSearchService();
+      if (!localSearch?.isInitialized()) {
+        return { success: true, results: [] };
       }
-      
-      debug.push('Calling semantic search service...');
-      const searchService = getSemanticSearchService();
-      const results = await searchService.search(query, items);
-      debug.push(`searchResults=${results.length}`);
+
+      const results = await localSearch.search(query, [], 20, source);
       logger.log(`[SemanticSearch] Search returned ${results.length} results`);
-      
-      return { success: true, results, _debug: debug };
+
+      return { success: true, results };
     } catch (error) {
-      debug.push(`ERROR: ${String(error)}`);
       logger.error('[SemanticSearch] Error:', error);
-      return { success: false, error: String(error), results: [], _debug: debug };
+      return { success: false, error: String(error), results: [] };
     }
   });
 
   ipcMain.handle('context.getRelated', async (_event, { query, limit = 20 }: { query: string; limit?: number }) => {
-    const debug: string[] = [];
-    debug.push(`query="${query}", limit=${limit}`);
-    
     if (!query || query.length < 3) {
-      return { success: true, results: [], _debug: [...debug, 'query too short'] };
+      return { success: true, results: [] };
     }
-    
+
     try {
       const QUOTA_PER_SOURCE = 5;
       const results: any[] = [];
-      
+
       const localSearch = getLocalSearchService();
       const useLocalSearch = localSearch?.isInitialized() ?? false;
-      debug.push(`localSearch: ${useLocalSearch ? 'available' : 'unavailable'}`);
 
       if (useLocalSearch) {
         const localResults = await localSearch!.search(query, [], QUOTA_PER_SOURCE * 4);
-        
+
         const slackResults = localResults.filter(r => r.source === 'slack').slice(0, QUOTA_PER_SOURCE);
         const notionResults = localResults.filter(r => r.source === 'notion').slice(0, QUOTA_PER_SOURCE);
         const linearResults = localResults.filter(r => r.source === 'linear').slice(0, QUOTA_PER_SOURCE);
         const gmailResults = localResults.filter(r => r.source === 'gmail').slice(0, QUOTA_PER_SOURCE);
-        
-        debug.push(`slack: ${slackResults.length} (local)`);
-        debug.push(`notion: ${notionResults.length} (local)`);
-        debug.push(`linear: ${linearResults.length} (local)`);
-        debug.push(`gmail: ${gmailResults.length} (local)`);
-        
+
         results.push(...slackResults.map(r => ({
           id: `slack-${r.id}`,
           source: 'slack',
@@ -661,7 +630,7 @@ export function registerIpcHandlers(): void {
           url: r.url,
           timestamp: r.timestamp,
         })));
-        
+
         results.push(...notionResults.map(r => ({
           id: `notion-${r.id}`,
           source: 'notion',
@@ -670,7 +639,7 @@ export function registerIpcHandlers(): void {
           url: r.url,
           timestamp: r.timestamp,
         })));
-        
+
         results.push(...linearResults.map(r => ({
           id: `linear-${r.id}`,
           source: 'linear',
@@ -679,7 +648,7 @@ export function registerIpcHandlers(): void {
           url: r.url,
           timestamp: r.timestamp,
         })));
-        
+
         results.push(...gmailResults.map(r => ({
           id: `gmail-${r.id}`,
           source: 'gmail',
@@ -688,21 +657,17 @@ export function registerIpcHandlers(): void {
           url: r.url,
           timestamp: r.timestamp,
         })));
-        
+
       } else {
-        debug.push('using API fallback');
-        
         const gmailService = createGmailService();
         const linearService = createLinearServiceFromEnv();
-        
+
         const [slackConnected, notionConnected, gmailConnected, linearConnected] = await Promise.all([
           state.slackService?.getConnectionStatus().then(s => s.connected).catch(() => false) ?? false,
           state.notionService?.getConnectionStatus().then(s => s.connected).catch(() => false) ?? false,
           gmailService?.getConnectionStatus().then(s => s.connected).catch(() => false) ?? false,
           Promise.resolve(linearService !== null),
         ]);
-        
-        debug.push(`connected: slack=${slackConnected}, notion=${notionConnected}, gmail=${gmailConnected}, linear=${linearConnected}`);
 
         const [slackResult, notionResult, gmailResult, linearResult] = await Promise.allSettled([
           (async () => {
@@ -717,7 +682,7 @@ export function registerIpcHandlers(): void {
               timestamp: m.timestamp,
             }));
           })(),
-          
+
           (async () => {
             if (!notionConnected) return [];
             const adapter = getAdapter('notion');
@@ -731,7 +696,7 @@ export function registerIpcHandlers(): void {
               timestamp: item.timestamp,
             }));
           })(),
-          
+
           (async () => {
             if (!gmailConnected) return [];
             const adapter = getAdapter('gmail');
@@ -745,7 +710,7 @@ export function registerIpcHandlers(): void {
               timestamp: item.timestamp,
             }));
           })(),
-          
+
           (async () => {
             if (!linearConnected) return [];
             const adapter = getAdapter('linear');
@@ -759,19 +724,14 @@ export function registerIpcHandlers(): void {
             }));
           })(),
         ]);
-        
-        const sourceNames = ['slack', 'notion', 'gmail', 'linear'];
-        
-        [slackResult, notionResult, gmailResult, linearResult].forEach((r, i) => {
+
+        [slackResult, notionResult, gmailResult, linearResult].forEach((r) => {
           if (r.status === 'fulfilled') {
             results.push(...r.value);
-            debug.push(`${sourceNames[i]}: ${r.value.length} (api)`);
-          } else {
-            debug.push(`${sourceNames[i]}: ERROR - ${r.reason}`);
           }
         });
       }
-      
+
       const seen = new Set<string>();
       const deduplicated = results.filter(r => {
         if (!r.url) return true;
@@ -779,19 +739,15 @@ export function registerIpcHandlers(): void {
         seen.add(r.url);
         return true;
       });
-      
+
       const sorted = deduplicated.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-      
-      debug.push(`total: ${sorted.length} (deduped from ${results.length})`);
-      
-      return { 
-        success: true, 
+
+      return {
+        success: true,
         results: sorted.slice(0, limit),
-        _debug: debug 
       };
     } catch (error) {
-      debug.push(`ERROR: ${String(error)}`);
-      return { success: false, error: String(error), results: [], _debug: debug };
+      return { success: false, error: String(error), results: [] };
     }
   });
 

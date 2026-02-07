@@ -462,68 +462,6 @@ export class GmailSyncAdapter {
     console.log(`[GmailSync] Email ${email.id} saved successfully`);
   }
 
-  private async syncEmail(email: GmailMessage): Promise<void> {
-    console.log(`[GmailSync] Syncing email: ${email.subject} (${email.id})`);
-
-    const fullText = `${email.subject}\n\n${email.snippet}`;
-    const preprocessedText = this.preprocessor.preprocess(fullText);
-    const contentHash = this.calculateContentHash(preprocessedText);
-
-    const db = this.dbService.getDb();
-
-    const existingDoc = await db.query<{ content_hash: string }>(
-      `SELECT content_hash FROM documents WHERE source_type = $1 AND source_id = $2`,
-      ['gmail', email.id]
-    );
-
-    if (existingDoc.rows.length > 0 && existingDoc.rows[0].content_hash === contentHash) {
-      console.log(`[GmailSync] Email ${email.id} unchanged, skipping`);
-      return;
-    }
-
-    const embedding = await this.embeddingClient.embedSingle(preprocessedText);
-
-    const metadata = {
-      threadId: email.threadId,
-      from: email.from.email,
-      fromName: email.from.name,
-      url: `https://mail.google.com/mail/u/0/#inbox/${email.threadId}`,
-    };
-
-    const emailDate = new Date(email.date);
-    await db.query(
-      `
-      INSERT INTO documents (
-        source_type, source_id, title, content, content_hash,
-        embedding, metadata, source_created_at, source_updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      ON CONFLICT (source_type, source_id) 
-      DO UPDATE SET
-        title = EXCLUDED.title,
-        content = EXCLUDED.content,
-        content_hash = EXCLUDED.content_hash,
-        embedding = EXCLUDED.embedding,
-        metadata = EXCLUDED.metadata,
-        source_updated_at = EXCLUDED.source_updated_at,
-        indexed_at = NOW()
-      WHERE documents.content_hash != EXCLUDED.content_hash
-    `,
-      [
-        'gmail',
-        email.id,
-        email.subject,
-        preprocessedText,
-        contentHash,
-        JSON.stringify(Array.from(embedding)),
-        JSON.stringify(metadata),
-        emailDate,
-        emailDate,
-      ]
-    );
-
-    console.log(`[GmailSync] Email ${email.id} synced successfully`);
-  }
-
   private async getLastSyncCursor(): Promise<string | null> {
     const db = this.dbService.getDb();
     const result = await db.query<{ cursor_value: string }>(

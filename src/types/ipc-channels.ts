@@ -197,14 +197,12 @@ export interface SemanticSearchHandlerResult {
   results: unknown[];
   notConnected?: boolean;
   error?: string;
-  _debug?: string[];
 }
 
 export interface ContextGetRelatedResult {
   success: boolean;
   results: ContextRelatedItem[];
   error?: string;
-  _debug?: string[];
 }
 
 // ---------------------------------------------------------------------------

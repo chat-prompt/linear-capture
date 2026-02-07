@@ -41,13 +41,6 @@ vi.mock('../../text-preprocessor', () => ({
   }),
 }));
 
-vi.mock('../../embedding-service', () => ({
-  createEmbeddingService: () => ({
-    embed: mockEmbed,
-    embedBatch: mockEmbedBatch,
-  }),
-}));
-
 import { NotionSyncAdapter } from '../notion-sync';
 
 function createMockPage(id: string, lastEdited: string) {

@@ -41,13 +41,6 @@ vi.mock('../text-preprocessor', () => ({
   }),
 }));
 
-vi.mock('../embedding-service', () => ({
-  createEmbeddingService: () => ({
-    embed: mockEmbed,
-    embedBatch: mockEmbedBatch,
-  }),
-}));
-
 import { GmailSyncAdapter, GmailSyncError } from '../sync-adapters/gmail-sync';
 
 function createMockEmail(id: string, date: string) {

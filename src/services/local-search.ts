@@ -72,9 +72,6 @@ export class LocalSearchService {
     console.log('[LocalSearch] EmbeddingClient initialized (Worker-based)');
   }
 
-  reinitializeEmbedding(): void {
-  }
-
   canSync(): boolean {
     return this.isInitialized();
   }

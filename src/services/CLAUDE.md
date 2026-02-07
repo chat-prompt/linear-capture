@@ -30,11 +30,7 @@
 | 파일 | 역할 |
 |------|------|
 | local-search.ts | 오케스트레이터 (동기화 + 검색 + RRF 결합) |
-| semantic-search.ts | 벡터 유사도 검색 |
-| hybrid-search.ts | 벡터 + FTS 결합 (벡터 실패 시 FTS 폴백) |
-| local-vector-store.ts | PGlite 벡터 스토어 |
-| embedding-service.ts | OpenAI 임베딩 직접 API 호출 (배치 지원) |
-| embedding-client.ts | 임베딩 서비스 래퍼 (싱글톤) |
+| embedding-client.ts | Worker 기반 임베딩 서비스 (싱글톤) |
 | reranker.ts | 검색 결과 재정렬 |
 | recency-boost.ts | 최신성 가중치 적용 |
 
