@@ -16,7 +16,6 @@ const mockSearchEmails = vi.fn();
 const mockGetConnectionStatus = vi.fn();
 const mockQuery = vi.fn();
 const mockEmbed = vi.fn();
-const mockEmbedBatch = vi.fn();
 const mockPreprocess = vi.fn();
 
 vi.mock('../gmail-client', () => ({
@@ -41,6 +40,13 @@ vi.mock('../text-preprocessor', () => ({
   }),
 }));
 
+// Mock embedding-client: GmailSyncAdapter uses getEmbeddingClient().embed(texts)
+vi.mock('../embedding-client', () => ({
+  getEmbeddingClient: () => ({
+    embed: mockEmbed,
+  }),
+}));
+
 import { GmailSyncAdapter, GmailSyncError } from '../sync-adapters/gmail-sync';
 
 function createMockEmail(id: string, date: string) {
@@ -60,12 +66,14 @@ describe('GmailSyncAdapter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
-    
+
     mockQuery.mockResolvedValue({ rows: [] });
     mockPreprocess.mockImplementation((text: string) => text);
-    mockEmbed.mockResolvedValue(new Array(1536).fill(0.1));
-    mockEmbedBatch.mockResolvedValue([new Array(1536).fill(0.1)]);
-    
+    // embed returns Float32Array[] matching input length
+    mockEmbed.mockImplementation((texts: string[]) =>
+      Promise.resolve(texts.map(() => new Float32Array(new Array(1536).fill(0.1))))
+    );
+
     adapter = new GmailSyncAdapter();
   });
 
@@ -80,13 +88,13 @@ describe('GmailSyncAdapter', () => {
         createMockEmail('email-2', '2025-02-01T09:00:00Z'),
       ];
 
-      mockSearchEmails.mockResolvedValue({
-        success: true,
-        messages: mockEmails,
-      });
+      // First call returns emails, second returns empty to stop pagination
+      mockSearchEmails
+        .mockResolvedValueOnce({ success: true, messages: mockEmails })
+        .mockResolvedValueOnce({ success: true, messages: [] });
 
       const syncPromise = adapter.sync();
-      
+
       await vi.runAllTimersAsync();
       const result = await syncPromise;
 
@@ -103,18 +111,16 @@ describe('GmailSyncAdapter', () => {
         error: 'Network error: ECONNREFUSED',
       });
 
-      const syncPromise = adapter.sync();
+      let caughtError: GmailSyncError | undefined;
+      const syncPromise = adapter.sync().catch((e: GmailSyncError) => {
+        caughtError = e;
+      });
       await vi.runAllTimersAsync();
-      
-      try {
-        await syncPromise;
-        expect.fail('Should have thrown GmailSyncError');
-      } catch (error) {
-        expect(error).toBeInstanceOf(GmailSyncError);
-        expect((error as GmailSyncError).retryCount).toBe(3);
-        expect((error as GmailSyncError).exhaustedRetries).toBe(true);
-      }
-      
+      await syncPromise;
+
+      expect(caughtError).toBeInstanceOf(GmailSyncError);
+      expect(caughtError!.retryCount).toBe(3);
+      expect(caughtError!.exhaustedRetries).toBe(true);
       expect(mockSearchEmails).toHaveBeenCalledTimes(3);
     });
 
@@ -124,17 +130,15 @@ describe('GmailSyncAdapter', () => {
         error: 'Authentication failed: 401 Unauthorized',
       });
 
-      const syncPromise = adapter.sync();
+      let caughtError: GmailSyncError | undefined;
+      const syncPromise = adapter.sync().catch((e: GmailSyncError) => {
+        caughtError = e;
+      });
       await vi.runAllTimersAsync();
-      
-      try {
-        await syncPromise;
-        expect.fail('Should have thrown GmailSyncError');
-      } catch (error) {
-        expect(error).toBeInstanceOf(GmailSyncError);
-        expect((error as GmailSyncError).exhaustedRetries).toBe(false);
-      }
-      
+      await syncPromise;
+
+      expect(caughtError).toBeInstanceOf(GmailSyncError);
+      expect(caughtError!.exhaustedRetries).toBe(false);
       expect(mockSearchEmails).toHaveBeenCalledTimes(1);
     });
 
@@ -144,17 +148,15 @@ describe('GmailSyncAdapter', () => {
         error: 'Access denied: 403 Forbidden',
       });
 
-      const syncPromise = adapter.sync();
+      let caughtError: GmailSyncError | undefined;
+      const syncPromise = adapter.sync().catch((e: GmailSyncError) => {
+        caughtError = e;
+      });
       await vi.runAllTimersAsync();
-      
-      try {
-        await syncPromise;
-        expect.fail('Should have thrown GmailSyncError');
-      } catch (error) {
-        expect(error).toBeInstanceOf(GmailSyncError);
-        expect((error as GmailSyncError).exhaustedRetries).toBe(false);
-      }
-      
+      await syncPromise;
+
+      expect(caughtError).toBeInstanceOf(GmailSyncError);
+      expect(caughtError!.exhaustedRetries).toBe(false);
       expect(mockSearchEmails).toHaveBeenCalledTimes(1);
     });
 
@@ -168,10 +170,14 @@ describe('GmailSyncAdapter', () => {
             error: 'Rate limited: 429 Too Many Requests',
           });
         }
-        return Promise.resolve({
-          success: true,
-          messages: [createMockEmail('email-1', '2025-02-01T10:00:00Z')],
-        });
+        if (callCount === 3) {
+          return Promise.resolve({
+            success: true,
+            messages: [createMockEmail('email-1', '2025-02-01T10:00:00Z')],
+          });
+        }
+        // Return empty to stop pagination loop
+        return Promise.resolve({ success: true, messages: [] });
       });
 
       const syncPromise = adapter.sync();
@@ -179,7 +185,8 @@ describe('GmailSyncAdapter', () => {
       const result = await syncPromise;
 
       expect(result.success).toBe(true);
-      expect(mockSearchEmails).toHaveBeenCalledTimes(3);
+      // 3 calls for retry, then 1 more for empty pagination stop
+      expect(mockSearchEmails).toHaveBeenCalledTimes(4);
     });
   });
 
@@ -192,13 +199,16 @@ describe('GmailSyncAdapter', () => {
         return Promise.resolve({ rows: [] });
       });
 
-      mockSearchEmails.mockResolvedValue({
-        success: true,
-        messages: [createMockEmail('email-1', '2025-02-02T10:00:00Z')],
-      });
+      // First call returns emails, second returns empty to stop pagination
+      mockSearchEmails
+        .mockResolvedValueOnce({
+          success: true,
+          messages: [createMockEmail('email-1', '2025-02-02T10:00:00Z')],
+        })
+        .mockResolvedValueOnce({ success: true, messages: [] });
 
       const syncPromise = adapter.syncIncremental();
-      
+
       await vi.runAllTimersAsync();
       const result = await syncPromise;
 
@@ -210,32 +220,25 @@ describe('GmailSyncAdapter', () => {
     });
 
     it('should save cursor after successful partial sync', async () => {
-      let batchCount = 0;
-      mockSearchEmails.mockImplementation(() => {
-        batchCount++;
-        if (batchCount === 1) {
-          return Promise.resolve({
-            success: true,
-            messages: [
-              createMockEmail('email-1', '2025-02-01T10:00:00Z'),
-              createMockEmail('email-2', '2025-02-01T09:00:00Z'),
-            ],
-          });
-        }
-        return Promise.resolve({
+      // First call returns emails, second returns empty
+      mockSearchEmails
+        .mockResolvedValueOnce({
           success: true,
-          messages: [],
-        });
-      });
+          messages: [
+            createMockEmail('email-1', '2025-02-01T10:00:00Z'),
+            createMockEmail('email-2', '2025-02-01T09:00:00Z'),
+          ],
+        })
+        .mockResolvedValueOnce({ success: true, messages: [] });
 
       const syncPromise = adapter.syncIncremental();
-      
+
       await vi.runAllTimersAsync();
       const result = await syncPromise;
 
       expect(result.success).toBe(true);
       expect(result.itemsSynced).toBeGreaterThan(0);
-      
+
       const cursorUpdateCalls = mockQuery.mock.calls.filter(
         (call) => call[0].includes('sync_cursors') && call[0].includes('INSERT')
       );
@@ -246,14 +249,13 @@ describe('GmailSyncAdapter', () => {
   describe('batch processing optimization', () => {
     it('should process single email batch successfully', async () => {
       const mockEmail = createMockEmail('email-1', '2025-02-01T10:00:00Z');
-      
-      mockSearchEmails.mockResolvedValue({
-        success: true,
-        messages: [mockEmail],
-      });
-      
+
+      // First call returns email, second returns empty
+      mockSearchEmails
+        .mockResolvedValueOnce({ success: true, messages: [mockEmail] })
+        .mockResolvedValueOnce({ success: true, messages: [] });
+
       mockQuery.mockResolvedValue({ rows: [] });
-      mockEmbedBatch.mockResolvedValue([new Array(1536).fill(0.1)]);
 
       const syncPromise = adapter.sync();
       await vi.runAllTimersAsync();
@@ -276,7 +278,7 @@ describe('GmailSyncAdapter', () => {
       expect(result.success).toBe(true);
       expect(result.itemsSynced).toBe(0);
       expect(result.itemsFailed).toBe(0);
-      expect(mockEmbedBatch).not.toHaveBeenCalled();
+      expect(mockEmbed).not.toHaveBeenCalled();
     });
 
     it('should handle partial save failure', async () => {
@@ -286,10 +288,10 @@ describe('GmailSyncAdapter', () => {
         createMockEmail('email-3', '2025-02-01T08:00:00Z'),
       ];
 
-      mockSearchEmails.mockResolvedValue({
-        success: true,
-        messages: mockEmails,
-      });
+      // First call returns emails, second returns empty
+      mockSearchEmails
+        .mockResolvedValueOnce({ success: true, messages: mockEmails })
+        .mockResolvedValueOnce({ success: true, messages: [] });
 
       let insertCallCount = 0;
       mockQuery.mockImplementation((sql: string) => {
@@ -309,12 +311,6 @@ describe('GmailSyncAdapter', () => {
         return Promise.resolve({ rows: [] });
       });
 
-      mockEmbedBatch.mockResolvedValue([
-        new Array(1536).fill(0.1),
-        new Array(1536).fill(0.2),
-        new Array(1536).fill(0.3),
-      ]);
-
       const syncPromise = adapter.sync();
       await vi.runAllTimersAsync();
       const result = await syncPromise;
@@ -327,14 +323,14 @@ describe('GmailSyncAdapter', () => {
     it('should skip embedding when all hashes unchanged', async () => {
       const email1 = createMockEmail('email-1', '2025-02-01T10:00:00Z');
       const email2 = createMockEmail('email-2', '2025-02-01T09:00:00Z');
-      
+
       const hash1 = crypto.createHash('md5').update(`${email1.subject}\n\n${email1.snippet}`).digest('hex');
       const hash2 = crypto.createHash('md5').update(`${email2.subject}\n\n${email2.snippet}`).digest('hex');
 
-      mockSearchEmails.mockResolvedValue({
-        success: true,
-        messages: [email1, email2],
-      });
+      // First call returns emails, second returns empty
+      mockSearchEmails
+        .mockResolvedValueOnce({ success: true, messages: [email1, email2] })
+        .mockResolvedValueOnce({ success: true, messages: [] });
 
       mockQuery.mockImplementation((sql: string) => {
         if (sql.includes('SELECT source_id, content_hash FROM documents')) {
@@ -352,7 +348,7 @@ describe('GmailSyncAdapter', () => {
       await vi.runAllTimersAsync();
       const result = await syncPromise;
 
-      expect(mockEmbedBatch).not.toHaveBeenCalled();
+      expect(mockEmbed).not.toHaveBeenCalled();
       expect(result.itemsSynced).toBe(0);
     });
 
@@ -363,10 +359,10 @@ describe('GmailSyncAdapter', () => {
 
       const hash1 = crypto.createHash('md5').update(`${email1.subject}\n\n${email1.snippet}`).digest('hex');
 
-      mockSearchEmails.mockResolvedValue({
-        success: true,
-        messages: [email1, email2, email3],
-      });
+      // First call returns emails, second returns empty
+      mockSearchEmails
+        .mockResolvedValueOnce({ success: true, messages: [email1, email2, email3] })
+        .mockResolvedValueOnce({ success: true, messages: [] });
 
       mockQuery.mockImplementation((sql: string) => {
         if (sql.includes('SELECT source_id, content_hash FROM documents')) {
@@ -379,18 +375,13 @@ describe('GmailSyncAdapter', () => {
         return Promise.resolve({ rows: [] });
       });
 
-      mockEmbedBatch.mockResolvedValue([
-        new Array(1536).fill(0.1),
-        new Array(1536).fill(0.2),
-      ]);
-
       const syncPromise = adapter.sync();
       await vi.runAllTimersAsync();
       const result = await syncPromise;
 
       expect(result.itemsSynced).toBe(2);
       expect(result.itemsFailed).toBe(0);
-      expect(mockEmbedBatch).toHaveBeenCalledWith(expect.arrayContaining([expect.any(String)]));
+      expect(mockEmbed).toHaveBeenCalledWith(expect.arrayContaining([expect.any(String)]));
     });
 
     it('should use reduced batch delay of 50ms', async () => {
@@ -400,7 +391,7 @@ describe('GmailSyncAdapter', () => {
         if (batchCount === 1) {
           return Promise.resolve({
             success: true,
-            messages: Array.from({ length: 100 }, (_, i) => 
+            messages: Array.from({ length: 100 }, (_, i) =>
               createMockEmail(`email-${i}`, '2025-02-01T10:00:00Z')
             ),
           });

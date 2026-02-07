@@ -12,12 +12,22 @@ export function registerSyncHandlers(): void {
   const state = getState();
 
   ipcMain.handle('sync:get-slack-channels', () => {
-    return getSelectedSlackChannels();
+    try {
+      return getSelectedSlackChannels();
+    } catch (err) {
+      logger.error('sync:get-slack-channels failed:', err);
+      throw err;
+    }
   });
 
   ipcMain.handle('sync:set-slack-channels', (_event, channels: SlackChannelInfo[]) => {
-    setSelectedSlackChannels(channels);
-    return { success: true };
+    try {
+      setSelectedSlackChannels(channels);
+      return { success: true };
+    } catch (err) {
+      logger.error('sync:set-slack-channels failed:', err);
+      throw err;
+    }
   });
 
   ipcMain.handle('sync:get-status', async () => {

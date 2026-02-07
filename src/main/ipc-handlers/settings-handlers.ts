@@ -28,7 +28,12 @@ export function registerSettingsHandlers(): void {
   const state = getState();
 
   ipcMain.handle('get-settings', async () => {
-    return getAllSettings();
+    try {
+      return getAllSettings();
+    } catch (err) {
+      logger.error('get-settings failed:', err);
+      throw err;
+    }
   });
 
   ipcMain.handle('validate-token', async (_event, token: string) => {
@@ -76,11 +81,21 @@ export function registerSettingsHandlers(): void {
   });
 
   ipcMain.handle('open-settings', () => {
-    createSettingsWindow();
+    try {
+      createSettingsWindow();
+    } catch (err) {
+      logger.error('open-settings failed:', err);
+      throw err;
+    }
   });
 
   ipcMain.handle('close-settings', () => {
-    state.settingsWindow?.close();
+    try {
+      state.settingsWindow?.close();
+    } catch (err) {
+      logger.error('close-settings failed:', err);
+      throw err;
+    }
   });
 
   ipcMain.handle('check-for-updates', async () => {
@@ -97,20 +112,35 @@ export function registerSettingsHandlers(): void {
   });
 
   ipcMain.handle('get-app-version', () => {
-    return app.getVersion();
+    try {
+      return app.getVersion();
+    } catch (err) {
+      logger.error('get-app-version failed:', err);
+      throw err;
+    }
   });
 
   ipcMain.handle('get-hotkey', () => {
-    return {
-      hotkey: getCaptureHotkey(),
-      displayHotkey: formatHotkeyForDisplay(getCaptureHotkey()),
-      defaultHotkey: getDefaultHotkey(),
-      defaultDisplayHotkey: formatHotkeyForDisplay(getDefaultHotkey()),
-    };
+    try {
+      return {
+        hotkey: getCaptureHotkey(),
+        displayHotkey: formatHotkeyForDisplay(getCaptureHotkey()),
+        defaultHotkey: getDefaultHotkey(),
+        defaultDisplayHotkey: formatHotkeyForDisplay(getDefaultHotkey()),
+      };
+    } catch (err) {
+      logger.error('get-hotkey failed:', err);
+      throw err;
+    }
   });
 
   ipcMain.handle('validate-hotkey', (_event, hotkey: string) => {
-    return validateHotkey(hotkey);
+    try {
+      return validateHotkey(hotkey);
+    } catch (err) {
+      logger.error('validate-hotkey failed:', err);
+      throw err;
+    }
   });
 
   ipcMain.handle('save-hotkey', async (_event, hotkey: string) => {
@@ -172,17 +202,32 @@ export function registerSettingsHandlers(): void {
   });
 
   ipcMain.handle('set-traffic-lights-visible', (_event, visible: boolean) => {
-    if (state.mainWindow && process.platform === 'darwin') {
-      state.mainWindow.setWindowButtonVisibility(visible);
+    try {
+      if (state.mainWindow && process.platform === 'darwin') {
+        state.mainWindow.setWindowButtonVisibility(visible);
+      }
+    } catch (err) {
+      logger.error('set-traffic-lights-visible failed:', err);
+      throw err;
     }
   });
 
   ipcMain.handle('get-device-id', () => {
-    return getDeviceId();
+    try {
+      return getDeviceId();
+    } catch (err) {
+      logger.error('get-device-id failed:', err);
+      throw err;
+    }
   });
 
   ipcMain.handle('get-language', () => {
-    return getLanguage();
+    try {
+      return getLanguage();
+    } catch (err) {
+      logger.error('get-language failed:', err);
+      throw err;
+    }
   });
 
   ipcMain.handle('set-language', async (_event, lang: string) => {
@@ -201,28 +246,43 @@ export function registerSettingsHandlers(): void {
   });
 
   ipcMain.handle('get-supported-languages', () => {
-    return getSupportedLanguages();
+    try {
+      return getSupportedLanguages();
+    } catch (err) {
+      logger.error('get-supported-languages failed:', err);
+      throw err;
+    }
   });
 
   ipcMain.handle('translate', (_event, key: string, options?: Record<string, unknown>) => {
-    return t(key, options as Record<string, any>);
+    try {
+      return t(key, options as Record<string, any>);
+    } catch (err) {
+      logger.error('translate failed:', err);
+      throw err;
+    }
   });
 
   ipcMain.handle('get-reverse-translation-map', () => {
-    const translations = i18next.getResourceBundle('en', 'translation');
-    const reverseMap: Record<string, string> = {};
+    try {
+      const translations = i18next.getResourceBundle('en', 'translation');
+      const reverseMap: Record<string, string> = {};
 
-    function flatten(obj: any, prefix = '') {
-      for (const key in obj) {
-        const fullKey = prefix ? `${prefix}.${key}` : key;
-        if (typeof obj[key] === 'object' && obj[key] !== null) {
-          flatten(obj[key], fullKey);
-        } else if (typeof obj[key] === 'string') {
-          reverseMap[obj[key]] = fullKey;
+      function flatten(obj: any, prefix = '') {
+        for (const key in obj) {
+          const fullKey = prefix ? `${prefix}.${key}` : key;
+          if (typeof obj[key] === 'object' && obj[key] !== null) {
+            flatten(obj[key], fullKey);
+          } else if (typeof obj[key] === 'string') {
+            reverseMap[obj[key]] = fullKey;
+          }
         }
       }
+      flatten(translations);
+      return reverseMap;
+    } catch (err) {
+      logger.error('get-reverse-translation-map failed:', err);
+      throw err;
     }
-    flatten(translations);
-    return reverseMap;
   });
 }

@@ -10,12 +10,22 @@ export function registerCaptureHandlers(): void {
   const state = getState();
 
   ipcMain.handle('close-window', () => {
-    state.mainWindow?.minimize();
+    try {
+      state.mainWindow?.minimize();
+    } catch (err) {
+      logger.error('close-window failed:', err);
+      throw err;
+    }
   });
 
   ipcMain.handle('cancel', () => {
-    cleanupSession();
-    state.mainWindow?.minimize();
+    try {
+      cleanupSession();
+      state.mainWindow?.minimize();
+    } catch (err) {
+      logger.error('cancel failed:', err);
+      throw err;
+    }
   });
 
   ipcMain.handle('remove-capture', async (_event, data: { index: number }) => {

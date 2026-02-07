@@ -15,7 +15,7 @@ const mockSearchPages = vi.fn();
 const mockGetPageContent = vi.fn();
 const mockQuery = vi.fn();
 const mockEmbed = vi.fn();
-const mockEmbedBatch = vi.fn();
+const mockEmbedSingle = vi.fn();
 const mockPreprocess = vi.fn();
 
 vi.mock('../../notion-client', () => ({
@@ -41,6 +41,21 @@ vi.mock('../../text-preprocessor', () => ({
   }),
 }));
 
+// Mock embedding-client: syncFromApi uses deps.embeddingClient.embed(texts)
+// NotionSyncAdapter.syncPage uses this.embeddingClient.embedSingle(text)
+vi.mock('../../embedding-client', () => ({
+  getEmbeddingClient: () => ({
+    embed: mockEmbed,
+    embedSingle: mockEmbedSingle,
+  }),
+}));
+
+// Mock notion-local-reader: syncIncremental checks isNotionDbAvailable()
+vi.mock('../../notion-local-reader', () => ({
+  isNotionDbAvailable: vi.fn().mockReturnValue(false),
+  getNotionLocalReader: vi.fn(),
+}));
+
 import { NotionSyncAdapter } from '../notion-sync';
 
 function createMockPage(id: string, lastEdited: string) {
@@ -60,13 +75,16 @@ describe('NotionSyncAdapter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
-    
+
     mockQuery.mockResolvedValue({ rows: [] });
     mockPreprocess.mockImplementation((text: string) => text);
-    mockEmbed.mockResolvedValue(new Array(1536).fill(0.1));
-    mockEmbedBatch.mockResolvedValue([new Array(1536).fill(0.1)]);
+    // embed returns Float32Array[] matching input length
+    mockEmbed.mockImplementation((texts: string[]) =>
+      Promise.resolve(texts.map(() => new Float32Array(new Array(1536).fill(0.1))))
+    );
+    mockEmbedSingle.mockResolvedValue(new Float32Array(new Array(1536).fill(0.1)));
     mockGetPageContent.mockResolvedValue({ success: true, content: 'Test page content', blockCount: 1 });
-    
+
     adapter = new NotionSyncAdapter();
   });
 
@@ -235,7 +253,7 @@ describe('NotionSyncAdapter', () => {
   });
 
   describe('syncFromApi - batch embedding', () => {
-    it('should use embedBatch instead of individual embed calls', async () => {
+    it('should use embed for batch embedding in syncIncremental', async () => {
       mockQuery.mockResolvedValue({ rows: [] });
 
       mockSearchPages.mockResolvedValueOnce({
@@ -248,15 +266,10 @@ describe('NotionSyncAdapter', () => {
         nextCursor: null,
       });
 
-      mockEmbedBatch.mockResolvedValueOnce([
-        new Array(1536).fill(0.1),
-        new Array(1536).fill(0.2),
-      ]);
-
       await adapter.syncIncremental();
 
-      expect(mockEmbedBatch).toHaveBeenCalled();
-      expect(mockEmbed).not.toHaveBeenCalled();
+      // syncFromApi uses deps.embeddingClient.embed(texts) for batch embedding
+      expect(mockEmbed).toHaveBeenCalled();
     });
 
     it('should truncate content to MAX_TEXT_CHARS (5000)', async () => {
@@ -273,13 +286,12 @@ describe('NotionSyncAdapter', () => {
       });
 
       mockPreprocess.mockImplementation((text: string) => text);
-      mockEmbedBatch.mockResolvedValueOnce([new Array(1536).fill(0.1)]);
 
       await adapter.syncIncremental();
 
-      const embedBatchCalls = mockEmbedBatch.mock.calls;
-      if (embedBatchCalls.length > 0) {
-        const texts = embedBatchCalls[0][0] as string[];
+      const embedCalls = mockEmbed.mock.calls;
+      if (embedCalls.length > 0) {
+        const texts = embedCalls[0][0] as string[];
         for (const text of texts) {
           expect(text.length).toBeLessThanOrEqual(5000);
         }
@@ -313,10 +325,6 @@ describe('NotionSyncAdapter', () => {
         return { success: true, content: 'Test content', blockCount: 1 };
       });
 
-      mockEmbedBatch.mockResolvedValue(
-        pages.map(() => new Array(1536).fill(0.1))
-      );
-
       vi.useRealTimers();
       await adapter.syncIncremental();
       vi.useFakeTimers();
@@ -349,7 +357,7 @@ describe('NotionSyncAdapter', () => {
 
     it('should resume from saved pagination cursor', async () => {
       mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
-        if (sql.includes('sync_cursors') && sql.includes('SELECT') && 
+        if (sql.includes('sync_cursors') && sql.includes('SELECT') &&
             params && (params as string[])[0] === 'notion_pagination_cursor') {
           return Promise.resolve({ rows: [{ cursor_value: 'saved-cursor-123' }] });
         }
