@@ -80,64 +80,69 @@ export function registerLinearHandlers(): void {
     cycleId?: string;
     labelIds?: string[];
   }) => {
-    const linear = createLinearServiceFromEnv();
-    if (!linear) {
-      return { success: false, error: 'Linear not configured' };
-    }
+    try {
+      const linear = createLinearServiceFromEnv();
+      if (!linear) {
+        return { success: false, error: 'Linear not configured' };
+      }
 
-    const uploader = createLinearUploaderFromEnv();
-    if (!uploader) {
-      return { success: false, error: 'Linear uploader not configured' };
-    }
+      const uploader = createLinearUploaderFromEnv();
+      if (!uploader) {
+        return { success: false, error: 'Linear uploader not configured' };
+      }
 
-    const imageUrls: string[] = [];
-    const totalImages = state.captureSession?.images.length || 0;
-    if (totalImages > 0) {
-      logger.log(`Uploading ${totalImages} images via Linear SDK...`);
-      const uploadResults = await Promise.all(
-        state.captureSession!.images.map(img => uploader.upload(img.filePath))
-      );
+      const imageUrls: string[] = [];
+      const totalImages = state.captureSession?.images.length || 0;
+      if (totalImages > 0) {
+        logger.log(`Uploading ${totalImages} images via Linear SDK...`);
+        const uploadResults = await Promise.all(
+          state.captureSession!.images.map(img => uploader.upload(img.filePath))
+        );
 
-      for (const uploadResult of uploadResults) {
-        if (uploadResult.success && uploadResult.url) {
-          imageUrls.push(uploadResult.url);
+        for (const uploadResult of uploadResults) {
+          if (uploadResult.success && uploadResult.url) {
+            imageUrls.push(uploadResult.url);
+          }
+        }
+        logger.log(`Successfully uploaded ${imageUrls.length}/${totalImages} images`);
+
+        if (imageUrls.length < totalImages && imageUrls.length > 0) {
+          logger.warn(`${totalImages - imageUrls.length} image(s) failed to upload`);
+        }
+
+        if (imageUrls.length === 0 && totalImages > 0) {
+          return {
+            success: false,
+            error: 'All image uploads failed',
+            uploadedCount: 0
+          };
         }
       }
-      logger.log(`Successfully uploaded ${imageUrls.length}/${totalImages} images`);
 
-      if (imageUrls.length < totalImages && imageUrls.length > 0) {
-        logger.warn(`${totalImages - imageUrls.length} image(s) failed to upload`);
+      const result = await linear.createIssue({
+        title: data.title,
+        description: data.description,
+        teamId: data.teamId,
+        projectId: data.projectId,
+        stateId: data.stateId,
+        priority: data.priority,
+        assigneeId: data.assigneeId,
+        estimate: data.estimate,
+        cycleId: data.cycleId,
+        labelIds: data.labelIds,
+        imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
+      });
+
+      if (result.success && result.issueUrl) {
+        clipboard.writeText(result.issueUrl);
+        cleanupSession();
+        trackIssueCreated(imageUrls.length, false);
       }
 
-      if (imageUrls.length === 0 && totalImages > 0) {
-        return {
-          success: false,
-          error: 'All image uploads failed',
-          uploadedCount: 0
-        };
-      }
+      return result;
+    } catch (error) {
+      logger.error('create-issue error:', error);
+      return { success: false, error: String(error) };
     }
-
-    const result = await linear.createIssue({
-      title: data.title,
-      description: data.description,
-      teamId: data.teamId,
-      projectId: data.projectId,
-      stateId: data.stateId,
-      priority: data.priority,
-      assigneeId: data.assigneeId,
-      estimate: data.estimate,
-      cycleId: data.cycleId,
-      labelIds: data.labelIds,
-      imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
-    });
-
-    if (result.success && result.issueUrl) {
-      clipboard.writeText(result.issueUrl);
-      cleanupSession();
-      trackIssueCreated(imageUrls.length, false);
-    }
-
-    return result;
   });
 }

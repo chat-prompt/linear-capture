@@ -372,6 +372,10 @@ export interface IpcInvokeChannelMap {
     params: string;
     result: IpcSuccessResponse;
   };
+  'sync:delete-source': {
+    params: string;
+    result: IpcSuccessResponse;
+  };
 }
 
 // ---------------------------------------------------------------------------

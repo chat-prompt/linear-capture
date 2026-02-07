@@ -2,7 +2,7 @@ import { logger } from '../services/utils/logger';
 import { getState } from './state';
 import { getLocalSearchService } from '../services/local-search';
 
-export function handleDeepLink(url: string): void {
+export async function handleDeepLink(url: string): Promise<void> {
   const state = getState();
   logger.log('Deep link received:', url);
   
@@ -25,10 +25,11 @@ export function handleDeepLink(url: string): void {
         state.pendingSlackCallback = { code, state: stateParam };
         
         if (state.slackService) {
-          state.slackService.handleCallback(code, stateParam).then(async result => {
+          try {
+            const result = await state.slackService.handleCallback(code, stateParam);
             if (result.success) {
               state.settingsWindow?.webContents.send('slack-connected', result);
-              
+
               try {
                 const localSearch = getLocalSearchService();
                 if (localSearch) {
@@ -41,8 +42,16 @@ export function handleDeepLink(url: string): void {
             } else {
               state.settingsWindow?.webContents.send('slack-oauth-error', { error: result.error });
             }
+          } catch (error) {
+            logger.error('[OAuth] Slack callback failed:', error);
+            if (state.settingsWindow) {
+              state.settingsWindow.webContents.send('slack-oauth-error', {
+                error: error instanceof Error ? error.message : 'Unknown error'
+              });
+            }
+          } finally {
             state.pendingSlackCallback = null;
-          });
+          }
         }
         
         if (state.settingsWindow) {
@@ -68,10 +77,11 @@ export function handleDeepLink(url: string): void {
         state.pendingNotionCallback = { code, state: stateParam };
         
         if (state.notionService) {
-          state.notionService.handleCallback(code, stateParam).then(async result => {
+          try {
+            const result = await state.notionService.handleCallback(code, stateParam);
             if (result.success) {
               state.settingsWindow?.webContents.send('notion-connected', result);
-              
+
               try {
                 const localSearch = getLocalSearchService();
                 if (localSearch) {
@@ -84,8 +94,16 @@ export function handleDeepLink(url: string): void {
             } else {
               state.settingsWindow?.webContents.send('notion-oauth-error', { error: result.error });
             }
+          } catch (error) {
+            logger.error('[OAuth] Notion callback failed:', error);
+            if (state.settingsWindow) {
+              state.settingsWindow.webContents.send('notion-oauth-error', {
+                error: error instanceof Error ? error.message : 'Unknown error'
+              });
+            }
+          } finally {
             state.pendingNotionCallback = null;
-          });
+          }
         }
         
         if (state.settingsWindow) {
@@ -111,14 +129,23 @@ export function handleDeepLink(url: string): void {
         state.pendingGmailCallback = { code, state: stateParam };
         
         if (state.gmailService) {
-          state.gmailService.handleCallback(code, stateParam).then(result => {
+          try {
+            const result = await state.gmailService.handleCallback(code, stateParam);
             if (result.success) {
               state.settingsWindow?.webContents.send('gmail-connected', result);
             } else {
               state.settingsWindow?.webContents.send('gmail-oauth-error', { error: result.error });
             }
+          } catch (error) {
+            logger.error('[OAuth] Gmail callback failed:', error);
+            if (state.settingsWindow) {
+              state.settingsWindow.webContents.send('gmail-oauth-error', {
+                error: error instanceof Error ? error.message : 'Unknown error'
+              });
+            }
+          } finally {
             state.pendingGmailCallback = null;
-          });
+          }
         }
         
         if (state.settingsWindow) {

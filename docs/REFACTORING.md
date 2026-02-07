@@ -343,6 +343,27 @@ src/services/
 **현황**: 일부 핸들러는 try/catch, 일부는 bare handler, 반환 형식 불일치
 **조치**: 공통 `wrapHandler()` 래퍼 — 자동 try/catch + 표준 `{ success, data, error }` 반환
 
+### Phase 4+5 실행 결과 (2026-02-07 완료)
+
+| 항목 | 상태 | 내용 |
+|------|------|------|
+| 4.1 타입 중복 해소 | **완료** | `src/main/types.ts` 삭제, 3개 파일 import를 `../types/capture`로 리다이렉트 |
+| 4.2 Document.source_type | **완료** | `'gmail'` 추가 → `'notion' \| 'slack' \| 'linear' \| 'gmail'` |
+| 4.3 IPC 타입맵 강제 | 보류 | 기존 핸들러가 인라인 타입으로 동작 중, 리팩토링 대비 효과 낮음 |
+| 4.4 미등록 채널 등록 | **완료** | `sync:delete-source` IpcInvokeChannelMap에 추가 |
+| 4.5 싱글턴 네이밍 | 보류 | 기존 `createXxx()` 패턴이 안정적으로 동작 중, 변경 리스크 대비 효과 낮음 |
+| 5.1 console → logger | 보류 | 대규모 변경 필요, 별도 세션에서 진행 |
+| 5.2 OAuth 미처리 Promise | **완료** | 3개 `.then()` → `async/await + try/catch/finally` 전환, 에러 시 UI 알림 + state 정리 |
+| 5.3 IPC 에러 처리 | **완료** | 주요 async 핸들러에 인라인 try/catch 추가 (capture, settings, linear, analysis, onboarding) |
+
+**빌드**: `tsc --noEmit` 통과, `npm run build` 성공
+**테스트**: 148건 통과, 14건 실패 (pre-existing, 변경 전과 동일)
+
+**변경 요약**:
+- 삭제: 1개 (`src/main/types.ts`)
+- 수정: 10개 파일 (+209/-149줄)
+- 핵심 개선: OAuth silent failure 방지, IPC 핸들러 에러 가시성, 타입 안전성
+
 ---
 
 ## Phase 6: 보안 & 테스트 (장기)

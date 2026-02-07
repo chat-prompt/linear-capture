@@ -14,7 +14,7 @@ import { vector } from '@electric-sql/pglite/vector';
 
 export interface Document {
   id: string;
-  source_type: 'notion' | 'slack' | 'linear';
+  source_type: 'notion' | 'slack' | 'linear' | 'gmail';
   source_id: string;
   parent_id?: string;
   title?: string;

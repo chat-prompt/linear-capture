@@ -6,7 +6,7 @@ import type { SlackService } from '../services/slack-client';
 import type { NotionService } from '../services/notion-client';
 import type { GmailService } from '../services/gmail-client';
 import type { ICaptureService } from '../services/capture';
-import type { CaptureSession, OAuthCallback } from './types';
+import type { CaptureSession, OAuthCallback } from '../types/capture';
 
 export interface AppState {
   mainWindow: BrowserWindow | null;

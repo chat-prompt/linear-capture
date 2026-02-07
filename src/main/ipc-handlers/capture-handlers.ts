@@ -4,7 +4,7 @@ import { cleanupCapture } from '../../services/capture';
 import { getState } from '../state';
 import { cleanupSession, handleCapture } from '../capture-session';
 import { createMainWindow } from '../window-manager';
-import { MAX_IMAGES } from '../types';
+import { MAX_IMAGES } from '../../types/capture';
 
 export function registerCaptureHandlers(): void {
   const state = getState();
@@ -23,25 +23,35 @@ export function registerCaptureHandlers(): void {
       return { success: false, error: 'Invalid index' };
     }
 
-    const [removed] = state.captureSession.images.splice(data.index, 1);
-    cleanupCapture(removed.filePath);
+    try {
+      const [removed] = state.captureSession.images.splice(data.index, 1);
+      cleanupCapture(removed.filePath);
 
-    logger.log(`Removed image at index ${data.index}, ${state.captureSession.images.length} remaining`);
+      logger.log(`Removed image at index ${data.index}, ${state.captureSession.images.length} remaining`);
 
-    state.mainWindow?.webContents.send('capture-removed', {
-      index: data.index,
-      remainingCount: state.captureSession.images.length,
-      canAddMore: state.captureSession.images.length < MAX_IMAGES,
-    });
+      state.mainWindow?.webContents.send('capture-removed', {
+        index: data.index,
+        remainingCount: state.captureSession.images.length,
+        canAddMore: state.captureSession.images.length < MAX_IMAGES,
+      });
 
-    return { success: true };
+      return { success: true };
+    } catch (error) {
+      logger.error('remove-capture error:', error);
+      return { success: false, error: String(error) };
+    }
   });
 
   ipcMain.handle('add-capture', async () => {
     if (state.captureSession && state.captureSession.images.length >= MAX_IMAGES) {
       return { success: false, error: 'Maximum images reached' };
     }
-    await handleCapture(createMainWindow);
-    return { success: true };
+    try {
+      await handleCapture(createMainWindow);
+      return { success: true };
+    } catch (error) {
+      logger.error('add-capture error:', error);
+      return { success: false, error: String(error) };
+    }
   });
 }

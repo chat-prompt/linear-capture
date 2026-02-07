@@ -4,7 +4,7 @@ import { cleanupCapture } from '../services/capture';
 import { getUserInfo } from '../services/settings-store';
 import { t } from './i18n';
 import { getState } from './state';
-import { MAX_IMAGES } from './types';
+import { MAX_IMAGES } from '../types/capture';
 import type { AnalysisResult } from '../services/ai-analyzer';
 
 export function showNotification(title: string, body: string): void {

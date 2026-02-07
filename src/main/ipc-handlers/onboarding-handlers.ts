@@ -8,9 +8,13 @@ export function registerOnboardingHandlers(): void {
   const state = getState();
 
   ipcMain.on('open-screen-capture-settings', async () => {
-    logger.log('Triggering capture to register in permission list...');
-    await state.captureService?.captureSelection();
-    openScreenCaptureSettings();
+    try {
+      logger.log('Triggering capture to register in permission list...');
+      await state.captureService?.captureSelection();
+      openScreenCaptureSettings();
+    } catch (error) {
+      logger.error('open-screen-capture-settings error:', error);
+    }
   });
 
   ipcMain.on('close-onboarding', () => {
@@ -18,12 +22,16 @@ export function registerOnboardingHandlers(): void {
   });
 
   ipcMain.on('onboarding-complete', async () => {
-    state.onboardingWindow?.close();
-    await loadLinearData();
-    if (!state.mainWindow) {
-      createMainWindow();
+    try {
+      state.onboardingWindow?.close();
+      await loadLinearData();
+      if (!state.mainWindow) {
+        createMainWindow();
+      }
+      state.mainWindow?.show();
+      state.mainWindow?.focus();
+    } catch (error) {
+      logger.error('onboarding-complete error:', error);
     }
-    state.mainWindow?.show();
-    state.mainWindow?.focus();
   });
 }

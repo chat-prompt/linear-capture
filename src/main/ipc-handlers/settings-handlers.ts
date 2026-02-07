@@ -84,11 +84,15 @@ export function registerSettingsHandlers(): void {
   });
 
   ipcMain.handle('check-for-updates', async () => {
-    if (app.isPackaged) {
+    if (!app.isPackaged) {
+      return { success: false, error: 'Updates only work in packaged app' };
+    }
+    try {
       await checkForUpdates(false);
       return { success: true };
-    } else {
-      return { success: false, error: 'Updates only work in packaged app' };
+    } catch (error) {
+      logger.error('check-for-updates error:', error);
+      return { success: false, error: String(error) };
     }
   });
 
@@ -110,50 +114,60 @@ export function registerSettingsHandlers(): void {
   });
 
   ipcMain.handle('save-hotkey', async (_event, hotkey: string) => {
-    const validation = validateHotkey(hotkey);
-    if (!validation.valid) {
-      return { success: false, error: validation.error };
-    }
-
-    const success = updateHotkey(hotkey);
-    if (success) {
-      setCaptureHotkey(hotkey);
-      const displayHotkey = formatHotkeyForDisplay(hotkey);
-      if (state.mainWindow && !state.mainWindow.isDestroyed()) {
-        state.mainWindow.webContents.send('hotkey-changed', { hotkey, displayHotkey });
+    try {
+      const validation = validateHotkey(hotkey);
+      if (!validation.valid) {
+        return { success: false, error: validation.error };
       }
-      return {
-        success: true,
-        hotkey: hotkey,
-        displayHotkey: displayHotkey,
-      };
-    } else {
-      return {
-        success: false,
-        error: 'Failed to register hotkey. It may be in use by another application.',
-      };
+
+      const success = updateHotkey(hotkey);
+      if (success) {
+        setCaptureHotkey(hotkey);
+        const displayHotkey = formatHotkeyForDisplay(hotkey);
+        if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+          state.mainWindow.webContents.send('hotkey-changed', { hotkey, displayHotkey });
+        }
+        return {
+          success: true,
+          hotkey: hotkey,
+          displayHotkey: displayHotkey,
+        };
+      } else {
+        return {
+          success: false,
+          error: 'Failed to register hotkey. It may be in use by another application.',
+        };
+      }
+    } catch (error) {
+      logger.error('save-hotkey error:', error);
+      return { success: false, error: String(error) };
     }
   });
 
   ipcMain.handle('reset-hotkey', async () => {
-    const defaultHotkey = getDefaultHotkey();
-    const success = updateHotkey(defaultHotkey);
-    if (success) {
-      resetCaptureHotkey();
-      const displayHotkey = formatHotkeyForDisplay(defaultHotkey);
-      if (state.mainWindow && !state.mainWindow.isDestroyed()) {
-        state.mainWindow.webContents.send('hotkey-changed', { hotkey: defaultHotkey, displayHotkey });
+    try {
+      const defaultHotkey = getDefaultHotkey();
+      const success = updateHotkey(defaultHotkey);
+      if (success) {
+        resetCaptureHotkey();
+        const displayHotkey = formatHotkeyForDisplay(defaultHotkey);
+        if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+          state.mainWindow.webContents.send('hotkey-changed', { hotkey: defaultHotkey, displayHotkey });
+        }
+        return {
+          success: true,
+          hotkey: defaultHotkey,
+          displayHotkey: displayHotkey,
+        };
+      } else {
+        return {
+          success: false,
+          error: 'Failed to reset hotkey',
+        };
       }
-      return {
-        success: true,
-        hotkey: defaultHotkey,
-        displayHotkey: displayHotkey,
-      };
-    } else {
-      return {
-        success: false,
-        error: 'Failed to reset hotkey',
-      };
+    } catch (error) {
+      logger.error('reset-hotkey error:', error);
+      return { success: false, error: String(error) };
     }
   });
 
@@ -172,13 +186,18 @@ export function registerSettingsHandlers(): void {
   });
 
   ipcMain.handle('set-language', async (_event, lang: string) => {
-    setLanguage(lang);
-    await changeLanguage(lang);
-    const allWindows = BrowserWindow.getAllWindows();
-    allWindows.forEach(win => {
-      win.webContents.send('language-changed', lang);
-    });
-    return { success: true };
+    try {
+      setLanguage(lang);
+      await changeLanguage(lang);
+      const allWindows = BrowserWindow.getAllWindows();
+      allWindows.forEach(win => {
+        win.webContents.send('language-changed', lang);
+      });
+      return { success: true };
+    } catch (error) {
+      logger.error('set-language error:', error);
+      return { success: false, error: String(error) };
+    }
   });
 
   ipcMain.handle('get-supported-languages', () => {

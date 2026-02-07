@@ -74,6 +74,11 @@ export function registerAnalysisHandlers(): void {
   });
 
   ipcMain.handle('ai-recommend', async (_event, { text, limit }: { text: string; limit?: number }) => {
-    return await getAiRecommendations(text, limit);
+    try {
+      return await getAiRecommendations(text, limit);
+    } catch (error) {
+      logger.error('ai-recommend error:', error);
+      return [];
+    }
   });
 }
