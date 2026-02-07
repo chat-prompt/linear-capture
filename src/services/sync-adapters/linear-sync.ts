@@ -220,8 +220,8 @@ export class LinearSyncAdapter {
         allNodes.push(...connection.nodes);
         console.log(`[LinearSync] Page ${pageCount}: fetched ${connection.nodes.length} issues (${allNodes.length} total)`);
       } catch (error) {
-        console.error(`[LinearSync] Error fetching page ${pageCount + 1}:`, error);
-        console.warn(`[LinearSync] Returning partial results: ${allNodes.length} issues from ${pageCount} pages`);
+        console.error(`[LinearSync] Error fetching page ${pageCount}:`, error);
+        console.warn(`[LinearSync] Returning partial results: ${allNodes.length} issues from ${pageCount - 1} complete pages`);
         break;
       }
     }
