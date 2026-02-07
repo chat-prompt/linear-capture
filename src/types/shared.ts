@@ -28,6 +28,16 @@ export interface SyncResult {
   lastCursor?: string;
 }
 
+/** Sync progress reported by adapters */
+export interface SyncProgress {
+  source: 'notion' | 'slack' | 'linear' | 'gmail';
+  phase: 'discovering' | 'syncing' | 'embedding' | 'complete';
+  current: number;
+  total: number;
+}
+
+export type SyncProgressCallback = (progress: SyncProgress) => void;
+
 /** Single file upload result */
 export interface UploadResult {
   success: boolean;

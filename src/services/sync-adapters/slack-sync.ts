@@ -365,21 +365,40 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
   }
 
   /**
-   * Sync a single message to database
+   * Sync a top-level message to database
    */
   private async syncMessage(
-    message: {
-      ts: string;
-      text: string;
-      user: string;
-      username?: string;
-    },
+    message: { ts: string; text: string; user: string; username?: string },
     channel: SlackChannel
   ): Promise<void> {
-    console.log(`[SlackSync] Syncing message: ${message.ts} in #${channel.name}`);
+    return this.upsertSlackContent(message, channel, null);
+  }
 
-    const fullText = message.text;
-    const preprocessedText = this.preprocessor.preprocess(fullText);
+  /**
+   * Sync a thread reply to database
+   */
+  private async syncThreadReply(
+    reply: { ts: string; text: string; user: string; username?: string },
+    parentTs: string,
+    channel: SlackChannel
+  ): Promise<void> {
+    return this.upsertSlackContent(reply, channel, parentTs);
+  }
+
+  /**
+   * Upsert a Slack message or thread reply into the database.
+   * When parentTs is provided, the content is treated as a thread reply.
+   */
+  private async upsertSlackContent(
+    message: { ts: string; text: string; user: string; username?: string },
+    channel: SlackChannel,
+    parentTs: string | null
+  ): Promise<void> {
+    const isReply = parentTs !== null;
+    const label = isReply ? `thread reply: ${message.ts} (parent: ${parentTs})` : `message: ${message.ts} in #${channel.name}`;
+    console.log(`[SlackSync] Syncing ${label}`);
+
+    const preprocessedText = this.preprocessor.preprocess(message.text);
     const contentHash = this.calculateContentHash(preprocessedText);
 
     const db = this.dbService.getDb();
@@ -389,20 +408,25 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
     );
 
     if (existingDoc.rows.length > 0 && existingDoc.rows[0].content_hash === contentHash) {
-      console.log(`[SlackSync] Message ${message.ts} unchanged, skipping`);
+      console.log(`[SlackSync] ${isReply ? 'Reply' : 'Message'} ${message.ts} unchanged, skipping`);
       return;
     }
 
     const embedding = await this.embeddingClient.embedSingle(preprocessedText);
 
-    const title = `#${channel.name} - ${message.username || message.user}`;
-    const metadata = {
+    const title = isReply
+      ? `Reply in #${channel.name}`
+      : `#${channel.name} - ${message.username || message.user}`;
+    const metadata: Record<string, unknown> = {
       channelId: channel.id,
       channelName: channel.name,
       userId: message.user,
       username: message.username,
       isPrivate: channel.is_private,
     };
+    if (parentTs) {
+      metadata.parentMessageTs = parentTs;
+    }
 
     await db.query(
       `
@@ -410,7 +434,7 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
         source_type, source_id, parent_id, title, content, content_hash,
         embedding, metadata, source_created_at, source_updated_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      ON CONFLICT (source_type, source_id) 
+      ON CONFLICT (source_type, source_id)
       DO UPDATE SET
         title = EXCLUDED.title,
         content = EXCLUDED.content,
@@ -424,7 +448,7 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
       [
         'slack',
         message.ts,
-        null, // parent_id is null for top-level messages
+        parentTs,
         title,
         preprocessedText,
         contentHash,
@@ -435,83 +459,7 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
       ]
     );
 
-    console.log(`[SlackSync] Message ${message.ts} synced successfully`);
-  }
-
-  /**
-   * Sync a thread reply to database
-   */
-  private async syncThreadReply(
-    reply: {
-      ts: string;
-      text: string;
-      user: string;
-      username?: string;
-    },
-    parentTs: string,
-    channel: SlackChannel
-  ): Promise<void> {
-    console.log(`[SlackSync] Syncing thread reply: ${reply.ts} (parent: ${parentTs})`);
-
-    const fullText = reply.text;
-    const preprocessedText = this.preprocessor.preprocess(fullText);
-    const contentHash = this.calculateContentHash(preprocessedText);
-
-    const db = this.dbService.getDb();
-    const existingDoc = await db.query<{ content_hash: string }>(
-      `SELECT content_hash FROM documents WHERE source_type = $1 AND source_id = $2`,
-      ['slack', reply.ts]
-    );
-
-    if (existingDoc.rows.length > 0 && existingDoc.rows[0].content_hash === contentHash) {
-      console.log(`[SlackSync] Reply ${reply.ts} unchanged, skipping`);
-      return;
-    }
-
-    const embedding = await this.embeddingClient.embedSingle(preprocessedText);
-
-    const title = `Reply in #${channel.name}`;
-    const metadata = {
-      channelId: channel.id,
-      channelName: channel.name,
-      userId: reply.user,
-      username: reply.username,
-      isPrivate: channel.is_private,
-      parentMessageTs: parentTs,
-    };
-
-    await db.query(
-      `
-      INSERT INTO documents (
-        source_type, source_id, parent_id, title, content, content_hash,
-        embedding, metadata, source_created_at, source_updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      ON CONFLICT (source_type, source_id) 
-      DO UPDATE SET
-        title = EXCLUDED.title,
-        content = EXCLUDED.content,
-        content_hash = EXCLUDED.content_hash,
-        embedding = EXCLUDED.embedding,
-        metadata = EXCLUDED.metadata,
-        source_updated_at = EXCLUDED.source_updated_at,
-        indexed_at = NOW()
-      WHERE documents.content_hash != EXCLUDED.content_hash
-    `,
-      [
-        'slack',
-        reply.ts,
-        parentTs, // Link to parent message
-        title,
-        preprocessedText,
-        contentHash,
-        JSON.stringify(Array.from(embedding)),
-        JSON.stringify(metadata),
-        this.timestampToDate(reply.ts),
-        this.timestampToDate(reply.ts),
-      ]
-    );
-
-    console.log(`[SlackSync] Reply ${reply.ts} synced successfully`);
+    console.log(`[SlackSync] ${isReply ? 'Reply' : 'Message'} ${message.ts} synced successfully`);
   }
 
   /**

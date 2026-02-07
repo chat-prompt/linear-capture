@@ -150,7 +150,7 @@ src/services/sync-adapters/
 
 ### Phase 2 합계: ~600줄 절감, 코드 일관성 대폭 향상
 
-### Phase 2 실행 결과 (2026-02-07 진행중)
+### Phase 2 실행 결과 (2026-02-07 완료)
 
 | 항목 | 상태 | 내용 |
 |------|------|------|
@@ -158,16 +158,12 @@ src/services/sync-adapters/
 | 2.2 AI Analyzer 통합 | **완료** | `ai-analyzer.ts` 생성, model 파라미터로 분기, 기존 파일은 잔류(삭제 가능) |
 | 2.3 Worker URL 상수 | **완료** | `config.ts` 생성, 12개 파일 26곳 `WORKER_BASE_URL`로 교체 |
 | 2.4 Slack 채널 필터 | **완료** | `applySlackChannelFilter()` 메서드 추출, 3곳 중복 제거 |
-| 2.5 Slack sync 통합 | 미착수 | syncMessage()/syncThreadReply() 70% 중복 |
-| 2.6 Gmail sync 통합 | 미착수 | sync()/syncIncremental() 80% 구조 동일 |
+| 2.5 Slack sync 통합 | **완료** | `upsertSlackContent()` 공통 메서드 추출, syncMessage/syncThreadReply를 thin wrapper로 변환 |
+| 2.6 Gmail sync 통합 | **완료** | `paginatedSync()` 공통 메서드 추출, sync/syncIncremental를 thin wrapper로 변환, 806-bug 수정 보존 |
 | 2.7 IPC 결과 매핑 | **완료** | 4개 `.map()` 블록을 `for-of` 루프로 통합, Linear timestamp 버그 수정 |
 
-**빌드**: `tsc --noEmit` 통과
-**추가 발견**: Linear fallback 경로에서 `timestamp` 누락 버그 → 수정 완료
-
-**남은 작업** (2.5, 2.6):
-- 리스크가 높은 리팩토링 (동기화 로직 변경)
-- Phase 3과 병행 또는 별도 세션에서 진행 권장
+**빌드**: `tsc --noEmit` 통과, `npm run build` 성공
+**테스트**: 148건 통과, 14건 실패 (pre-existing, 변경 전과 동일)
 
 ---
 
@@ -256,6 +252,24 @@ src/services/
 ```
 
 ### Phase 3 합계: 파일 20+ 개로 분할, 평균 파일 크기 ~150줄
+
+### Phase 3 실행 결과 (2026-02-07 부분 완료)
+
+| 항목 | 상태 | 내용 |
+|------|------|------|
+| 3.1 index.html 분할 | 보류 | Electron nodeIntegration 환경에서 HTML 인라인 스크립트 분할은 번들러 도입 필요 → Phase 6 이후 진행 |
+| 3.2 settings.html 분할 | 보류 | 3.1과 동일 사유 |
+| 3.3 ipc-handlers.ts 분할 | **완료** | 894줄 → 9개 도메인별 파일로 분할 (index, linear, capture, analysis, sync, search, settings, oauth, onboarding) |
+| 3.4 notion-local-reader.ts 분할 | **완료** | 805줄 → facade (207줄) + 4개 모듈 (types, block-utils, page-parser, search) |
+| 3.5 local-search.ts 분할 | **완료** | 517줄 → facade (63줄) + SyncOrchestrator (128줄) + SearchService (317줄), types를 shared.ts로 이동 |
+
+**빌드**: `tsc --noEmit` 통과, `npm run build` 성공
+**테스트**: 148건 통과, 14건 실패 (pre-existing)
+
+**전체 Phase 2+3 누적 변경**:
+- 수정: 6개 파일 (+132/-2,147줄)
+- 새 파일: 15개 (ipc-handlers/ 9개, notion/ 4개, sync-orchestrator.ts, search-service.ts)
+- 삭제: 1개 (ipc-handlers.ts)
 
 ---
 
