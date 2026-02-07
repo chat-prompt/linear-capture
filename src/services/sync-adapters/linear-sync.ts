@@ -207,18 +207,44 @@ export class LinearSyncAdapter {
   }
 
   private async fetchAllIssues(client: any, filter: Record<string, unknown>): Promise<Issue[]> {
+    const seenIds = new Set<string>();
     const allNodes: Issue[] = [];
     let pageCount = 1;
-    let connection = await client.issues({ first: 100, filter });
-    allNodes.push(...connection.nodes);
-    console.log(`[LinearSync] Page ${pageCount}: fetched ${connection.nodes.length} issues (${allNodes.length} total)`);
+    const MAX_PAGES = 200; // Safety limit: 200 pages * 100 = 20,000 issues max
 
-    while (connection.pageInfo.hasNextPage) {
+    let connection = await client.issues({ first: 100, filter });
+    for (const node of connection.nodes) {
+      if (!seenIds.has(node.id)) {
+        seenIds.add(node.id);
+        allNodes.push(node);
+      }
+    }
+    console.log(`[LinearSync] Page ${pageCount}: fetched ${connection.nodes.length} issues (${allNodes.length} unique total)`);
+
+    while (connection.pageInfo.hasNextPage && pageCount < MAX_PAGES) {
       try {
         pageCount++;
         connection = await connection.fetchNext();
-        allNodes.push(...connection.nodes);
-        console.log(`[LinearSync] Page ${pageCount}: fetched ${connection.nodes.length} issues (${allNodes.length} total)`);
+
+        let newCount = 0;
+        let dupCount = 0;
+        for (const node of connection.nodes) {
+          if (!seenIds.has(node.id)) {
+            seenIds.add(node.id);
+            allNodes.push(node);
+            newCount++;
+          } else {
+            dupCount++;
+          }
+        }
+
+        console.log(`[LinearSync] Page ${pageCount}: fetched ${connection.nodes.length} (${newCount} new, ${dupCount} duplicates) — ${allNodes.length} unique total`);
+
+        // Detect pagination loop: if entire page is duplicates, stop
+        if (newCount === 0 && connection.nodes.length > 0) {
+          console.warn(`[LinearSync] Pagination loop detected at page ${pageCount}: all ${dupCount} items are duplicates. Stopping.`);
+          break;
+        }
       } catch (error) {
         console.error(`[LinearSync] Error fetching page ${pageCount}:`, error);
         console.warn(`[LinearSync] Returning partial results: ${allNodes.length} issues from ${pageCount - 1} complete pages`);
@@ -226,7 +252,11 @@ export class LinearSyncAdapter {
       }
     }
 
-    console.log(`[LinearSync] fetchAllIssues complete: ${allNodes.length} issues from ${pageCount} pages`);
+    if (pageCount >= MAX_PAGES) {
+      console.warn(`[LinearSync] Reached max page limit (${MAX_PAGES}). Returning ${allNodes.length} issues.`);
+    }
+
+    console.log(`[LinearSync] fetchAllIssues complete: ${allNodes.length} unique issues from ${pageCount} pages`);
     return allNodes;
   }
 
