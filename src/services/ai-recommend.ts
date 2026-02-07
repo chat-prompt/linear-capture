@@ -1,7 +1,6 @@
 import { getDeviceId } from './settings-store';
 import { logger } from './utils/logger';
-
-const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
+import { WORKER_BASE_URL } from './config';
 
 interface Recommendation {
   source: string;
@@ -21,7 +20,7 @@ export async function getAiRecommendations(text: string, limit: number = 5): Pro
   try {
     const deviceId = getDeviceId();
     
-    const response = await fetch(`${WORKER_URL}/ai/recommend`, {
+    const response = await fetch(`${WORKER_BASE_URL}/ai/recommend`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -1,4 +1,4 @@
-const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
+import { WORKER_BASE_URL } from './config';
 
 export interface RerankResult {
   id: string;
@@ -24,7 +24,7 @@ export async function rerank(
   try {
     console.log(`[Reranker] Reranking ${documents.length} documents`);
 
-    const response = await fetch(`${WORKER_URL}/rerank`, {
+    const response = await fetch(`${WORKER_BASE_URL}/rerank`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, documents, topN }),

@@ -3,8 +3,7 @@ import { logger } from '../services/utils/logger';
 import { cleanupCapture } from '../services/capture';
 import { createLinearUploaderFromEnv } from '../services/linear-uploader';
 import { createLinearServiceFromEnv, validateLinearToken } from '../services/linear-client';
-import { createGeminiAnalyzer } from '../services/gemini-analyzer';
-import { createAnthropicAnalyzer } from '../services/anthropic-analyzer';
+import { createGeminiAnalyzer, createAnthropicAnalyzer } from '../services/ai-analyzer';
 import {
   setLinearToken,
   clearLinearToken,
@@ -36,7 +35,7 @@ import { getState } from './state';
 import { cleanupSession, handleCapture } from './capture-session';
 import { createSettingsWindow, createMainWindow, openScreenCaptureSettings } from './window-manager';
 import { MAX_IMAGES } from './types';
-import type { AnalysisContext } from '../services/gemini-analyzer';
+import type { AnalysisContext } from '../services/ai-analyzer';
 import type { ContextSource } from '../types/context-search';
 
 let loadingPromise: Promise<void> | null = null;
@@ -617,46 +616,20 @@ export function registerIpcHandlers(): void {
       if (useLocalSearch) {
         const localResults = await localSearch!.search(query, [], QUOTA_PER_SOURCE * 4);
 
-        const slackResults = localResults.filter(r => r.source === 'slack').slice(0, QUOTA_PER_SOURCE);
-        const notionResults = localResults.filter(r => r.source === 'notion').slice(0, QUOTA_PER_SOURCE);
-        const linearResults = localResults.filter(r => r.source === 'linear').slice(0, QUOTA_PER_SOURCE);
-        const gmailResults = localResults.filter(r => r.source === 'gmail').slice(0, QUOTA_PER_SOURCE);
-
-        results.push(...slackResults.map(r => ({
-          id: `slack-${r.id}`,
-          source: 'slack',
-          title: r.title || '',
-          snippet: r.content?.substring(0, 200) || '',
-          url: r.url,
-          timestamp: r.timestamp,
-        })));
-
-        results.push(...notionResults.map(r => ({
-          id: `notion-${r.id}`,
-          source: 'notion',
-          title: r.title || '',
-          snippet: r.content?.substring(0, 200) || '',
-          url: r.url,
-          timestamp: r.timestamp,
-        })));
-
-        results.push(...linearResults.map(r => ({
-          id: `linear-${r.id}`,
-          source: 'linear',
-          title: r.title || '',
-          snippet: r.content?.substring(0, 200) || '',
-          url: r.url,
-          timestamp: r.timestamp,
-        })));
-
-        results.push(...gmailResults.map(r => ({
-          id: `gmail-${r.id}`,
-          source: 'gmail',
-          title: r.title || '',
-          snippet: r.content?.substring(0, 200) || '',
-          url: r.url,
-          timestamp: r.timestamp,
-        })));
+        for (const source of ['slack', 'notion', 'linear', 'gmail'] as const) {
+          results.push(...localResults
+            .filter(r => r.source === source)
+            .slice(0, QUOTA_PER_SOURCE)
+            .map(r => ({
+              id: `${source}-${r.id}`,
+              source,
+              title: r.title || '',
+              snippet: r.content?.substring(0, 200) || '',
+              url: r.url,
+              timestamp: r.timestamp,
+            }))
+          );
+        }
 
       } else {
         const gmailService = createGmailService();
@@ -721,6 +694,7 @@ export function registerIpcHandlers(): void {
               title: item.title,
               snippet: item.content?.substring(0, 200) || '',
               url: item.url,
+              timestamp: item.timestamp,
             }));
           })(),
         ]);

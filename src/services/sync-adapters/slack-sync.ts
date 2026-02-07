@@ -9,22 +9,19 @@
  * - Per-message error tracking (don't block entire sync)
  */
 
-import * as crypto from 'crypto';
-import { getDatabaseService } from '../database';
+import { BaseSyncAdapter } from './base-sync-adapter';
 import { createSlackService } from '../slack-client';
 import { createTextPreprocessor } from '../text-preprocessor';
 import { getEmbeddingClient, EmbeddingClient } from '../embedding-client';
 import type { SlackService, SlackChannel } from '../slack-client';
-import type { DatabaseService } from '../database';
 import type { TextPreprocessor } from '../text-preprocessor';
 import type { SyncProgressCallback } from '../local-search';
 import { getDeviceId, getSelectedSlackChannels } from '../settings-store';
+import { WORKER_BASE_URL } from '../config';
 import type { SyncResult } from '../../types';
 
 // Re-export for backwards compatibility
 export type { SyncResult } from '../../types';
-
-const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
 
 interface SlackMessageHistoryResponse {
   success: boolean;
@@ -46,16 +43,16 @@ interface SlackMessageHistoryResponse {
   error?: string;
 }
 
-export class SlackSyncAdapter {
+export class SlackSyncAdapter extends BaseSyncAdapter {
+  protected readonly sourceType = 'slack' as const;
   private slackService: SlackService;
-  private dbService: DatabaseService;
   private preprocessor: TextPreprocessor;
   private embeddingClient: EmbeddingClient;
   private deviceId: string;
 
   constructor() {
+    super();
     this.slackService = createSlackService();
-    this.dbService = getDatabaseService();
     this.preprocessor = createTextPreprocessor();
     this.embeddingClient = getEmbeddingClient();
     this.deviceId = getDeviceId();
@@ -349,7 +346,7 @@ export class SlackSyncAdapter {
     oldest: string | null
   ): Promise<SlackMessageHistoryResponse> {
     try {
-      const url = new URL(`${WORKER_URL}/slack/history`);
+      const url = new URL(`${WORKER_BASE_URL}/slack/history`);
       url.searchParams.set('device_id', this.deviceId);
       url.searchParams.set('channel_id', channelId);
       if (oldest) {
@@ -515,74 +512,6 @@ export class SlackSyncAdapter {
     );
 
     console.log(`[SlackSync] Reply ${reply.ts} synced successfully`);
-  }
-
-  /**
-   * Get last sync cursor from database
-   */
-  private async getLastSyncCursor(): Promise<string | null> {
-    const db = this.dbService.getDb();
-    const result = await db.query<{ cursor_value: string }>(
-      `SELECT cursor_value FROM sync_cursors WHERE source_type = $1`,
-      ['slack']
-    );
-
-    return result.rows[0]?.cursor_value || null;
-  }
-
-  /**
-   * Update sync cursor in database
-   */
-  private async updateSyncCursor(cursor: string, itemCount: number): Promise<void> {
-    const db = this.dbService.getDb();
-    await db.query(
-      `
-      INSERT INTO sync_cursors (source_type, cursor_value, cursor_type, items_synced)
-      VALUES ($1, $2, 'timestamp', $3)
-      ON CONFLICT (source_type) DO UPDATE SET
-        cursor_value = EXCLUDED.cursor_value,
-        last_synced_at = NOW(),
-        items_synced = sync_cursors.items_synced + EXCLUDED.items_synced,
-        status = 'idle'
-    `,
-      ['slack', cursor, itemCount]
-    );
-  }
-
-  /**
-   * Update sync status in database
-   */
-  private async updateSyncStatus(status: 'idle' | 'syncing' | 'error'): Promise<void> {
-    const db = this.dbService.getDb();
-    if (status === 'idle') {
-      await db.query(
-        `
-        INSERT INTO sync_cursors (source_type, status, last_synced_at)
-        VALUES ($1, $2, NOW())
-        ON CONFLICT (source_type) DO UPDATE SET
-          status = EXCLUDED.status,
-          last_synced_at = NOW()
-      `,
-        ['slack', status]
-      );
-    } else {
-      await db.query(
-        `
-        INSERT INTO sync_cursors (source_type, status)
-        VALUES ($1, $2)
-        ON CONFLICT (source_type) DO UPDATE SET
-          status = EXCLUDED.status
-      `,
-        ['slack', status]
-      );
-    }
-  }
-
-  /**
-   * Calculate MD5 hash of content for change detection
-   */
-  private calculateContentHash(content: string): string {
-    return crypto.createHash('md5').update(content).digest('hex');
   }
 
   /**

@@ -1,9 +1,9 @@
 import { shell } from 'electron';
 import { getDeviceId } from './settings-store';
 import { logger } from './utils/logger';
+import { WORKER_BASE_URL } from './config';
 
-const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
-const GMAIL_REDIRECT_URI = 'https://linear-capture-ai.kangjun-f0f.workers.dev/gmail/oauth-redirect';
+const GMAIL_REDIRECT_URI = `${WORKER_BASE_URL}/gmail/oauth-redirect`;
 
 export interface GmailConnectionStatus {
   connected: boolean;
@@ -52,7 +52,7 @@ export class GmailService {
 
   async startOAuthFlow(): Promise<{ success: boolean; error?: string }> {
     try {
-      const url = new URL(`${WORKER_URL}/gmail/auth`);
+      const url = new URL(`${WORKER_BASE_URL}/gmail/auth`);
       url.searchParams.set('device_id', this.deviceId);
       url.searchParams.set('redirect_uri', GMAIL_REDIRECT_URI);
 
@@ -73,7 +73,7 @@ export class GmailService {
 
   async handleCallback(code: string, state: string): Promise<GmailCallbackResult> {
     try {
-      const response = await fetch(`${WORKER_URL}/gmail/callback`, {
+      const response = await fetch(`${WORKER_BASE_URL}/gmail/callback`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -95,7 +95,7 @@ export class GmailService {
 
   async getConnectionStatus(): Promise<GmailConnectionStatus> {
     try {
-      const url = new URL(`${WORKER_URL}/gmail/status`);
+      const url = new URL(`${WORKER_BASE_URL}/gmail/status`);
       url.searchParams.set('device_id', this.deviceId);
 
       const response = await fetch(url.toString());
@@ -123,7 +123,7 @@ export class GmailService {
 
   async disconnect(): Promise<{ success: boolean; error?: string }> {
     try {
-      const url = new URL(`${WORKER_URL}/gmail/disconnect`);
+      const url = new URL(`${WORKER_BASE_URL}/gmail/disconnect`);
       url.searchParams.set('device_id', this.deviceId);
 
       const response = await fetch(url.toString(), { method: 'DELETE' });
@@ -137,7 +137,7 @@ export class GmailService {
 
   async searchEmails(query: string, maxResults?: number): Promise<GmailSearchResult> {
     try {
-      const url = new URL(`${WORKER_URL}/gmail/search`);
+      const url = new URL(`${WORKER_BASE_URL}/gmail/search`);
       url.searchParams.set('device_id', this.deviceId);
       url.searchParams.set('query', query);
       if (maxResults) {

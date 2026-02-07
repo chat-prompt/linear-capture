@@ -2,8 +2,7 @@ import { app } from 'electron';
 import { getDeviceId } from './settings-store';
 import type { AnalyticsEvent, TrackRequest, TrackResponse } from '../types/context-search';
 import { logger } from './utils/logger';
-
-const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
+import { WORKER_BASE_URL } from './config';
 const MAX_MESSAGE_LENGTH = 200;
 
 function truncate(str: string, maxLength: number): string {
@@ -19,7 +18,7 @@ export async function trackEvent(
      const version = app.getVersion();
      logger.log(`[ANALYTICS] Sending: ${event}`, { deviceId, metadata: { ...metadata, version } });
      
-     const response = await fetch(`${WORKER_URL}/track`, {
+     const response = await fetch(`${WORKER_BASE_URL}/track`, {
        method: 'POST',
        headers: { 'Content-Type': 'application/json' },
        body: JSON.stringify({ 

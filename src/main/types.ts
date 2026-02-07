@@ -1,4 +1,4 @@
-import type { AnalysisResult } from '../services/gemini-analyzer';
+import type { AnalysisResult } from '../services/ai-analyzer';
 
 export interface CapturedImage {
   filePath: string;

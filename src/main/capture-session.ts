@@ -5,7 +5,7 @@ import { getUserInfo } from '../services/settings-store';
 import { t } from './i18n';
 import { getState } from './state';
 import { MAX_IMAGES } from './types';
-import type { AnalysisResult } from '../services/gemini-analyzer';
+import type { AnalysisResult } from '../services/ai-analyzer';
 
 export function showNotification(title: string, body: string): void {
   new Notification({ title, body }).show();

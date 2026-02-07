@@ -1,6 +1,5 @@
 import { logger } from './utils/logger';
-
-const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
+import { WORKER_BASE_URL } from './config';
 
 interface EmbeddingResponse {
   embeddings: number[][];
@@ -41,7 +40,7 @@ export class EmbeddingClient {
            await this.sleep(delay);
          }
 
-         const response = await fetch(`${WORKER_URL}/embeddings`, {
+         const response = await fetch(`${WORKER_BASE_URL}/embeddings`, {
            method: 'POST',
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify({ texts })

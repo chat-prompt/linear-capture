@@ -1,9 +1,9 @@
 import { shell } from 'electron';
 import { getDeviceId } from './settings-store';
 import { logger } from './utils/logger';
+import { WORKER_BASE_URL } from './config';
 
-const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
-const SLACK_REDIRECT_URI = 'https://linear-capture-ai.kangjun-f0f.workers.dev/slack/oauth-redirect';
+const SLACK_REDIRECT_URI = `${WORKER_BASE_URL}/slack/oauth-redirect`;
 
 export interface SlackConnectionStatus {
   connected: boolean;
@@ -76,7 +76,7 @@ export class SlackService {
 
   async startOAuthFlow(): Promise<{ success: boolean; error?: string }> {
     try {
-      const url = new URL(`${WORKER_URL}/slack/auth`);
+      const url = new URL(`${WORKER_BASE_URL}/slack/auth`);
       url.searchParams.set('device_id', this.deviceId);
       url.searchParams.set('redirect_uri', SLACK_REDIRECT_URI);
 
@@ -97,7 +97,7 @@ export class SlackService {
 
   async handleCallback(code: string, state: string): Promise<SlackCallbackResult> {
     try {
-      const response = await fetch(`${WORKER_URL}/slack/callback`, {
+      const response = await fetch(`${WORKER_BASE_URL}/slack/callback`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,7 +119,7 @@ export class SlackService {
 
   async getConnectionStatus(): Promise<SlackConnectionStatus> {
     try {
-      const url = new URL(`${WORKER_URL}/slack/status`);
+      const url = new URL(`${WORKER_BASE_URL}/slack/status`);
       url.searchParams.set('device_id', this.deviceId);
 
       const response = await fetch(url.toString());
@@ -149,7 +149,7 @@ export class SlackService {
 
   async getChannels(): Promise<SlackChannelsResult> {
     try {
-      const url = new URL(`${WORKER_URL}/slack/channels`);
+      const url = new URL(`${WORKER_BASE_URL}/slack/channels`);
       url.searchParams.set('device_id', this.deviceId);
 
       const response = await fetch(url.toString());
@@ -163,7 +163,7 @@ export class SlackService {
 
   async disconnect(): Promise<{ success: boolean; error?: string }> {
     try {
-      const url = new URL(`${WORKER_URL}/slack/disconnect`);
+      const url = new URL(`${WORKER_BASE_URL}/slack/disconnect`);
       url.searchParams.set('device_id', this.deviceId);
 
       const response = await fetch(url.toString(), { method: 'DELETE' });
@@ -177,7 +177,7 @@ export class SlackService {
 
   async searchMessages(query: string, channels?: string[], count?: number): Promise<SlackSearchResult> {
     try {
-      const url = new URL(`${WORKER_URL}/slack/search`);
+      const url = new URL(`${WORKER_BASE_URL}/slack/search`);
       url.searchParams.set('device_id', this.deviceId);
       url.searchParams.set('query', query);
       if (channels && channels.length > 0) {

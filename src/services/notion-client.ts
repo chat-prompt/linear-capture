@@ -7,9 +7,9 @@ import {
    type LocalNotionPage 
  } from './notion-local-reader';
 import { logger } from './utils/logger';
+import { WORKER_BASE_URL } from './config';
 
-const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
-const NOTION_REDIRECT_URI = 'https://linear-capture-ai.kangjun-f0f.workers.dev/notion/oauth-redirect';
+const NOTION_REDIRECT_URI = `${WORKER_BASE_URL}/notion/oauth-redirect`;
 
 export interface NotionConnectionStatus {
   connected: boolean;
@@ -80,7 +80,7 @@ export class NotionService {
 
   async startOAuthFlow(): Promise<{ success: boolean; error?: string }> {
     try {
-      const url = new URL(`${WORKER_URL}/notion/auth`);
+      const url = new URL(`${WORKER_BASE_URL}/notion/auth`);
       url.searchParams.set('device_id', this.deviceId);
       url.searchParams.set('redirect_uri', NOTION_REDIRECT_URI);
 
@@ -101,7 +101,7 @@ export class NotionService {
 
   async handleCallback(code: string, state: string): Promise<NotionCallbackResult> {
     try {
-      const response = await fetch(`${WORKER_URL}/notion/callback`, {
+      const response = await fetch(`${WORKER_BASE_URL}/notion/callback`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -123,7 +123,7 @@ export class NotionService {
 
   async getConnectionStatus(): Promise<NotionConnectionStatus> {
     try {
-      const url = new URL(`${WORKER_URL}/notion/status`);
+      const url = new URL(`${WORKER_BASE_URL}/notion/status`);
       url.searchParams.set('device_id', this.deviceId);
 
       const response = await fetch(url.toString());
@@ -153,7 +153,7 @@ export class NotionService {
 
   async disconnect(): Promise<{ success: boolean; error?: string }> {
     try {
-      const url = new URL(`${WORKER_URL}/notion/disconnect`);
+      const url = new URL(`${WORKER_BASE_URL}/notion/disconnect`);
       url.searchParams.set('device_id', this.deviceId);
 
        const response = await fetch(url.toString(), { method: 'DELETE' });
@@ -200,7 +200,7 @@ export class NotionService {
 
   private async searchPagesViaApi(query: string, pageSize: number, cursor?: string): Promise<NotionSearchResult> {
     try {
-      const url = new URL(`${WORKER_URL}/notion/search`);
+      const url = new URL(`${WORKER_BASE_URL}/notion/search`);
       url.searchParams.set('device_id', this.deviceId);
       url.searchParams.set('query', query);
       url.searchParams.set('filter', 'page');
@@ -232,7 +232,7 @@ export class NotionService {
 
   async getPageContent(pageId: string): Promise<NotionPageContent> {
     try {
-      const url = new URL(`${WORKER_URL}/notion/blocks`);
+      const url = new URL(`${WORKER_BASE_URL}/notion/blocks`);
       url.searchParams.set('device_id', this.deviceId);
       url.searchParams.set('page_id', pageId);
 

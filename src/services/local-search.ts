@@ -65,6 +65,24 @@ export interface SyncStatus {
 export class LocalSearchService {
   private dbService = getDatabaseService();
   private embeddingClient: EmbeddingClient;
+
+  /**
+   * Apply Slack channel filter to query conditions/params.
+   * Opt-out model: no config = include all, some selected = include only those, all deselected = exclude all.
+   */
+  private applySlackChannelFilter(conditions: string[], params: any[]): void {
+    const allChannels = getSelectedSlackChannels();
+    const selectedIds = allChannels.filter(ch => ch.selected).map(ch => ch.id);
+
+    if (allChannels.length === 0) {
+      // No config = include all Slack (opt-out model)
+    } else if (selectedIds.length > 0) {
+      params.push(JSON.stringify(selectedIds));
+      conditions.push(`(source_type != 'slack' OR metadata->>'channelId' = ANY(SELECT jsonb_array_elements_text($${params.length}::jsonb)))`);
+    } else {
+      conditions.push(`source_type != 'slack'`);
+    }
+  }
   private preprocessor = new TextPreprocessor();
 
   constructor() {
@@ -279,20 +297,7 @@ export class LocalSearchService {
       conditions.push(`source_type = $${params.length}`);
     }
 
-    // Filter by selected Slack channels
-    const allChannelsSemantic = getSelectedSlackChannels();
-    const selectedIdsSemantic = allChannelsSemantic.filter(ch => ch.selected).map(ch => ch.id);
-
-    if (allChannelsSemantic.length === 0) {
-      // No config = include all Slack (opt-out model)
-    } else if (selectedIdsSemantic.length > 0) {
-      // Some selected = include only selected channels
-      params.push(JSON.stringify(selectedIdsSemantic));
-      conditions.push(`(source_type != 'slack' OR metadata->>'channelId' = ANY(SELECT jsonb_array_elements_text($${params.length}::jsonb)))`);
-    } else {
-      // All deselected = exclude all Slack
-      conditions.push(`source_type != 'slack'`);
-    }
+    this.applySlackChannelFilter(conditions, params);
 
     const whereClause = 'WHERE ' + conditions.join(' AND ');
 
@@ -348,20 +353,7 @@ export class LocalSearchService {
       conditions.push(`source_type = $${params.length}`);
     }
 
-    // Filter by selected Slack channels
-    const allChannelsFts = getSelectedSlackChannels();
-    const selectedIdsFts = allChannelsFts.filter(ch => ch.selected).map(ch => ch.id);
-
-    if (allChannelsFts.length === 0) {
-      // No config = include all Slack (opt-out model)
-    } else if (selectedIdsFts.length > 0) {
-      // Some selected = include only selected channels
-      params.push(JSON.stringify(selectedIdsFts));
-      conditions.push(`(source_type != 'slack' OR metadata->>'channelId' = ANY(SELECT jsonb_array_elements_text($${params.length}::jsonb)))`);
-    } else {
-      // All deselected = exclude all Slack
-      conditions.push(`source_type != 'slack'`);
-    }
+    this.applySlackChannelFilter(conditions, params);
 
     const whereClause = 'WHERE ' + conditions.join(' AND ');
 
@@ -404,20 +396,7 @@ export class LocalSearchService {
       conditions.push(`source_type = $${params.length}`);
     }
 
-    // Filter by selected Slack channels
-    const allChannelsLike = getSelectedSlackChannels();
-    const selectedIdsLike = allChannelsLike.filter(ch => ch.selected).map(ch => ch.id);
-
-    if (allChannelsLike.length === 0) {
-      // No config = include all Slack (opt-out model)
-    } else if (selectedIdsLike.length > 0) {
-      // Some selected = include only selected channels
-      params.push(JSON.stringify(selectedIdsLike));
-      conditions.push(`(source_type != 'slack' OR metadata->>'channelId' = ANY(SELECT jsonb_array_elements_text($${params.length}::jsonb)))`);
-    } else {
-      // All deselected = exclude all Slack
-      conditions.push(`source_type != 'slack'`);
-    }
+    this.applySlackChannelFilter(conditions, params);
 
     const whereClause = 'WHERE ' + conditions.join(' AND ');
 

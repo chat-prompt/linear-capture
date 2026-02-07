@@ -1,8 +1,7 @@
 import { BrowserWindow } from 'electron';
 import Store from 'electron-store';
 import type { TeamInfo, ProjectInfo, UserInfo, WorkflowStateInfo, CycleInfo, LabelInfo } from '../services/linear-client';
-import type { GeminiAnalyzer } from '../services/gemini-analyzer';
-import type { AnthropicAnalyzer } from '../services/anthropic-analyzer';
+import type { AiAnalyzer } from '../services/ai-analyzer';
 import type { SlackService } from '../services/slack-client';
 import type { NotionService } from '../services/notion-client';
 import type { GmailService } from '../services/gmail-client';
@@ -21,8 +20,8 @@ export interface AppState {
   statesCache: WorkflowStateInfo[];
   cyclesCache: CycleInfo[];
   labelsCache: LabelInfo[];
-  geminiAnalyzer: GeminiAnalyzer | null;
-  anthropicAnalyzer: AnthropicAnalyzer | null;
+  geminiAnalyzer: AiAnalyzer | null;
+  anthropicAnalyzer: AiAnalyzer | null;
   slackService: SlackService | null;
   notionService: NotionService | null;
   gmailService: GmailService | null;

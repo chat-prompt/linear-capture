@@ -1,21 +1,28 @@
+/**
+ * AiAnalyzer - Unified AI screenshot analysis via Cloudflare Worker
+ *
+ * Supports multiple models (haiku, gemini) through a single class.
+ * Worker handles model routing and API key management.
+ */
+
 import * as fs from 'fs';
 import * as path from 'path';
 import { trackAnalysisFailed } from './analytics';
 import { logger } from './utils/logger';
+import { WORKER_BASE_URL } from './config';
 import type { AnalysisResult, AnalysisContext } from '../types';
 
-// Re-export for backwards compatibility (consumers that import from this file)
 export type { AnalysisResult, AnalysisContext } from '../types';
 
-const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
+export type AiModel = 'haiku' | 'gemini';
 
-export class GeminiAnalyzer {
+export class AiAnalyzer {
   private maxRetries = 3;
   private baseDelay = 2000;
 
-   constructor() {
-     logger.log('🤖 Gemini Analyzer (via Cloudflare Worker)');
-   }
+  constructor(private readonly model: AiModel) {
+    logger.log(`🤖 AI Analyzer [${model}] (via Cloudflare Worker)`);
+  }
 
   private async sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -31,26 +38,25 @@ export class GeminiAnalyzer {
     }
 
     for (let attempt = 0; attempt < this.maxRetries; attempt++) {
-       try {
-         if (attempt > 0) {
-           const delay = this.baseDelay * Math.pow(2, attempt - 1);
-           logger.log(`⏳ Retry attempt ${attempt + 1} after ${delay}ms...`);
-           await this.sleep(delay);
-         }
+      try {
+        if (attempt > 0) {
+          const delay = this.baseDelay * Math.pow(2, attempt - 1);
+          logger.log(`⏳ Retry attempt ${attempt + 1} after ${delay}ms...`);
+          await this.sleep(delay);
+        }
 
-         return await this.callWorker(imagePaths, context);
-       } catch (error: unknown) {
-         logger.error(`❌ Analysis attempt ${attempt + 1} failed:`, error);
+        return await this.callWorker(imagePaths, context);
+      } catch (error: unknown) {
+        logger.error(`❌ Analysis attempt ${attempt + 1} failed:`, error);
 
-        // 마지막 시도가 아니면 재시도
         if (attempt < this.maxRetries - 1) {
           continue;
         }
 
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        const errorType = errorMessage.includes('timeout') ? 'timeout' 
-          : errorMessage.includes('network') ? 'network' 
-          : 'gemini';
+        const errorType = errorMessage.includes('timeout') ? 'timeout'
+          : errorMessage.includes('network') ? 'network'
+          : this.model;
         trackAnalysisFailed(errorType, errorMessage);
         return {
           title: '',
@@ -65,7 +71,6 @@ export class GeminiAnalyzer {
   }
 
   private async callWorker(imagePaths: string[], context?: AnalysisContext): Promise<AnalysisResult> {
-    // 이미지들을 base64로 변환
     const images = imagePaths.map(imagePath => {
       const imgBytes = fs.readFileSync(imagePath);
       const base64Data = imgBytes.toString('base64');
@@ -83,22 +88,22 @@ export class GeminiAnalyzer {
       } : undefined,
       instruction: context?.instruction,
       language: context?.language,
-      model: 'gemini'
+      model: this.model
     };
 
-     logger.log(`📤 Sending ${images.length} image(s) to Worker...`);
-     const startTime = Date.now();
+    logger.log(`📤 Sending ${images.length} image(s) to Worker [${this.model}]...`);
+    const startTime = Date.now();
 
-     const response = await fetch(WORKER_URL, {
-       method: 'POST',
-       headers: {
-         'Content-Type': 'application/json',
-       },
-       body: JSON.stringify(requestBody)
-     });
+    const response = await fetch(WORKER_BASE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody)
+    });
 
-     const elapsed = Date.now() - startTime;
-     logger.log(`⏱️ Worker response in ${elapsed}ms`);
+    const elapsed = Date.now() - startTime;
+    logger.log(`⏱️ Worker response in ${elapsed}ms`);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -115,7 +120,11 @@ export class GeminiAnalyzer {
   }
 }
 
-export function createGeminiAnalyzer(): GeminiAnalyzer {
-  // Worker 방식은 항상 사용 가능 (API 키 필요 없음)
-  return new GeminiAnalyzer();
+/** Backward-compatible factory functions */
+export function createAnthropicAnalyzer(): AiAnalyzer {
+  return new AiAnalyzer('haiku');
+}
+
+export function createGeminiAnalyzer(): AiAnalyzer {
+  return new AiAnalyzer('gemini');
 }

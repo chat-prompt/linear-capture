@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AnalysisContext } from '../services/anthropic-analyzer';
+import { AnalysisContext } from '../services/ai-analyzer';
 
 describe('Analyzer Services - instruction field', () => {
   it('AnalysisContext should accept optional instruction field', () => {

@@ -1,6 +1,5 @@
 import { getDeviceId } from './settings-store';
-
-const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
+import { WORKER_BASE_URL } from './config';
 
 interface SlackUser {
   id: string;
@@ -30,7 +29,7 @@ class SlackUserCache {
   private async _doLoad(): Promise<void> {
     try {
       const deviceId = getDeviceId();
-      const url = new URL(`${WORKER_URL}/slack/users`);
+      const url = new URL(`${WORKER_BASE_URL}/slack/users`);
       url.searchParams.set('device_id', deviceId);
 
       const response = await fetch(url.toString());

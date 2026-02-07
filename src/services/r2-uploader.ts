@@ -1,13 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from './utils/logger';
+import { WORKER_BASE_URL } from './config';
 import type { UploadResult, MultiUploadResult } from '../types';
 
 // Re-export for backwards compatibility
 export type { UploadResult, MultiUploadResult } from '../types';
-
-// Cloudflare Worker URL
-const WORKER_URL = 'https://linear-capture-ai.kangjun-f0f.workers.dev';
 
 export class R2Uploader {
    constructor() {
@@ -43,7 +41,7 @@ export class R2Uploader {
        logger.log(`📤 Uploading ${images.length} image(s) to Worker...`);
        const startTime = Date.now();
 
-       const response = await fetch(`${WORKER_URL}/upload`, {
+       const response = await fetch(`${WORKER_BASE_URL}/upload`, {
          method: 'POST',
          headers: {
            'Content-Type': 'application/json',

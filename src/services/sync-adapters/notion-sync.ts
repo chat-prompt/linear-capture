@@ -9,14 +9,12 @@
  * - Per-page error tracking (don't block entire sync)
  */
 
-import * as crypto from 'crypto';
-import { getDatabaseService } from '../database';
+import { BaseSyncAdapter } from './base-sync-adapter';
 import { createNotionService } from '../notion-client';
 import { createTextPreprocessor } from '../text-preprocessor';
 import { getEmbeddingClient, EmbeddingClient } from '../embedding-client';
 import { isNotionDbAvailable, getNotionLocalReader } from '../notion-local-reader';
 import type { NotionService, NotionPage } from '../notion-client';
-import type { DatabaseService } from '../database';
 import type { TextPreprocessor } from '../text-preprocessor';
 import type { SyncProgress, SyncProgressCallback } from '../local-search';
 import type { SyncResult } from '../../types';
@@ -24,15 +22,15 @@ import type { SyncResult } from '../../types';
 // Re-export for backwards compatibility
 export type { SyncResult } from '../../types';
 
-export class NotionSyncAdapter {
+export class NotionSyncAdapter extends BaseSyncAdapter {
+  protected readonly sourceType = 'notion';
   private notionService: NotionService;
-  private dbService: DatabaseService;
   private preprocessor: TextPreprocessor;
   private embeddingClient: EmbeddingClient;
 
   constructor() {
+    super();
     this.notionService = createNotionService();
-    this.dbService = getDatabaseService();
     this.preprocessor = createTextPreprocessor();
     this.embeddingClient = getEmbeddingClient();
   }
@@ -575,16 +573,6 @@ export class NotionSyncAdapter {
     console.log(`[NotionSync] Page ${page.id} synced successfully`);
   }
 
-  private async getLastSyncCursor(): Promise<string | null> {
-    const db = this.dbService.getDb();
-    const result = await db.query<{ cursor_value: string }>(
-      `SELECT cursor_value FROM sync_cursors WHERE source_type = $1`,
-      ['notion']
-    );
-
-    return result.rows[0]?.cursor_value || null;
-  }
-
   private async getSavedPaginationCursor(): Promise<string | undefined> {
     const db = this.dbService.getDb();
     const result = await db.query<{ cursor_value: string }>(
@@ -613,60 +601,6 @@ export class NotionSyncAdapter {
     );
   }
 
-  /**
-   * Update sync cursor in database
-   */
-  private async updateSyncCursor(cursor: string, itemCount: number): Promise<void> {
-    const db = this.dbService.getDb();
-    await db.query(
-      `
-      INSERT INTO sync_cursors (source_type, cursor_value, cursor_type, items_synced)
-      VALUES ($1, $2, 'timestamp', $3)
-      ON CONFLICT (source_type) DO UPDATE SET
-        cursor_value = EXCLUDED.cursor_value,
-        last_synced_at = NOW(),
-        items_synced = sync_cursors.items_synced + EXCLUDED.items_synced,
-        status = 'idle'
-    `,
-      ['notion', cursor, itemCount]
-    );
-  }
-
-  /**
-   * Update sync status in database
-   */
-  private async updateSyncStatus(status: 'idle' | 'syncing' | 'error'): Promise<void> {
-    const db = this.dbService.getDb();
-    if (status === 'idle') {
-      await db.query(
-        `
-        INSERT INTO sync_cursors (source_type, status, last_synced_at)
-        VALUES ($1, $2, NOW())
-        ON CONFLICT (source_type) DO UPDATE SET
-          status = EXCLUDED.status,
-          last_synced_at = NOW()
-      `,
-        ['notion', status]
-      );
-    } else {
-      await db.query(
-        `
-        INSERT INTO sync_cursors (source_type, status)
-        VALUES ($1, $2)
-        ON CONFLICT (source_type) DO UPDATE SET
-          status = EXCLUDED.status
-      `,
-        ['notion', status]
-      );
-    }
-  }
-
-  /**
-   * Calculate MD5 hash of content for change detection
-   */
-  private calculateContentHash(content: string): string {
-    return crypto.createHash('md5').update(content).digest('hex');
-  }
 }
 
 /**
