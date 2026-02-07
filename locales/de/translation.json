@@ -247,6 +247,16 @@
     "syncNow": "Sync",
     "ready": "Bereit zur Synchronisierung",
     "syncing": "Synchronisierung läuft...",
-    "failed": "Synchronisierung fehlgeschlagen"
+    "failed": "Synchronisierung fehlgeschlagen",
+    "lastSyncPrefix": "Synchronisiert",
+    "justNow": "gerade eben",
+    "minutesAgo": "vor {{count}} Min.",
+    "hoursAgo": "vor {{count}} Std.",
+    "daysAgo": "vor {{count}} Tg.",
+    "synced_messages": "Nachrichten synchronisiert",
+    "synced_docs": "Seiten synchronisiert",
+    "synced_emails": "E-Mails synchronisiert",
+    "synced_issues": "Probleme synchronisiert",
+    "notSyncedYet": "Noch nicht synchronisiert"
   }
 }

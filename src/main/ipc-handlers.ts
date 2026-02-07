@@ -854,4 +854,29 @@ export function registerIpcHandlers(): void {
       return { success: false, error: String(error) };
     }
   });
+
+  // Delete all synced documents for a source (for debugging)
+  ipcMain.handle('sync:delete-source', async (_event, source: string) => {
+    logger.log(`[IPC] sync:delete-source called for: ${source}`);
+    try {
+      const { getDatabaseService } = await import('../services/database');
+      const dbService = getDatabaseService();
+      const db = dbService.getDb();
+      
+      const docs = await db.query(
+        `DELETE FROM documents WHERE source_type = $1`,
+        [source]
+      );
+      await db.query(
+        `DELETE FROM sync_cursors WHERE source_type = $1`,
+        [source]
+      );
+      
+      logger.log(`[IPC] Deleted source data for ${source}`);
+      return { success: true };
+    } catch (error) {
+      logger.error('sync:delete-source error:', error);
+      return { success: false, error: String(error) };
+    }
+  });
 }

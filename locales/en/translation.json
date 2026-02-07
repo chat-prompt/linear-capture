@@ -247,6 +247,16 @@
     "syncNow": "Sync",
     "ready": "Ready to sync",
     "syncing": "Syncing...",
-    "failed": "Sync failed"
+    "failed": "Sync failed",
+    "lastSyncPrefix": "Synced",
+    "justNow": "just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago",
+    "synced_messages": "messages synced",
+    "synced_docs": "pages synced",
+    "synced_emails": "emails synced",
+    "synced_issues": "issues synced",
+    "notSyncedYet": "Not synced yet"
   }
 }
