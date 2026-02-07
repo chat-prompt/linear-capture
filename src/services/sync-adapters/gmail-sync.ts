@@ -19,8 +19,8 @@ import type { TextPreprocessor } from '../text-preprocessor';
 import type { SyncProgressCallback } from '../local-search';
 
 const BATCH_SIZE = 100;
-const BATCH_DELAY_MS = 200;
-const MAX_BATCHES = 25;
+const BATCH_DELAY_MS = 50;
+const MAX_BATCHES = 100;  // 10,000 emails max (100 batches × 100 per batch)
 
 const RETRY_MAX_ATTEMPTS = 3;
 const RETRY_INITIAL_DELAY_MS = 1000;
@@ -142,6 +142,7 @@ export class GmailSyncAdapter {
       let oldestDate: string | null = null;
       let batchCount = 0;
       let latestDateOverall: string | null = null;
+      let totalFetched = 0;
 
       while (batchCount < MAX_BATCHES) {
         const query: string = oldestDate
@@ -183,7 +184,7 @@ export class GmailSyncAdapter {
           messages[0].date
         );
 
-        oldestDate = new Date(oldestInBatch).toISOString().split('T')[0].replace(/-/g, '/');
+        oldestDate = String(Math.floor(new Date(oldestInBatch).getTime() / 1000));
 
         batchCount++;
 
@@ -193,6 +194,10 @@ export class GmailSyncAdapter {
         }
 
         await delay(BATCH_DELAY_MS);
+      }
+
+      if (batchCount >= MAX_BATCHES) {
+        console.log(`[GmailSync] Reached MAX_BATCHES limit (${MAX_BATCHES}). Some older emails may not be synced.`);
       }
 
       if (latestDateOverall) {
@@ -232,17 +237,19 @@ export class GmailSyncAdapter {
       const lastCursor = await this.getLastSyncCursor();
       console.log(`[GmailSync] Last sync cursor: ${lastCursor || 'none'}`);
 
-      const afterDate = lastCursor
-        ? new Date(lastCursor).toISOString().split('T')[0].replace(/-/g, '/')
+      const afterEpoch = lastCursor
+        ? Math.floor(new Date(lastCursor).getTime() / 1000)
         : null;
 
       let oldestDate: string | null = null;
       let batchCount = 0;
       let latestDateOverall: string | null = null;
+      let totalNew = 0;
+      let totalSkipped = 0;
 
       while (batchCount < MAX_BATCHES) {
         let query: string = 'in:inbox';
-        if (afterDate) query += ` after:${afterDate}`;
+        if (afterEpoch) query += ` after:${afterEpoch}`;
         if (oldestDate) query += ` before:${oldestDate}`;
 
         console.log(`[GmailSync] Batch ${batchCount + 1}: "${query}"`);
@@ -263,12 +270,14 @@ export class GmailSyncAdapter {
         }
 
         console.log(`[GmailSync] Batch ${batchCount + 1}: ${messages.length} emails`);
-        onProgress?.({ source: 'gmail', phase: 'syncing', current: batchCount + 1, total: MAX_BATCHES });
 
         const batchResult = await this.processBatchWithEmbedding(messages);
         result.itemsSynced += batchResult.synced;
         result.itemsFailed += batchResult.failed;
         result.errors.push(...batchResult.errors);
+        totalNew += batchResult.synced;
+        totalSkipped += batchResult.skipped;
+        onProgress?.({ source: 'gmail', phase: 'syncing', current: totalNew, total: totalNew + totalSkipped });
 
         for (const email of messages) {
           if (!latestDateOverall || email.date > latestDateOverall) {
@@ -281,7 +290,7 @@ export class GmailSyncAdapter {
           messages[0].date
         );
 
-        oldestDate = new Date(oldestInBatch).toISOString().split('T')[0].replace(/-/g, '/');
+        oldestDate = String(Math.floor(new Date(oldestInBatch).getTime() / 1000));
 
         batchCount++;
 
@@ -291,6 +300,10 @@ export class GmailSyncAdapter {
         }
 
         await delay(BATCH_DELAY_MS);
+      }
+
+      if (batchCount >= MAX_BATCHES) {
+        console.log(`[GmailSync] Reached MAX_BATCHES limit (${MAX_BATCHES}). Some older emails may not be synced.`);
       }
 
       if (latestDateOverall) {
@@ -317,27 +330,29 @@ export class GmailSyncAdapter {
 
   private async processBatchWithEmbedding(
     emails: GmailMessage[]
-  ): Promise<{ synced: number; failed: number; errors: Array<{ emailId: string; error: string }> }> {
-    const result = { synced: 0, failed: 0, errors: [] as Array<{ emailId: string; error: string }> };
+  ): Promise<{ synced: number; skipped: number; failed: number; errors: Array<{ emailId: string; error: string }> }> {
+    const result = { synced: 0, skipped: 0, failed: 0, errors: [] as Array<{ emailId: string; error: string }> };
 
     if (emails.length === 0) return result;
 
     const db = this.dbService.getDb();
     const emailsToProcess: Array<{ email: GmailMessage; text: string; hash: string }> = [];
 
+    // Step 1: Batch hash check - single query to get ALL gmail document hashes
+    const existingHashes = await db.query<{ source_id: string; content_hash: string }>(
+      `SELECT source_id, content_hash FROM documents WHERE source_type = $1`,
+      ['gmail']
+    );
+    const hashMap = new Map(existingHashes.rows.map(r => [r.source_id, r.content_hash]));
+
+    // Step 2: Filter changed emails - pure CPU comparison using the map
     for (const email of emails) {
       const fullText = `${email.subject}\n\n${email.snippet}`;
       const preprocessedText = this.preprocessor.preprocess(fullText);
       const contentHash = this.calculateContentHash(preprocessedText);
 
-      const existingDoc = await db.query<{ content_hash: string }>(
-        `SELECT content_hash FROM documents WHERE source_type = $1 AND source_id = $2`,
-        ['gmail', email.id]
-      );
-
-      if (existingDoc.rows.length > 0 && existingDoc.rows[0].content_hash === contentHash) {
-        console.log(`[GmailSync] Email ${email.id} unchanged, skipping`);
-        result.synced++;
+      if (hashMap.get(email.id) === contentHash) {
+        result.skipped++;
         continue;
       }
 
@@ -346,16 +361,15 @@ export class GmailSyncAdapter {
 
     if (emailsToProcess.length === 0) return result;
 
+    // Step 3: Embedding generation
     console.log(`[GmailSync] Generating embeddings for ${emailsToProcess.length} emails in batch`);
     const texts = emailsToProcess.map(e => e.text);
     const embeddings = await this.embeddingClient.embed(texts);
 
-    for (let i = 0; i < emailsToProcess.length; i++) {
-      const { email, text, hash } = emailsToProcess[i];
-      const embedding = embeddings[i];
-
+    // Step 4: Parallel saves
+    const savePromises = emailsToProcess.map(async ({ email, text, hash }, i) => {
       try {
-        await this.saveEmailWithEmbedding(email, text, hash, embedding);
+        await this.saveEmailWithEmbedding(email, text, hash, embeddings[i]);
         result.synced++;
       } catch (error) {
         console.error(`[GmailSync] Failed to save email ${email.id}:`, error);
@@ -365,7 +379,8 @@ export class GmailSyncAdapter {
           error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
-    }
+    });
+    await Promise.all(savePromises);
 
     return result;
   }
