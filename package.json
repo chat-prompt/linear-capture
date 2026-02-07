@@ -15,6 +15,7 @@
     "pack": "npm run build && electron-builder --dir",
     "pack:dev": "npm run build && electron-builder --config electron-builder.dev.js --dir",
     "pack:clean": "pkill -f 'Linear Capture' || true; pkill -f Electron || true; rm -rf dist release && npm run pack && open 'release/mac-arm64/Linear Capture.app'",
+    "pack:debug": "pkill -f 'Linear Capture' || true; pkill -f Electron || true; rm -rf dist release && npm run pack && LINEAR_CAPTURE_DEBUG=1 './release/mac-arm64/Linear Capture.app/Contents/MacOS/Linear Capture'",
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:win": "npm run build && electron-builder --win",
@@ -34,10 +35,12 @@
       "dist/**/*",
       "node_modules/**/*",
       "assets/**/*",
-      "locales/**/*"
+      "locales/**/*",
+      "scripts/**/*"
     ],
     "asarUnpack": [
-      "node_modules/sql.js/**/*"
+      "node_modules/sql.js/**/*",
+      "scripts/**/*"
     ],
     "protocols": [
       {
