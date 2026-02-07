@@ -38,6 +38,8 @@ export interface GmailSearchResult {
   success: boolean;
   messages?: GmailMessage[];
   total?: number;
+  estimatedTotal?: number;
+  _debug?: { idsCollected: number; listPages: number };
   error?: string;
 }
 

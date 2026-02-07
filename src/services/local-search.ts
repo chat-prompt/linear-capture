@@ -145,7 +145,7 @@ export class LocalSearchService {
             success: adapterResult.success,
             itemsSynced: adapterResult.itemsSynced,
             itemsFailed: adapterResult.itemsFailed,
-            errors: adapterResult.errors.map(e => ({ id: e.messageId, error: e.error })),
+            errors: adapterResult.errors,
             lastCursor: adapterResult.lastCursor,
           };
         }
@@ -157,7 +157,7 @@ export class LocalSearchService {
             success: adapterResult.success,
             itemsSynced: adapterResult.itemsSynced,
             itemsFailed: adapterResult.itemsFailed,
-            errors: adapterResult.errors.map(e => ({ id: e.pageId, error: e.error })),
+            errors: adapterResult.errors,
             lastCursor: adapterResult.lastCursor,
           };
         }
@@ -169,7 +169,7 @@ export class LocalSearchService {
             success: adapterResult.success,
             itemsSynced: adapterResult.itemsSynced,
             itemsFailed: adapterResult.itemsFailed,
-            errors: adapterResult.errors.map(e => ({ id: e.itemId, error: e.error })),
+            errors: adapterResult.errors,
             lastCursor: adapterResult.lastCursor,
           };
         }
@@ -181,7 +181,7 @@ export class LocalSearchService {
             success: adapterResult.success,
             itemsSynced: adapterResult.itemsSynced,
             itemsFailed: adapterResult.itemsFailed,
-            errors: adapterResult.errors.map(e => ({ id: e.emailId, error: e.error })),
+            errors: adapterResult.errors,
             lastCursor: adapterResult.lastCursor,
           };
         }

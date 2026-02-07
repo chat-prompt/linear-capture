@@ -364,7 +364,7 @@ export class NotionSyncAdapter {
         for (const settled of results) {
           if (settled.status === 'rejected') {
             result.itemsFailed++;
-            result.errors.push({ pageId: 'unknown', error: String(settled.reason) });
+            result.errors.push({ id: 'unknown', error: String(settled.reason) });
             continue;
           }
 
@@ -372,7 +372,7 @@ export class NotionSyncAdapter {
           if (!contentResult.success || !contentResult.content) {
             result.itemsFailed++;
             result.errors.push({
-              pageId: page.id,
+              id: page.id,
               error: contentResult.error || 'Failed to fetch page content',
             });
             continue;
@@ -423,7 +423,7 @@ export class NotionSyncAdapter {
         console.log(`[NotionSync] Embedding batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(changedPages.length / BATCH_SIZE)} (${batch.length} pages)`);
 
         try {
-          const embeddings = await this.embeddingService.embedBatch(texts);
+          const embeddings = await this.embeddingClient.embed(texts);
 
           const savePromises = batch.map(async (item, idx) => {
             try {
@@ -459,7 +459,7 @@ export class NotionSyncAdapter {
             } catch (error) {
               result.itemsFailed++;
               result.errors.push({
-                pageId: item.page.id,
+                id: item.page.id,
                 error: error instanceof Error ? error.message : 'DB insert failed',
               });
             }
@@ -471,7 +471,7 @@ export class NotionSyncAdapter {
           for (const item of batch) {
             result.itemsFailed++;
             result.errors.push({
-              pageId: item.page.id,
+              id: item.page.id,
               error: error instanceof Error ? error.message : 'Embedding failed',
             });
           }

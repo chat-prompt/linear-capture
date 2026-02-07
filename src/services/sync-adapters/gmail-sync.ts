@@ -145,7 +145,8 @@ export class GmailSyncAdapter {
           ? `in:inbox before:${oldestDate}`
           : 'in:inbox';
 
-        console.log(`[GmailSync] Batch ${batchCount + 1}: "${query}"`);
+        console.log(`[GmailSync] ── Batch ${batchCount + 1}/${MAX_BATCHES} ──`);
+        console.log(`[GmailSync]   query: "${query}"`);
 
         const { result: searchResult } = await retryWithBackoff<GmailSearchResult>(
           () => this.gmailService.searchEmails(query, BATCH_SIZE),
@@ -157,37 +158,52 @@ export class GmailSyncAdapter {
         );
 
         const messages = searchResult.messages!;
+
+        // Log debug info from Worker
+        if (searchResult.estimatedTotal !== undefined || searchResult._debug) {
+          console.log(`[GmailSync]   estimatedTotal: ${searchResult.estimatedTotal ?? 'N/A'}, worker debug: ${JSON.stringify(searchResult._debug)}`);
+        }
+
         if (messages.length === 0) {
-          console.log('[GmailSync] No more emails to fetch');
+          console.log(`[GmailSync]   ⛔ 0 messages returned → STOPPING (totalFetched: ${totalFetched})`);
           break;
         }
 
-        console.log(`[GmailSync] Batch ${batchCount + 1}: ${messages.length} emails`);
+        totalFetched += messages.length;
+
+        // Show date range of this batch (use timestamps for correct comparison)
+        const timestamps = messages.map(m => new Date(m.date).getTime());
+        const newestTs = Math.max(...timestamps);
+        const oldestTs = Math.min(...timestamps);
+        console.log(`[GmailSync]   returned: ${messages.length}, totalFetched: ${totalFetched}`);
+        console.log(`[GmailSync]   dateRange: ${new Date(oldestTs).toISOString()} → ${new Date(newestTs).toISOString()}`);
 
         const batchResult = await this.processBatchWithEmbedding(messages);
         result.itemsSynced += batchResult.synced;
         result.itemsFailed += batchResult.failed;
         result.errors.push(...batchResult.errors);
+        console.log(`[GmailSync]   processed: synced=${batchResult.synced}, skipped=${batchResult.skipped}, failed=${batchResult.failed}`);
 
         for (const email of messages) {
-          if (!latestDateOverall || email.date > latestDateOverall) {
+          const emailTs = new Date(email.date).getTime();
+          if (!latestDateOverall || emailTs > new Date(latestDateOverall).getTime()) {
             latestDateOverall = email.date;
           }
         }
 
-        const oldestInBatch: string = messages.reduce(
-          (oldest: string, email: GmailMessage) => (email.date < oldest ? email.date : oldest),
-          messages[0].date
-        );
+        // Find oldest email using timestamp comparison (NOT string comparison)
+        const oldestEpoch = Math.floor(oldestTs / 1000);
+        const prevOldestDate: string | null = oldestDate;
+        oldestDate = String(oldestEpoch);
+        console.log(`[GmailSync]   nextCursor: before:${oldestDate} (${new Date(oldestEpoch * 1000).toISOString()})`);
 
-        oldestDate = String(Math.floor(new Date(oldestInBatch).getTime() / 1000));
+        // Detect stuck cursor: if before: timestamp didn't change, we're in an infinite loop
+        if (prevOldestDate === oldestDate) {
+          console.log(`[GmailSync]   ⚠️ Cursor stuck at ${oldestDate}, subtracting 1 second to advance`);
+          oldestDate = String(oldestEpoch - 1);
+        }
 
         batchCount++;
-
-        if (messages.length < BATCH_SIZE) {
-          console.log('[GmailSync] Last batch (fewer than batch size)');
-          break;
-        }
 
         await delay(BATCH_DELAY_MS);
       }
@@ -231,7 +247,7 @@ export class GmailSyncAdapter {
       onProgress?.({ source: 'gmail', phase: 'discovering', current: 0, total: 0 });
 
       const lastCursor = await this.getLastSyncCursor();
-      console.log(`[GmailSync] Last sync cursor: ${lastCursor || 'none'}`);
+      console.log(`[GmailSync] Last sync cursor: ${lastCursor || 'none (full sync)'}`);
 
       const afterEpoch = lastCursor
         ? Math.floor(new Date(lastCursor).getTime() / 1000)
@@ -242,13 +258,15 @@ export class GmailSyncAdapter {
       let latestDateOverall: string | null = null;
       let totalNew = 0;
       let totalSkipped = 0;
+      let totalFetched = 0;
 
       while (batchCount < MAX_BATCHES) {
         let query: string = 'in:inbox';
         if (afterEpoch) query += ` after:${afterEpoch}`;
         if (oldestDate) query += ` before:${oldestDate}`;
 
-        console.log(`[GmailSync] Batch ${batchCount + 1}: "${query}"`);
+        console.log(`[GmailSync] ── Batch ${batchCount + 1}/${MAX_BATCHES} ──`);
+        console.log(`[GmailSync]   query: "${query}"`);
 
         const { result: searchResult } = await retryWithBackoff<GmailSearchResult>(
           () => this.gmailService.searchEmails(query, BATCH_SIZE),
@@ -260,12 +278,25 @@ export class GmailSyncAdapter {
         );
 
         const messages = searchResult.messages!;
+
+        // Log debug info from Worker
+        if (searchResult.estimatedTotal !== undefined || searchResult._debug) {
+          console.log(`[GmailSync]   estimatedTotal: ${searchResult.estimatedTotal ?? 'N/A'}, worker debug: ${JSON.stringify(searchResult._debug)}`);
+        }
+
         if (messages.length === 0) {
-          console.log('[GmailSync] No more emails to fetch');
+          console.log(`[GmailSync]   ⛔ 0 messages returned → STOPPING (totalFetched: ${totalFetched})`);
           break;
         }
 
-        console.log(`[GmailSync] Batch ${batchCount + 1}: ${messages.length} emails`);
+        totalFetched += messages.length;
+
+        // Show date range of this batch (use timestamps for correct comparison)
+        const timestamps = messages.map(m => new Date(m.date).getTime());
+        const newestTs = Math.max(...timestamps);
+        const oldestTs = Math.min(...timestamps);
+        console.log(`[GmailSync]   returned: ${messages.length}, totalFetched: ${totalFetched}`);
+        console.log(`[GmailSync]   dateRange: ${new Date(oldestTs).toISOString()} → ${new Date(newestTs).toISOString()}`);
 
         const batchResult = await this.processBatchWithEmbedding(messages);
         result.itemsSynced += batchResult.synced;
@@ -273,27 +304,29 @@ export class GmailSyncAdapter {
         result.errors.push(...batchResult.errors);
         totalNew += batchResult.synced;
         totalSkipped += batchResult.skipped;
+        console.log(`[GmailSync]   processed: synced=${batchResult.synced}, skipped=${batchResult.skipped}, failed=${batchResult.failed}`);
         onProgress?.({ source: 'gmail', phase: 'syncing', current: totalNew, total: totalNew + totalSkipped });
 
         for (const email of messages) {
-          if (!latestDateOverall || email.date > latestDateOverall) {
+          const emailTs = new Date(email.date).getTime();
+          if (!latestDateOverall || emailTs > new Date(latestDateOverall).getTime()) {
             latestDateOverall = email.date;
           }
         }
 
-        const oldestInBatch: string = messages.reduce(
-          (oldest: string, email: GmailMessage) => (email.date < oldest ? email.date : oldest),
-          messages[0].date
-        );
+        // Find oldest email using timestamp comparison (NOT string comparison)
+        const oldestEpoch = Math.floor(oldestTs / 1000);
+        const prevOldestDate: string | null = oldestDate;
+        oldestDate = String(oldestEpoch);
+        console.log(`[GmailSync]   nextCursor: before:${oldestDate} (${new Date(oldestEpoch * 1000).toISOString()})`);
 
-        oldestDate = String(Math.floor(new Date(oldestInBatch).getTime() / 1000));
+        // Detect stuck cursor: if before: timestamp didn't change, we're in an infinite loop
+        if (prevOldestDate === oldestDate) {
+          console.log(`[GmailSync]   ⚠️ Cursor stuck at ${oldestDate}, subtracting 1 second to advance`);
+          oldestDate = String(oldestEpoch - 1);
+        }
 
         batchCount++;
-
-        if (messages.length < BATCH_SIZE) {
-          console.log('[GmailSync] Last batch (fewer than batch size)');
-          break;
-        }
 
         await delay(BATCH_DELAY_MS);
       }
