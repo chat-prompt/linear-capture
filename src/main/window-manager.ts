@@ -30,7 +30,7 @@ export async function showPermissionNotification(): Promise<void> {
 
 export function createOnboardingWindow(): void {
   const state = getState();
-  
+
   state.onboardingWindow = new BrowserWindow({
     width: 380,
     height: 414,
@@ -39,8 +39,10 @@ export function createOnboardingWindow(): void {
     resizable: false,
     alwaysOnTop: false,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: false,
+      preload: path.join(__dirname, 'preload.js'),
     },
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' } : {}),
   });
@@ -60,7 +62,7 @@ export function createOnboardingWindow(): void {
 
 export function createSettingsWindow(): void {
   const state = getState();
-  
+
   if (state.settingsWindow) {
     state.settingsWindow.focus();
     return;
@@ -75,8 +77,10 @@ export function createSettingsWindow(): void {
     alwaysOnTop: false,
     title: 'Settings - Linear Capture',
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: false,
+      preload: path.join(__dirname, 'preload.js'),
     },
   });
 
@@ -93,7 +97,7 @@ export function createSettingsWindow(): void {
 
 export function createMainWindow(): void {
   const state = getState();
-  
+
   if (state.mainWindow && !state.mainWindow.isDestroyed()) {
     logger.log('Main window already exists, skipping creation');
     return;
@@ -107,8 +111,10 @@ export function createMainWindow(): void {
     resizable: false,
     alwaysOnTop: false,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: false,
+      preload: path.join(__dirname, 'preload.js'),
     },
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' } : {}),
   });

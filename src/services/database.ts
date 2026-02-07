@@ -8,6 +8,7 @@
 import { PGlite } from '@electric-sql/pglite';
 import { app } from 'electron';
 import * as path from 'path';
+import { logger } from './utils/logger';
 
 // @ts-ignore - PGlite vector extension (moduleResolution issue)
 import { vector } from '@electric-sql/pglite/vector';
@@ -72,7 +73,7 @@ export class DatabaseService {
 
   private async _init(): Promise<void> {
     try {
-      console.log('[DatabaseService] Initializing PGlite at:', this.dbPath);
+      logger.info('[DatabaseService] Initializing PGlite at:', this.dbPath);
 
       // Initialize PGlite with pgvector extension
       this.db = new PGlite(this.dbPath, {
@@ -82,19 +83,19 @@ export class DatabaseService {
       // Wait for database to be ready
       await this.db.waitReady;
 
-      console.log('[DatabaseService] PGlite ready, loading pgvector extension');
+      logger.info('[DatabaseService] PGlite ready, loading pgvector extension');
 
       // Enable pgvector extension
       await this.db.exec('CREATE EXTENSION IF NOT EXISTS vector');
 
-      console.log('[DatabaseService] Running migrations');
+      logger.info('[DatabaseService] Running migrations');
 
       // Run schema migrations
       await this.runMigrations();
 
-      console.log('[DatabaseService] Database initialized successfully');
+      logger.info('[DatabaseService] Database initialized successfully');
     } catch (error) {
-      console.error('[DatabaseService] Initialization failed:', error);
+      logger.error('[DatabaseService] Initialization failed:', error);
       throw error;
     }
   }
@@ -116,7 +117,7 @@ export class DatabaseService {
 
     // Migration 1: Initial schema
     if (currentVersion < 1) {
-      console.log('[DatabaseService] Running migration 1: Initial schema');
+      logger.info('[DatabaseService] Running migration 1: Initial schema');
 
       await this.db.exec(`
         -- Schema version tracking
@@ -178,7 +179,7 @@ export class DatabaseService {
           ON CONFLICT (version) DO NOTHING;
       `);
 
-      console.log('[DatabaseService] Migration 1 complete');
+      logger.info('[DatabaseService] Migration 1 complete');
     }
 
     // Future migrations go here
@@ -201,7 +202,7 @@ export class DatabaseService {
    */
   async close(): Promise<void> {
     if (this.db) {
-      console.log('[DatabaseService] Closing database');
+      logger.info('[DatabaseService] Closing database');
       await this.db.close();
       this.db = null;
       this.initPromise = null;

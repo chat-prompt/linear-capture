@@ -16,6 +16,7 @@ import type { GmailService, GmailMessage, GmailSearchResult } from '../gmail-cli
 import type { TextPreprocessor } from '../text-preprocessor';
 import type { SyncProgressCallback } from '../local-search';
 import type { SyncResult } from '../../types';
+import { logger } from '../utils/logger';
 
 const BATCH_SIZE = 100;
 const BATCH_DELAY_MS = 50;
@@ -60,13 +61,13 @@ async function retryWithBackoff<T>(
       lastError = validation.error || 'Unknown error';
       
       if (!isRetryableError(lastError)) {
-        console.log(`[GmailSync] ${context}: Non-retryable error (${lastError}), failing immediately`);
+        logger.info(`[GmailSync] ${context}: Non-retryable error (${lastError}), failing immediately`);
         throw new GmailSyncError(lastError, attempt + 1, false);
       }
       
       if (attempt < RETRY_MAX_ATTEMPTS - 1) {
         const delayMs = RETRY_INITIAL_DELAY_MS * Math.pow(RETRY_BACKOFF_MULTIPLIER, attempt);
-        console.log(`[GmailSync] ${context}: Attempt ${attempt + 1} failed (${lastError}), retrying in ${delayMs}ms...`);
+        logger.info(`[GmailSync] ${context}: Attempt ${attempt + 1} failed (${lastError}), retrying in ${delayMs}ms...`);
         await delay(delayMs);
       }
     } catch (error) {
@@ -81,7 +82,7 @@ async function retryWithBackoff<T>(
       
       if (attempt < RETRY_MAX_ATTEMPTS - 1) {
         const delayMs = RETRY_INITIAL_DELAY_MS * Math.pow(RETRY_BACKOFF_MULTIPLIER, attempt);
-        console.log(`[GmailSync] ${context}: Attempt ${attempt + 1} threw error (${lastError}), retrying in ${delayMs}ms...`);
+        logger.info(`[GmailSync] ${context}: Attempt ${attempt + 1} threw error (${lastError}), retrying in ${delayMs}ms...`);
         await delay(delayMs);
       }
     }
@@ -126,7 +127,7 @@ export class GmailSyncAdapter extends BaseSyncAdapter {
 
   async syncIncremental(onProgress?: SyncProgressCallback): Promise<SyncResult> {
     const lastCursor = await this.getLastSyncCursor();
-    console.log(`[GmailSync] Last sync cursor: ${lastCursor || 'none (full sync)'}`);
+    logger.info(`[GmailSync] Last sync cursor: ${lastCursor || 'none (full sync)'}`);
 
     const afterEpoch = lastCursor
       ? Math.floor(new Date(lastCursor).getTime() / 1000)
@@ -141,7 +142,7 @@ export class GmailSyncAdapter extends BaseSyncAdapter {
     logPrefix: string;
   }): Promise<SyncResult> {
     const { afterEpoch, onProgress, logPrefix } = options;
-    console.log(`[GmailSync] Starting ${logPrefix.toLowerCase()} with batched requests`);
+    logger.info(`[GmailSync] Starting ${logPrefix.toLowerCase()} with batched requests`);
 
     const result: SyncResult = {
       success: true,
@@ -166,8 +167,8 @@ export class GmailSyncAdapter extends BaseSyncAdapter {
         if (afterEpoch) query += ` after:${afterEpoch}`;
         if (oldestDate) query += ` before:${oldestDate}`;
 
-        console.log(`[GmailSync] ── Batch ${batchCount + 1}/${MAX_BATCHES} ──`);
-        console.log(`[GmailSync]   query: "${query}"`);
+        logger.info(`[GmailSync] ── Batch ${batchCount + 1}/${MAX_BATCHES} ──`);
+        logger.info(`[GmailSync]   query: "${query}"`);
 
         const { result: searchResult } = await retryWithBackoff<GmailSearchResult>(
           () => this.gmailService.searchEmails(query, BATCH_SIZE),
@@ -182,11 +183,11 @@ export class GmailSyncAdapter extends BaseSyncAdapter {
 
         // Log debug info from Worker
         if (searchResult.estimatedTotal !== undefined || searchResult._debug) {
-          console.log(`[GmailSync]   estimatedTotal: ${searchResult.estimatedTotal ?? 'N/A'}, worker debug: ${JSON.stringify(searchResult._debug)}`);
+          logger.info(`[GmailSync]   estimatedTotal: ${searchResult.estimatedTotal ?? 'N/A'}, worker debug: ${JSON.stringify(searchResult._debug)}`);
         }
 
         if (messages.length === 0) {
-          console.log(`[GmailSync]   ⛔ 0 messages returned → STOPPING (totalFetched: ${totalFetched})`);
+          logger.info(`[GmailSync]   ⛔ 0 messages returned → STOPPING (totalFetched: ${totalFetched})`);
           break;
         }
 
@@ -196,8 +197,8 @@ export class GmailSyncAdapter extends BaseSyncAdapter {
         const timestamps = messages.map(m => new Date(m.date).getTime());
         const newestTs = Math.max(...timestamps);
         const oldestTs = Math.min(...timestamps);
-        console.log(`[GmailSync]   returned: ${messages.length}, totalFetched: ${totalFetched}`);
-        console.log(`[GmailSync]   dateRange: ${new Date(oldestTs).toISOString()} → ${new Date(newestTs).toISOString()}`);
+        logger.info(`[GmailSync]   returned: ${messages.length}, totalFetched: ${totalFetched}`);
+        logger.info(`[GmailSync]   dateRange: ${new Date(oldestTs).toISOString()} → ${new Date(newestTs).toISOString()}`);
 
         const batchResult = await this.processBatchWithEmbedding(messages);
         result.itemsSynced += batchResult.synced;
@@ -205,7 +206,7 @@ export class GmailSyncAdapter extends BaseSyncAdapter {
         result.errors.push(...batchResult.errors);
         totalNew += batchResult.synced;
         totalSkipped += batchResult.skipped;
-        console.log(`[GmailSync]   processed: synced=${batchResult.synced}, skipped=${batchResult.skipped}, failed=${batchResult.failed}`);
+        logger.info(`[GmailSync]   processed: synced=${batchResult.synced}, skipped=${batchResult.skipped}, failed=${batchResult.failed}`);
         onProgress?.({ source: 'gmail', phase: 'syncing', current: totalNew, total: totalNew + totalSkipped });
 
         for (const email of messages) {
@@ -219,11 +220,11 @@ export class GmailSyncAdapter extends BaseSyncAdapter {
         const oldestEpoch = Math.floor(oldestTs / 1000);
         const prevOldestDate: string | null = oldestDate;
         oldestDate = String(oldestEpoch);
-        console.log(`[GmailSync]   nextCursor: before:${oldestDate} (${new Date(oldestEpoch * 1000).toISOString()})`);
+        logger.info(`[GmailSync]   nextCursor: before:${oldestDate} (${new Date(oldestEpoch * 1000).toISOString()})`);
 
         // Detect stuck cursor: if before: timestamp didn't change, we're in an infinite loop
         if (prevOldestDate === oldestDate) {
-          console.log(`[GmailSync]   ⚠️ Cursor stuck at ${oldestDate}, subtracting 1 second to advance`);
+          logger.info(`[GmailSync]   ⚠️ Cursor stuck at ${oldestDate}, subtracting 1 second to advance`);
           oldestDate = String(oldestEpoch - 1);
         }
 
@@ -233,7 +234,7 @@ export class GmailSyncAdapter extends BaseSyncAdapter {
       }
 
       if (batchCount >= MAX_BATCHES) {
-        console.log(`[GmailSync] Reached MAX_BATCHES limit (${MAX_BATCHES}). Some older emails may not be synced.`);
+        logger.info(`[GmailSync] Reached MAX_BATCHES limit (${MAX_BATCHES}). Some older emails may not be synced.`);
       }
 
       if (latestDateOverall) {
@@ -244,11 +245,11 @@ export class GmailSyncAdapter extends BaseSyncAdapter {
       await this.updateSyncStatus('idle');
       onProgress?.({ source: 'gmail', phase: 'complete', current: result.itemsSynced, total: result.itemsSynced });
 
-      console.log(
+      logger.info(
         `[GmailSync] ${logPrefix} complete: ${result.itemsSynced} synced, ${result.itemsFailed} failed (${batchCount} batches)`
       );
     } catch (error) {
-      console.error(`[GmailSync] ${logPrefix} failed:`, error);
+      logger.error(`[GmailSync] ${logPrefix} failed:`, error);
       result.success = false;
       onProgress?.({ source: 'gmail', phase: 'complete', current: 0, total: 0 });
       await this.updateSyncStatus('error');
@@ -292,7 +293,7 @@ export class GmailSyncAdapter extends BaseSyncAdapter {
     if (emailsToProcess.length === 0) return result;
 
     // Step 3: Embedding generation
-    console.log(`[GmailSync] Generating embeddings for ${emailsToProcess.length} emails in batch`);
+    logger.info(`[GmailSync] Generating embeddings for ${emailsToProcess.length} emails in batch`);
     const texts = emailsToProcess.map(e => e.text);
     const embeddings = await this.embeddingClient.embed(texts);
 
@@ -302,7 +303,7 @@ export class GmailSyncAdapter extends BaseSyncAdapter {
         await this.saveEmailWithEmbedding(email, text, hash, embeddings[i]);
         result.synced++;
       } catch (error) {
-        console.error(`[GmailSync] Failed to save email ${email.id}:`, error);
+        logger.error(`[GmailSync] Failed to save email ${email.id}:`, error);
         result.failed++;
         result.errors.push({
           id: email.id,
@@ -360,7 +361,7 @@ export class GmailSyncAdapter extends BaseSyncAdapter {
       ]
     );
 
-    console.log(`[GmailSync] Email ${email.id} saved successfully`);
+    logger.info(`[GmailSync] Email ${email.id} saved successfully`);
   }
 }
 

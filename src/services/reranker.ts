@@ -1,4 +1,5 @@
 import { WORKER_BASE_URL } from './config';
+import { logger } from './utils/logger';
 
 export interface RerankResult {
   id: string;
@@ -17,12 +18,12 @@ export async function rerank(
   if (!documents.length) return [];
 
   if (!query.trim()) {
-    console.warn('[Reranker] Empty query, returning original order');
+    logger.warn('[Reranker] Empty query, returning original order');
     return gracefulFallback(documents);
   }
 
   try {
-    console.log(`[Reranker] Reranking ${documents.length} documents`);
+    logger.info(`[Reranker] Reranking ${documents.length} documents`);
 
     const response = await fetch(`${WORKER_BASE_URL}/rerank`, {
       method: 'POST',
@@ -32,18 +33,18 @@ export async function rerank(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.warn(
+      logger.warn(
         `[Reranker] Worker error (${response.status}): ${errorText}`
       );
       return gracefulFallback(documents);
     }
 
     const data = (await response.json()) as { results: RerankResult[] };
-    console.log(`[Reranker] Success: ${data.results.length} results`);
+    logger.info(`[Reranker] Success: ${data.results.length} results`);
 
     return data.results;
   } catch (error) {
-    console.error('[Reranker] Failed:', error);
+    logger.error('[Reranker] Failed:', error);
     return gracefulFallback(documents);
   }
 }
@@ -51,6 +52,6 @@ export async function rerank(
 function gracefulFallback(
   documents: Array<{ id: string; text: string }>
 ): RerankResult[] {
-  console.log('[Reranker] Using fallback (preserving original scores)');
+  logger.info('[Reranker] Using fallback (preserving original scores)');
   return [];
 }

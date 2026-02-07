@@ -19,6 +19,7 @@ import type { SyncProgressCallback } from '../local-search';
 import { getDeviceId, getSelectedSlackChannels } from '../settings-store';
 import { WORKER_BASE_URL } from '../config';
 import type { SyncResult } from '../../types';
+import { logger } from '../utils/logger';
 
 // Re-export for backwards compatibility
 export type { SyncResult } from '../../types';
@@ -62,7 +63,7 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
    * Full sync - fetch all messages (for initial sync)
    */
   async sync(): Promise<SyncResult> {
-    console.log('[SlackSync] Starting full sync');
+    logger.info('[SlackSync] Starting full sync');
 
     const result: SyncResult = {
       success: true,
@@ -94,10 +95,10 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
         ? publicChannels.filter(ch => selectedIds.has(ch.id))
         : publicChannels;
       
-      console.log(`[SlackSync] Found ${channelsResult.channels.length} channels (${publicChannels.length} public, ${channelsToSync.length} selected)`);
+      logger.info(`[SlackSync] Found ${channelsResult.channels.length} channels (${publicChannels.length} public, ${channelsToSync.length} selected)`);
 
       if (channelsToSync.length === 0) {
-        console.log('[SlackSync] No channels selected for sync');
+        logger.info('[SlackSync] No channels selected for sync');
         return result;
       }
 
@@ -121,7 +122,7 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
             latestTimestamp = channelResult.lastCursor;
           }
         } else {
-          console.error(`[SlackSync] Failed to sync channel ${syncResult.channel.name}:`, syncResult.error);
+          logger.error(`[SlackSync] Failed to sync channel ${syncResult.channel.name}:`, syncResult.error);
           result.itemsFailed++;
           result.errors.push({
             id: syncResult.channel.id,
@@ -137,11 +138,11 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
 
       await this.updateSyncStatus('idle');
 
-      console.log(
+      logger.info(
         `[SlackSync] Full sync complete: ${result.itemsSynced} synced, ${result.itemsFailed} failed`
       );
     } catch (error) {
-      console.error('[SlackSync] Full sync failed:', error);
+      logger.error('[SlackSync] Full sync failed:', error);
       result.success = false;
       await this.updateSyncStatus('error');
       throw error;
@@ -154,7 +155,7 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
    * Incremental sync - fetch only messages after last sync
    */
   async syncIncremental(onProgress?: SyncProgressCallback): Promise<SyncResult> {
-    console.log('[SlackSync] Starting incremental sync');
+    logger.info('[SlackSync] Starting incremental sync');
 
     const result: SyncResult = {
       success: true,
@@ -168,17 +169,17 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
       onProgress?.({ source: 'slack', phase: 'discovering', current: 0, total: 0 });
 
       const lastCursor = await this.getLastSyncCursor();
-      console.log(`[SlackSync] Last sync cursor: ${lastCursor || 'none'}`);
+      logger.info(`[SlackSync] Last sync cursor: ${lastCursor || 'none'}`);
 
       const status = await this.slackService.getConnectionStatus();
-      console.log('[SlackSync] Connection status:', JSON.stringify(status));
+      logger.info('[SlackSync] Connection status:', JSON.stringify(status));
       if (!status.connected) {
         throw new Error('Slack not connected');
       }
 
-      console.log('[SlackSync] Fetching channels...');
+      logger.info('[SlackSync] Fetching channels...');
       const channelsResult = await this.slackService.getChannels();
-      console.log('[SlackSync] Channels result:', JSON.stringify(channelsResult));
+      logger.info('[SlackSync] Channels result:', JSON.stringify(channelsResult));
       
       if (!channelsResult.success || !channelsResult.channels) {
         throw new Error(channelsResult.error || 'Failed to fetch channels');
@@ -192,10 +193,10 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
         ? publicChannels.filter(ch => selectedIds.has(ch.id))
         : publicChannels;
       
-      console.log(`[SlackSync] Found ${channelsResult.channels.length} channels (${publicChannels.length} public, ${channelsToSync.length} selected)`);
+      logger.info(`[SlackSync] Found ${channelsResult.channels.length} channels (${publicChannels.length} public, ${channelsToSync.length} selected)`);
       
       if (channelsToSync.length === 0) {
-        console.log('[SlackSync] No channels selected for sync');
+        logger.info('[SlackSync] No channels selected for sync');
         onProgress?.({ source: 'slack', phase: 'complete', current: 0, total: 0 });
         await this.updateSyncStatus('idle');
         return result;
@@ -232,7 +233,7 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
             latestTimestamp = channelResult.lastCursor;
           }
         } else {
-          console.error(`[SlackSync] Failed to sync channel ${syncResult.channel.name}:`, syncResult.error);
+          logger.error(`[SlackSync] Failed to sync channel ${syncResult.channel.name}:`, syncResult.error);
           result.itemsFailed++;
           result.errors.push({
             id: syncResult.channel.id,
@@ -249,11 +250,11 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
       await this.updateSyncStatus('idle');
       onProgress?.({ source: 'slack', phase: 'complete', current: result.itemsSynced, total: result.itemsSynced });
 
-      console.log(
+      logger.info(
         `[SlackSync] Incremental sync complete: ${result.itemsSynced} synced, ${result.itemsFailed} failed`
       );
     } catch (error) {
-      console.error('[SlackSync] Incremental sync failed:', error);
+      logger.error('[SlackSync] Incremental sync failed:', error);
       result.success = false;
       onProgress?.({ source: 'slack', phase: 'complete', current: 0, total: 0 });
       await this.updateSyncStatus('error');
@@ -267,7 +268,7 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
    * Sync a single channel's messages
    */
   private async syncChannel(channel: SlackChannel, oldest: string | null): Promise<SyncResult> {
-    console.log(`[SlackSync] Syncing channel: #${channel.name} (${channel.id})`);
+    logger.info(`[SlackSync] Syncing channel: #${channel.name} (${channel.id})`);
 
     const result: SyncResult = {
       success: true,
@@ -283,7 +284,7 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
         throw new Error(historyResult.error || 'Failed to fetch channel history');
       }
 
-      console.log(`[SlackSync] Found ${historyResult.messages.length} messages in #${channel.name}`);
+      logger.info(`[SlackSync] Found ${historyResult.messages.length} messages in #${channel.name}`);
 
       let latestTimestamp: string | null = null;
 
@@ -307,7 +308,7 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
                   latestTimestamp = reply.ts;
                 }
               } catch (error) {
-                console.error(`[SlackSync] Failed to sync reply ${reply.ts}:`, error);
+                logger.error(`[SlackSync] Failed to sync reply ${reply.ts}:`, error);
                 result.itemsFailed++;
                 result.errors.push({
                   id: reply.ts,
@@ -317,7 +318,7 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
             }
           }
         } catch (error) {
-          console.error(`[SlackSync] Failed to sync message ${message.ts}:`, error);
+          logger.error(`[SlackSync] Failed to sync message ${message.ts}:`, error);
           result.itemsFailed++;
           result.errors.push({
             id: message.ts,
@@ -330,7 +331,7 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
         result.lastCursor = latestTimestamp;
       }
     } catch (error) {
-      console.error(`[SlackSync] Failed to sync channel ${channel.name}:`, error);
+      logger.error(`[SlackSync] Failed to sync channel ${channel.name}:`, error);
       result.success = false;
       throw error;
     }
@@ -353,13 +354,13 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
         url.searchParams.set('oldest', oldest);
       }
 
-      console.log(`[SlackSync] Fetching history for channel ${channelId}, oldest: ${oldest || 'none'}`);
+      logger.info(`[SlackSync] Fetching history for channel ${channelId}, oldest: ${oldest || 'none'}`);
       const response = await fetch(url.toString());
       const data = await response.json() as SlackMessageHistoryResponse;
-      console.log(`[SlackSync] History response for ${channelId}: success=${data.success}, messages=${data.messages?.length || 0}, error=${data.error || 'none'}`);
+      logger.info(`[SlackSync] History response for ${channelId}: success=${data.success}, messages=${data.messages?.length || 0}, error=${data.error || 'none'}`);
       return data;
     } catch (error) {
-      console.error('[SlackSync] History fetch error:', error);
+      logger.error('[SlackSync] History fetch error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -396,7 +397,7 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
   ): Promise<void> {
     const isReply = parentTs !== null;
     const label = isReply ? `thread reply: ${message.ts} (parent: ${parentTs})` : `message: ${message.ts} in #${channel.name}`;
-    console.log(`[SlackSync] Syncing ${label}`);
+    logger.info(`[SlackSync] Syncing ${label}`);
 
     const preprocessedText = this.preprocessor.preprocess(message.text);
     const contentHash = this.calculateContentHash(preprocessedText);
@@ -408,7 +409,7 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
     );
 
     if (existingDoc.rows.length > 0 && existingDoc.rows[0].content_hash === contentHash) {
-      console.log(`[SlackSync] ${isReply ? 'Reply' : 'Message'} ${message.ts} unchanged, skipping`);
+      logger.info(`[SlackSync] ${isReply ? 'Reply' : 'Message'} ${message.ts} unchanged, skipping`);
       return;
     }
 
@@ -459,7 +460,7 @@ export class SlackSyncAdapter extends BaseSyncAdapter {
       ]
     );
 
-    console.log(`[SlackSync] ${isReply ? 'Reply' : 'Message'} ${message.ts} synced successfully`);
+    logger.info(`[SlackSync] ${isReply ? 'Reply' : 'Message'} ${message.ts} synced successfully`);
   }
 
   /**

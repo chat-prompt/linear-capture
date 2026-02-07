@@ -10,6 +10,7 @@ import { createNotionSyncAdapter } from './sync-adapters/notion-sync';
 import { createLinearSyncAdapter } from './sync-adapters/linear-sync';
 import { createGmailSyncAdapter } from './sync-adapters/gmail-sync';
 import type { SyncResult, SyncStatus, SyncProgressCallback } from '../types';
+import { logger } from './utils/logger';
 
 export class SyncOrchestrator {
   private dbService = getDatabaseService();
@@ -55,31 +56,31 @@ export class SyncOrchestrator {
         sources,
       } as SyncStatus;
     } catch (error) {
-      console.error('[SyncOrchestrator] getSyncStatus error:', error);
+      logger.error('[SyncOrchestrator] getSyncStatus error:', error);
       return { initialized: true };
     }
   }
 
   async syncSource(source: string, onProgress?: SyncProgressCallback): Promise<SyncResult> {
-    console.log(`[SyncOrchestrator] Starting sync for: ${source}`);
+    logger.info(`[SyncOrchestrator] Starting sync for: ${source}`);
 
     if (!this.canSync()) {
       const reason = !this.isInitialized()
         ? 'Database not initialized'
         : 'OpenAI API key not set';
-      console.error(`[SyncOrchestrator] Cannot sync: ${reason}`);
+      logger.error(`[SyncOrchestrator] Cannot sync: ${reason}`);
       throw new Error(`Sync unavailable: ${reason}. Please check Settings.`);
     }
 
     try {
       const adapter = this.createAdapter(source);
       if (!adapter) {
-        console.warn(`[SyncOrchestrator] Unknown source: ${source}`);
+        logger.warn(`[SyncOrchestrator] Unknown source: ${source}`);
         return { success: false, itemsSynced: 0, itemsFailed: 0, errors: [] };
       }
 
       const adapterResult = await adapter.syncIncremental(onProgress);
-      console.log(`[SyncOrchestrator] ${source} sync complete: ${adapterResult.itemsSynced} items, ${adapterResult.itemsFailed} failed`);
+      logger.info(`[SyncOrchestrator] ${source} sync complete: ${adapterResult.itemsSynced} items, ${adapterResult.itemsFailed} failed`);
       return {
         success: adapterResult.success,
         itemsSynced: adapterResult.itemsSynced,
@@ -88,16 +89,16 @@ export class SyncOrchestrator {
         lastCursor: adapterResult.lastCursor,
       };
     } catch (error) {
-      console.error(`[SyncOrchestrator] Sync failed for ${source}:`, error);
+      logger.error(`[SyncOrchestrator] Sync failed for ${source}:`, error);
       throw error;
     }
   }
 
   async syncAll(): Promise<void> {
-    console.log('[SyncOrchestrator] Starting syncAll');
+    logger.info('[SyncOrchestrator] Starting syncAll');
 
     if (!this.canSync()) {
-      console.warn('[SyncOrchestrator] syncAll skipped - not ready');
+      logger.warn('[SyncOrchestrator] syncAll skipped - not ready');
       return;
     }
 
@@ -108,11 +109,11 @@ export class SyncOrchestrator {
 
     results.forEach((result, index) => {
       if (result.status === 'rejected') {
-        console.error(`[SyncOrchestrator] ${sources[index]} sync failed:`, result.reason);
+        logger.error(`[SyncOrchestrator] ${sources[index]} sync failed:`, result.reason);
       }
     });
 
-    console.log('[SyncOrchestrator] syncAll complete');
+    logger.info('[SyncOrchestrator] syncAll complete');
   }
 
   private createAdapter(source: string) {

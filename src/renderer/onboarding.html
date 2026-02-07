@@ -321,11 +321,12 @@
   </div>
 
   <script>
-    const { ipcRenderer } = require('electron');
+    // electronAPI is exposed globally by contextBridge.exposeInMainWorld
+    // Do NOT use const/let to redeclare it (causes SyntaxError with non-configurable global)
 
     // ==================== i18n Functions ====================
     async function t(key, options = {}) {
-      return await ipcRenderer.invoke('translate', key, options);
+      return await electronAPI.invoke('translate', key, options);
     }
 
     async function translatePage() {
@@ -342,7 +343,7 @@
     }
 
     async function autoTranslate() {
-      const reverseMap = await ipcRenderer.invoke('get-reverse-translation-map');
+      const reverseMap = await electronAPI.invoke('get-reverse-translation-map');
       
       const walker = document.createTreeWalker(
         document.body, NodeFilter.SHOW_TEXT, null, false
@@ -364,7 +365,7 @@
       }
     }
 
-    ipcRenderer.on('language-changed', async () => {
+    electronAPI.on('language-changed', async () => {
       await translatePage();
       await autoTranslate();
     });
@@ -456,7 +457,7 @@
 
     // Event listeners
     openSettingsBtn.addEventListener('click', () => {
-      ipcRenderer.send('open-screen-capture-settings');
+      electronAPI.send('open-screen-capture-settings');
     });
 
     nextStepBtn.addEventListener('click', () => {
@@ -481,7 +482,7 @@
       await showValidating();
 
       try {
-        const result = await ipcRenderer.invoke('validate-token', token);
+        const result = await electronAPI.invoke('validate-token', token);
 
         if (result.valid && result.user) {
           await showSuccess(result.user);
@@ -500,13 +501,13 @@
       startBtn.textContent = await t('settings.saving');
 
       try {
-        const result = await ipcRenderer.invoke('save-settings', {
+        const result = await electronAPI.invoke('save-settings', {
           linearApiToken: tokenInput.value.trim(),
           userInfo: validatedUser
         });
 
         if (result.success) {
-          ipcRenderer.send('onboarding-complete');
+          electronAPI.send('onboarding-complete');
         } else {
           showError(result.error || await t('settings.saveFailed'));
           startBtn.disabled = false;
@@ -535,7 +536,7 @@
       if (e.key === 'Escape') {
         if (step1.classList.contains('active')) {
           // Step 1에서는 ESC로 닫기 (토큰 없이 시작 - 기존 사용자용)
-          ipcRenderer.send('close-onboarding');
+          electronAPI.send('close-onboarding');
         } else {
           // Step 2에서는 이전 단계로
           goToStep(1);
@@ -546,7 +547,7 @@
     // Check if token already exists (returning user)
     async function checkExistingToken() {
       try {
-        const settings = await ipcRenderer.invoke('get-settings');
+        const settings = await electronAPI.invoke('get-settings');
         if (settings && settings.linearApiToken) {
           tokenInput.value = settings.linearApiToken;
           if (settings.userInfo) {

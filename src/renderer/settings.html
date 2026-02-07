@@ -1191,11 +1191,12 @@
   </div>
 
   <script>
-    const { ipcRenderer } = require('electron');
+    // electronAPI is exposed globally by contextBridge.exposeInMainWorld
+    // Do NOT use const/let to redeclare it (causes SyntaxError with non-configurable global)
 
     // ==================== i18n Functions ====================
     async function t(key, options = {}) {
-      return await ipcRenderer.invoke('translate', key, options);
+      return await electronAPI.invoke('translate', key, options);
     }
 
     async function translatePage() {
@@ -1213,7 +1214,7 @@
     }
 
     async function autoTranslate() {
-      const reverseMap = await ipcRenderer.invoke('get-reverse-translation-map');
+      const reverseMap = await electronAPI.invoke('get-reverse-translation-map');
       
       const walker = document.createTreeWalker(
         document.body, NodeFilter.SHOW_TEXT, null, false
@@ -1235,7 +1236,7 @@
       }
     }
 
-    ipcRenderer.on('language-changed', async () => {
+    electronAPI.on('language-changed', async () => {
       await translatePage();
       await autoTranslate();
       await loadSlackStatus();
@@ -1261,7 +1262,7 @@
     // 기존 설정 로드
     async function loadSettings() {
       try {
-        const settings = await ipcRenderer.invoke('get-settings');
+        const settings = await electronAPI.invoke('get-settings');
 
         if (settings && settings.linearApiToken) {
           tokenInput.value = settings.linearApiToken;
@@ -1348,14 +1349,14 @@
       await showValidating();
 
       try {
-        const result = await ipcRenderer.invoke('validate-token', token);
+        const result = await electronAPI.invoke('validate-token', token);
 
         if (result.valid && result.user) {
           // Phase 2: Save (auto-save after validation)
           validateBtn.innerHTML = '<span class="loading"></span>' + await t('settings.saving');
 
           try {
-            const saveResult = await ipcRenderer.invoke('save-settings', {
+            const saveResult = await electronAPI.invoke('save-settings', {
               linearApiToken: token,
               userInfo: result.user
             });
@@ -1395,7 +1396,7 @@
       const confirmMsg = await t('settings.deleteConfirm');
       if (confirm(confirmMsg)) {
         try {
-          await ipcRenderer.invoke('clear-settings');
+          await electronAPI.invoke('clear-settings');
           tokenInput.value = '';
           clearBtn.style.display = 'none';
           await showPending();
@@ -1408,7 +1409,7 @@
     // ESC로 닫기
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        ipcRenderer.invoke('close-settings');
+        electronAPI.invoke('close-settings');
       }
     });
 
@@ -1436,7 +1437,7 @@
     // Load current hotkey
     async function loadHotkey() {
       try {
-        const result = await ipcRenderer.invoke('get-hotkey');
+        const result = await electronAPI.invoke('get-hotkey');
         currentHotkey = result.hotkey;
         hotkeyInput.value = result.displayHotkey;
       } catch (error) {
@@ -1561,7 +1562,7 @@
 
       // Validate and save
       try {
-        const validation = await ipcRenderer.invoke('validate-hotkey', accelerator);
+        const validation = await electronAPI.invoke('validate-hotkey', accelerator);
         if (!validation.valid) {
           hotkeyError.textContent = validation.error;
           hotkeyError.style.display = 'block';
@@ -1569,7 +1570,7 @@
           return;
         }
 
-        const result = await ipcRenderer.invoke('save-hotkey', accelerator);
+        const result = await electronAPI.invoke('save-hotkey', accelerator);
         if (result.success) {
           currentHotkey = result.hotkey;
           hotkeyInput.value = result.displayHotkey;
@@ -1604,7 +1605,7 @@
       resetHotkeyBtn.textContent = await t('common.loading');
 
       try {
-        const result = await ipcRenderer.invoke('reset-hotkey');
+        const result = await electronAPI.invoke('reset-hotkey');
         if (result.success) {
           currentHotkey = result.hotkey;
           hotkeyInput.value = result.displayHotkey;
@@ -1697,7 +1698,7 @@
 
     async function loadSlackStatus() {
       try {
-        const status = await ipcRenderer.invoke('slack-status');
+        const status = await electronAPI.invoke('slack-status');
         updateSlackUI(status);
       } catch (error) {
         console.error('Failed to load Slack status:', error);
@@ -1740,8 +1741,8 @@
       try {
         // Load channels and saved selection in parallel
         const [channelsResult, savedChannels] = await Promise.all([
-          ipcRenderer.invoke('slack-channels'),
-          ipcRenderer.invoke('sync:get-slack-channels')
+          electronAPI.invoke('slack-channels'),
+          electronAPI.invoke('sync:get-slack-channels')
         ]);
 
         if (channelsResult.success) {
@@ -1883,7 +1884,7 @@
       }));
       
       try {
-        await ipcRenderer.invoke('sync:set-slack-channels', channelsToSave);
+        await electronAPI.invoke('sync:set-slack-channels', channelsToSave);
         channelSelectionModal.style.display = 'none';
         loadSlackChannels();
       } catch (error) {
@@ -1899,7 +1900,7 @@
       }));
       
       try {
-        await ipcRenderer.invoke('sync:set-slack-channels', channelsToSave);
+        await electronAPI.invoke('sync:set-slack-channels', channelsToSave);
         channelSelectionModal.style.display = 'none';
         modalChannelSearch.value = '';
         
@@ -1957,7 +1958,7 @@
 
       try {
         slackConnectBtn.textContent = await t('slack.connecting');
-        const result = await ipcRenderer.invoke('slack-connect');
+        const result = await electronAPI.invoke('slack-connect');
         if (!result.success) {
           slackError.textContent = result.error || await t('slack.connectFailed');
           slackError.style.display = 'block';
@@ -1973,7 +1974,7 @@
       }
     });
 
-    ipcRenderer.on('slack-connected', async (_event, result) => {
+    electronAPI.on('slack-connected', async (result) => {
       console.log('Slack connected:', result);
       updateSlackUI({
         connected: true,
@@ -1984,7 +1985,7 @@
       
       // Show channel selection modal after OAuth
       try {
-        const channelsResult = await ipcRenderer.invoke('slack-channels');
+        const channelsResult = await electronAPI.invoke('slack-channels');
         if (channelsResult.success && channelsResult.channels?.length > 0) {
           showChannelSelectionModal(channelsResult.channels, 'post-oauth');
         }
@@ -1993,7 +1994,7 @@
       }
     });
 
-    ipcRenderer.on('slack-oauth-error', (_event, data) => {
+    electronAPI.on('slack-oauth-error', (data) => {
       console.error('Slack OAuth error:', data.error);
       slackError.textContent = data.error || 'OAuth failed';
       slackError.style.display = 'block';
@@ -2015,7 +2016,7 @@
 
     async function loadNotionStatus() {
       try {
-        const status = await ipcRenderer.invoke('notion-status');
+        const status = await electronAPI.invoke('notion-status');
         updateNotionUI(status);
       } catch (error) {
         console.error('Failed to load Notion status:', error);
@@ -2053,7 +2054,7 @@
 
       try {
         notionConnectBtn.textContent = await t('notion.connecting');
-        const result = await ipcRenderer.invoke('notion-connect');
+        const result = await electronAPI.invoke('notion-connect');
         if (!result.success) {
           notionError.textContent = result.error || await t('notion.connectFailed');
           notionError.style.display = 'block';
@@ -2069,7 +2070,7 @@
       }
     });
 
-    ipcRenderer.on('notion-connected', (_event, result) => {
+    electronAPI.on('notion-connected', (result) => {
       console.log('Notion connected:', result);
       updateNotionUI({
         connected: true,
@@ -2079,7 +2080,7 @@
       loadSyncStatus();
     });
 
-    ipcRenderer.on('notion-oauth-error', (_event, data) => {
+    electronAPI.on('notion-oauth-error', (data) => {
       console.error('Notion OAuth error:', data.error);
       notionError.textContent = data.error || 'OAuth failed';
       notionError.style.display = 'block';
@@ -2101,7 +2102,7 @@
 
     async function loadGmailStatus() {
       try {
-        const status = await ipcRenderer.invoke('gmail-status');
+        const status = await electronAPI.invoke('gmail-status');
         updateGmailUI(status);
       } catch (error) {
         console.error('Failed to load Gmail status:', error);
@@ -2139,7 +2140,7 @@
 
       try {
         gmailConnectBtn.textContent = await t('gmail.connecting');
-        const result = await ipcRenderer.invoke('gmail-connect');
+        const result = await electronAPI.invoke('gmail-connect');
         if (!result.success) {
           gmailError.textContent = result.error || await t('gmail.connectFailed');
           gmailError.style.display = 'block';
@@ -2155,7 +2156,7 @@
       }
     });
 
-    ipcRenderer.on('gmail-connected', (_event, result) => {
+    electronAPI.on('gmail-connected', (result) => {
       console.log('Gmail connected:', result);
       updateGmailUI({
         connected: true,
@@ -2164,7 +2165,7 @@
       loadSyncStatus();
     });
 
-    ipcRenderer.on('gmail-oauth-error', (_event, data) => {
+    electronAPI.on('gmail-oauth-error', (data) => {
       console.error('Gmail OAuth error:', data.error);
       gmailError.textContent = data.error || 'OAuth failed';
       gmailError.style.display = 'block';
@@ -2205,13 +2206,13 @@
     async function loadSyncStatus() {
       try {
         const [slackStatus, notionStatus, gmailStatus, syncStatus] = await Promise.all([
-          ipcRenderer.invoke('slack-status'),
-          ipcRenderer.invoke('notion-status'),
-          ipcRenderer.invoke('gmail-status'),
-          ipcRenderer.invoke('sync:get-status'),
+          electronAPI.invoke('slack-status'),
+          electronAPI.invoke('notion-status'),
+          electronAPI.invoke('gmail-status'),
+          electronAPI.invoke('sync:get-status'),
         ]);
 
-        const linearConnected = !!(await ipcRenderer.invoke('get-settings'))?.linearApiToken;
+        const linearConnected = !!(await electronAPI.invoke('get-settings'))?.linearApiToken;
 
          if (slackStatus.connected) {
            const src = syncStatus?.sources?.slack;
@@ -2328,7 +2329,7 @@
       activeSyncs.set(source, lastSyncEl);
 
       try {
-        const result = await ipcRenderer.invoke('sync:trigger', source);
+        const result = await electronAPI.invoke('sync:trigger', source);
         if (result.success) {
           const itemsText = result.itemsSynced === 1 ? 'item' : 'items';
           if (lastSyncEl) {
@@ -2355,7 +2356,7 @@
       }
     }
 
-    ipcRenderer.on('sync:progress', (_event, progress) => {
+    electronAPI.on('sync:progress', (progress) => {
       const lastSyncEl = activeSyncs.get(progress.source);
       if (!lastSyncEl) return;
 
@@ -2380,7 +2381,7 @@
     syncLinearBtn.addEventListener('click', () => triggerSync('linear', syncLinearBtn, linearLastSync));
     syncGmailBtn.addEventListener('click', () => triggerSync('gmail', syncGmailBtn, gmailLastSync));
 
-    ipcRenderer.on('settings-updated', () => loadSyncStatus());
+    electronAPI.on('settings-updated', () => loadSyncStatus());
 
     // ==================== Dropdown Menu Toggle ====================
     document.querySelectorAll('.btn-menu-trigger').forEach(btn => {
@@ -2413,9 +2414,9 @@
             showChannelSelectionModal(allSlackChannels, 'edit');
           }
         } else if (action === 'reconnect') {
-          await ipcRenderer.invoke(`${service}-connect`);
+          await electronAPI.invoke(`${service}-connect`);
         } else if (action === 'disconnect') {
-          const result = await ipcRenderer.invoke(`${service}-disconnect`);
+          const result = await electronAPI.invoke(`${service}-disconnect`);
           if (result.success) {
             if (service === 'slack') await updateSlackUI({ connected: false });
             else if (service === 'notion') await updateNotionUI({ connected: false });
@@ -2430,7 +2431,7 @@
 
     async function loadLanguage() {
       try {
-        const currentLang = await ipcRenderer.invoke('get-language');
+        const currentLang = await electronAPI.invoke('get-language');
         languageSelect.value = currentLang || 'en';
       } catch (error) {
         console.error('Failed to load language:', error);
@@ -2441,7 +2442,7 @@
     languageSelect.addEventListener('change', async () => {
       const newLang = languageSelect.value;
       try {
-        await ipcRenderer.invoke('set-language', newLang);
+        await electronAPI.invoke('set-language', newLang);
       } catch (error) {
         console.error('Failed to set language:', error);
       }
@@ -2449,7 +2450,7 @@
 
     async function loadVersion() {
       try {
-        const version = await ipcRenderer.invoke('get-app-version');
+        const version = await electronAPI.invoke('get-app-version');
         document.getElementById('appVersion').textContent = version || '-';
       } catch (error) {
         console.error('Failed to get version:', error);
@@ -2464,7 +2465,7 @@
       checkUpdateBtn.innerHTML = '<span class="loading"></span>' + checkingText;
 
       try {
-        const result = await ipcRenderer.invoke('check-for-updates');
+        const result = await electronAPI.invoke('check-for-updates');
         if (!result.success && result.error) {
           alert(result.error);
         }

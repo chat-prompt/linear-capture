@@ -1,390 +1,69 @@
 # Linear Capture
 
-macOS/Windows 화면 캡처 → Linear 이슈 자동 생성 앱 (v1.2.10)
+macOS/Windows 화면 캡처 → Linear 이슈 자동 생성 Electron 앱 (v1.2.10)
 
-## 실행 방법
+## 핵심 규칙
 
-```bash
-cd linear-capture
-npm install
-npm start
+- **테스트는 반드시 `npm run pack:clean`** (`npm start` 금지 - 캡처 권한 문제)
+- **UI 텍스트 수정 후 반드시 `npm run translate` 실행**
+- Claude Code 환경: `ELECTRON_RUN_AS_NODE=1` → start 스크립트에 `unset` 포함
+
+## .env (필수)
 ```
-
-**참고**: Claude Code 환경에서는 `ELECTRON_RUN_AS_NODE=1`이 설정되어 있어 `package.json`의 start 스크립트에 `unset ELECTRON_RUN_AS_NODE`가 포함되어 있음.
-
-## 아키텍처
-
-```
-┌──────────────────────┐     ┌─────────────────────────────────────┐
-│  Electron App        │────▶│  Cloudflare Worker (linear-capture-ai) │
-│  (Linear Capture)    │     │  - AI 분석 (Haiku/Gemini)           │
-│                      │     │  - R2 이미지 업로드                  │
-│  ┌────────────────┐  │     │  - Notion API 프록시                 │
-│  │ PGlite DB      │  │     └─────────────────────────────────────┘
-│  │ (벡터검색+FTS)  │  │
-│  └────────────────┘  │            ┌──────────────────┐
-│  ┌────────────────┐  │───────────▶│  OpenAI API      │
-│  │ Notion 로컬캐시 │  │            │  (임베딩 생성)    │
-│  │ (sql.js)       │  │            └──────────────────┘
-│  └────────────────┘  │
-└──────────────────────┘
-        │
-        ▼
-┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│  Linear API  │  │  Slack API   │  │  Gmail API   │
-│  (이슈 생성)  │  │  (OAuth)     │  │  (OAuth)     │
-└──────────────┘  └──────────────┘  └──────────────┘
-```
-
-**핵심**:
-- AI 분석용 API 키(Anthropic, Gemini, R2)는 Worker에서 관리, 앱에는 불필요
-- 로컬 검색용 임베딩은 앱 내 OpenAI API key 필요 (Settings에서 설정)
-- Notion 로컬 캐시(SQLite)를 직접 읽어 21k+ 페이지 고속 동기화
-
-## 프로젝트 구조
-
-```
-linear-capture/
-├── src/
-│   ├── main/                         # Electron 메인 프로세스 (CLAUDE.md 참조)
-│   │   ├── index.ts                  # 앱 라이프사이클, 엔트리포인트
-│   │   ├── ipc-handlers.ts           # IPC 핸들러 (렌더러↔메인 통신)
-│   │   ├── window-manager.ts         # 윈도우 생성/관리
-│   │   ├── capture-session.ts        # 캡처 세션 관리
-│   │   ├── hotkey.ts                 # ⌘+Shift+L 글로벌 단축키
-│   │   ├── tray.ts                   # 메뉴바/시스템 트레이
-│   │   ├── oauth-handlers.ts         # Slack/Gmail OAuth 콜백
-│   │   ├── i18n.ts                   # 다국어 초기화
-│   │   ├── state.ts                  # 앱 상태 관리
-│   │   └── types.ts                  # 공통 타입
-│   ├── renderer/
-│   │   ├── index.html                # 이슈 생성 폼 UI
-│   │   ├── settings.html             # 설정 UI (토큰, 동기화, 연동)
-│   │   └── onboarding.html           # 최초 실행 온보딩
-│   ├── services/                     # 비즈니스 로직 (CLAUDE.md 참조)
-│   │   ├── capture/                  # 크로스 플랫폼 캡처
-│   │   ├── sync-adapters/            # 소스별 동기화 어댑터
-│   │   ├── context-adapters/         # AI 컨텍스트 어댑터
-│   │   ├── local-search.ts           # 로컬 검색 오케스트레이터
-│   │   ├── hybrid-search.ts          # 벡터 + FTS 하이브리드 검색
-│   │   ├── embedding-service.ts      # OpenAI 임베딩 (배치 지원)
-│   │   ├── database.ts               # PGlite (PostgreSQL in WASM)
-│   │   ├── notion-local-reader.ts    # Notion 로컬 SQLite 캐시 읽기
-│   │   ├── linear-client.ts          # Linear SDK 래퍼
-│   │   ├── slack-client.ts           # Slack API 클라이언트
-│   │   ├── gmail-client.ts           # Gmail API 클라이언트
-│   │   ├── settings-store.ts         # 설정 저장소 (electron-store)
-│   │   └── auto-updater.ts           # 자동 업데이트
-│   └── types/
-│       └── context-search.ts         # 컨텍스트 검색 타입
-├── scripts/                          # 빌드/배포/i18n 스크립트
-├── locales/{en,ko,de,fr,es}/         # 다국어 번역 파일
-├── .env                              # LINEAR_API_TOKEN
-└── package.json
-```
-
-## 설정
-
-### .env (필수)
-
-```env
 LINEAR_API_TOKEN=lin_api_xxxxx
 DEFAULT_TEAM_ID=e108ae14-a354-4c09-86ac-6c1186bc6132
 ```
 
-### Settings UI (앱 내 설정)
+## 아키텍처
+- Electron App → Cloudflare Worker (`linear-capture-ai`) for AI 분석 + R2 업로드
+- PGlite DB (벡터검색+FTS) + Notion 로컬캐시 (sql.js) + OpenAI 임베딩
+- Linear API (이슈 생성) + Slack/Gmail API (OAuth)
+- AI API 키는 Worker에서 관리, 앱에 불필요. 로컬 검색용 OpenAI key만 앱 Settings에서 설정
 
-- **OpenAI API Key**: 로컬 검색용 임베딩 생성에 필요 (Settings → General)
-- **Slack 연동**: OAuth 연결 (Settings → Integrations)
-- **Gmail 연동**: OAuth 연결 (Settings → Integrations)
-- **Notion 동기화**: Notion 앱 설치 시 로컬 캐시 자동 활용
-
-**참고**: AI 분석용 Anthropic/Gemini/R2 API 키는 Worker에서 관리, 앱에는 불필요.
-
-## 사용자 흐름
-
-1. `⌘+Shift+L` 또는 메뉴바 아이콘 클릭
-2. 화면 영역 드래그 선택
-3. 갤러리에 이미지 추가 (최대 10장)
-4. "분석 시작" 버튼으로 AI 분석
-5. 필요시 수정 후 "Create Issue" 클릭
-6. 성공 화면에서 "Linear에서 보기" 또는 "닫기"
+## 프로젝트 구조
+```
+src/
+├── main/           # index.ts(엔트리), ipc-handlers.ts(IPC), window-manager.ts(윈도우),
+│                   # capture-session.ts, hotkey.ts, tray.ts, oauth-handlers.ts, i18n.ts, state.ts
+├── renderer/       # index.html(이슈폼), settings.html(설정), onboarding.html(온보딩)
+├── services/       # capture/, sync-adapters/, context-adapters/,
+│                   # local-search.ts, hybrid-search.ts, embedding-service.ts,
+│                   # database.ts(PGlite), linear-client.ts, slack-client.ts, gmail-client.ts
+└── types/
+```
 
 ## 개발 명령어
-
 ```bash
-npm run start        # 빌드 후 실행 (개발 모드 - 권한 문제 있음)
-npm run start:clean  # 클린 환경 테스트 (Electron 종료 + TCC 리셋 + dist 삭제 + 빌드 + 실행)
+npm run pack:clean   # ⭐ 클린 빌드+실행 (유일한 테스트 방법)
 npm run build        # TypeScript 컴파일
-npm run pack         # .app만 빌드 (서명O, 공증X - 빠름)
-npm run pack:clean   # ⭐ 클린 빌드 + 실행 (기존 프로세스 종료 + dist/release 삭제 + 빌드 + 앱 실행)
-npm run dist:mac     # DMG 패키징 (서명 + 공증 - 배포용)
-npm run reinstall    # 완전 클린 재설치 (권한 리셋 포함)
-npm run translate    # i18n 자동 번역 (누락 키 → Gemini API)
-npm run validate:i18n # i18n 검증 (누락/중복 키 확인)
-npm test             # vitest 실행 (watch 모드)
+npm run dist:mac     # DMG 패키징 (서명+공증 - 배포용)
+npm run translate    # i18n 자동 번역
+npm run validate:i18n # i18n 검증
 npx vitest run       # 전체 테스트 1회 실행
-npm run clean        # dist, release 폴더 삭제
 ```
 
-## i18n 자동 번역
+## i18n
+- `locales/en/translation.json`이 기준 → `npm run translate`로 ko, de, fr, es 자동 생성
+- 기존 번역 유지, `{{variable}}` 보존
 
-> **🚨 Claude 필수 규칙**: UI 텍스트 추가/수정 후 **반드시** `npm run translate` 실행.
-
-### 워크플로우
-
-1. `locales/en/translation.json`에 영어 키 추가
-2. `npm run translate` 실행 → ko, de, fr, es 자동 번역
-3. `npm run validate:i18n`으로 검증
-
-### 규칙
-
-- **영어(en)가 기준**: 다른 언어는 en 기준으로 자동 생성
-- **기존 번역 유지**: 이미 있는 번역은 덮어쓰지 않음
-- **`{{variable}}` 보존**: interpolation 패턴 자동 검증
-- **부분 저장**: API 에러 시 성공한 번역만 저장
-
-## ⚠️ 테스트 원칙 (중요!)
-
-> **🚨 Claude 필수 규칙**: 앱 테스트 시 **반드시** `npm run pack:clean` 사용.
-> 다른 방법(`npm start`, `npm run pack` 등) 사용 금지.
-
-**개발 모드(`npm start`)는 화면 캡처 권한 문제로 테스트에 부적합합니다.**
-
-개발 모드에서는 앱이 "Electron"으로 인식되어 "Linear Capture"와 별도의 권한이 필요합니다.
-매번 권한 설정하기 번거로우므로, **항상 패키징된 .app으로 테스트**하세요.
-
-### 빠른 테스트 방법 (유일한 방법)
-
+## 배포
 ```bash
-# ⭐ 코드 수정 후 테스트 시 반드시 이 명령어 사용 (유일하게 허용된 방법)
-npm run pack:clean
-```
-
-이 명령어가 수행하는 작업:
-1. 기존 Linear Capture/Electron 프로세스 종료
-2. `dist/` 및 `release/` 폴더 삭제 (캐시 문제 방지)
-3. TypeScript 컴파일 + HTML 복사
-4. .app 패키징 (서명 포함)
-5. 앱 자동 실행
-
-### ⚠️ 변경사항이 반영 안 되는 경우
-
-**증상**: `npm run pack` 후 앱을 열었는데 코드 변경이 반영 안 됨
-
-**원인**:
-- 기존 앱 프로세스가 여전히 실행 중
-- `dist/` 폴더에 이전 빌드 결과가 캐시됨
-- macOS Launch Services가 이전 앱 번들을 캐시함
-
-**해결**: `npm run pack:clean` 사용 (위의 모든 문제를 한 번에 해결)
-
-```bash
-# 수동으로 해결하려면:
-pkill -f 'Linear Capture'  # 기존 앱 종료
-pkill -f Electron          # Electron 프로세스 종료
-rm -rf dist release        # 빌드 결과 삭제
-npm run pack               # 재빌드
-open 'release/mac-arm64/Linear Capture.app'
-```
-
-### 온보딩 화면 테스트
-
-온보딩은 최초 실행 시에만 표시됩니다. 다시 보려면:
-
-```bash
-rm -rf ~/Library/Application\ Support/linear-capture
-npm run pack && open 'release/mac-arm64/Linear Capture.app'
-```
-
-## 배포 (코드 서명 + 공증)
-
-앱은 **Apple Developer ID로 서명 및 공증**되어 배포됩니다 (Geniefy Inc. 팀 계정).
-
-### 환경 설정 (1회성)
-
-`~/.zshrc`에 Apple API Key 환경변수가 설정되어 있음:
-```bash
-export APPLE_API_KEY="/Users/wine_ny/side-project/linear_project/linear-capture/AuthKey_2AW98DM4X7.p8"
-export APPLE_API_KEY_ID="2AW98DM4X7"
-export APPLE_API_ISSUER="9094d5c9-acd0-40fa-b7d6-4567c644afa7"
-```
-
-### 배포 절차
-
-```bash
-# 1. 코드 수정 후 버전 업
-npm version patch  # or minor, major
-
-# 2. 빌드 (서명 + 공증 자동 실행)
-npm run dist:mac
-
-# 3. 태그 푸시 + GitHub Release
+npm version patch && npm run dist:mac
 git push origin master --tags
-gh release create vX.X.X \
-  "release/Linear Capture-X.X.X-universal.dmg" \
-  "release/Linear Capture-X.X.X-universal-mac.zip" \
-  "release/latest-mac.yml" \
+gh release create vX.X.X "release/Linear Capture-X.X.X-universal.dmg" \
+  "release/Linear Capture-X.X.X-universal-mac.zip" "release/latest-mac.yml" \
   --title "vX.X.X" --notes "변경사항"
 ```
-
-### ⚠️ 자동 업데이트 주의사항 (중요!)
-
-GitHub는 파일 업로드 시 **파일명의 공백을 `.`으로 치환**합니다:
-- 로컬: `Linear Capture-1.2.5-universal-mac.zip`
-- GitHub: `Linear.Capture-1.2.5-universal-mac.zip`
-
-**`latest-mac.yml` 작성 시 반드시 GitHub에 업로드된 실제 파일명(점 포함)을 사용해야 합니다!**
-
-```yaml
-# ❌ 잘못된 예 (자동 업데이트 실패)
-files:
-  - url: Linear Capture-1.2.5-universal-mac.zip
-
-# ✅ 올바른 예
-files:
-  - url: Linear.Capture-1.2.5-universal-mac.zip
-```
-
-**확인 방법:**
-```bash
-# GitHub에 업로드된 실제 파일명 확인
-gh release view vX.X.X --repo chat-prompt/linear-capture
-```
-
-### 인증서/키 파일 (민감정보 - .gitignore에 포함됨)
-- `AuthKey_2AW98DM4X7.p8` - App Store Connect API Key (Issuer: 9094d5c9-acd0-40fa-b7d6-4567c644afa7)
-- `2601-cert.p12` - Developer ID Application 인증서 (Geniefy Inc.)
-
-### 서명 확인
-```bash
-# 서명 확인
-codesign -dv "release/mac-universal/Linear Capture.app"
-
-# 공증 확인 (accepted = 성공)
-spctl --assess --type execute -v "release/mac-universal/Linear Capture.app"
-```
-
-### 인증서 재설치 (다른 Mac에서 빌드 시)
-```bash
-# 1. Developer ID G2 중간 인증서 설치 (필수)
-curl -s -o /tmp/DeveloperIDG2CA.cer "https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer"
-security add-certificates /tmp/DeveloperIDG2CA.cer
-
-# 2. p12 인증서 설치
-security import 2601-cert.p12 -k ~/Library/Keychains/login.keychain-db -P "비밀번호" -T /usr/bin/codesign -T /usr/bin/security -A
-
-# 3. 설치 확인
-security find-identity -v -p codesigning
-# "Developer ID Application: Geniefy Inc. (6CU3UP6D4N)" 표시되면 성공
-```
+- Apple Developer ID 서명+공증 (Geniefy Inc.)
+- `latest-mac.yml`: GitHub가 공백→`.` 치환하므로 `Linear.Capture-X.X.X` 형식 사용
 
 ## Worker (linear-capture-ai)
+- URL: `https://linear-capture-ai.ny-4f1.workers.dev`
+- `POST /analyze` AI 분석 | `POST /upload` R2 업로드
+- Secrets: `GEMINI_API_KEY`, `ANTHROPIC_API_KEY` | R2: `linear-captures` 버킷
 
-**URL**: `https://linear-capture-ai.ny-4f1.workers.dev`
-
-**엔드포인트**:
-- `POST /` or `/analyze` - AI 분석 (Haiku 또는 Gemini)
-- `POST /upload` - R2 이미지 업로드
-
-**Secrets** (wrangler secret):
-- `GEMINI_API_KEY`
-- `ANTHROPIC_API_KEY`
-
-**R2 바인딩**: `linear-captures` 버킷
-
-## 권한 문제 해결
-
-### macOS 화면 녹화 권한 동작 원리
-
-macOS TCC(Transparency, Consent, and Control) 시스템의 핵심:
-- **앱이 실제로 `screencapture`를 호출해야** 권한 목록에 등록됨
-- 단순히 권한 상태 조회(`getMediaAccessStatus`)만으로는 등록 안 됨
-
-### v1.2.6 권한 로직 개선 (2025-01)
-
-**문제**: 재설치 후 "권한 설정" 버튼 눌러도 앱이 권한 목록에 안 뜸
-
-**해결**:
-1. `showPermissionNotification()`에서 "권한 설정" 버튼 클릭 시 `captureSelection()` 먼저 호출
-2. `handleCapture()`에서 권한 없어도 캡처 시도 → macOS가 앱을 권한 목록에 등록
-3. debounce 추가: 단축키 중복 입력 시 1회만 실행
-
-```typescript
-// src/main/index.ts - showPermissionNotification()
-if (result.response === 0) {
-  // 먼저 캡처 시도 → macOS가 앱을 권한 목록에 등록
-  await captureSelection();
-  // 그 다음 시스템 환경설정 열기
-  openScreenCaptureSettings();
-}
-```
-
-### 테스트 방법 (권한 완전 초기화)
-
-```bash
-# 1. TCC 권한 리셋
-tccutil reset ScreenCapture com.gpters.linear-capture
-
-# 2. 앱 데이터 삭제
-rm -rf ~/Library/Application\ Support/linear-capture
-
-# 3. 패키징된 앱으로 테스트 (개발 모드는 Electron으로 인식됨)
-npm run dist:mac
-open "release/mac-universal/Linear Capture.app"
-
-# 4. 확인: 시스템 환경설정 > 개인 정보 보호 > 화면 및 시스템 오디오 녹음
-#    → "Linear Capture"가 목록에 표시되어야 함
-```
-
-**주의**: `npm run start` (개발 모드)는 "Electron"으로 인식되어 권한 테스트에 부적합. 반드시 패키징된 `.app`으로 테스트.
-
-## 프로젝트-팀 불일치 문제 (v1.2.6 개선)
-
-### 문제
-Product 팀으로 이슈 생성 시 Education 팀 프로젝트가 선택되면 에러:
-```
-Project not in same team as issue - The provided project is not associated with the issue's team
-```
-
-### 해결 (2025-01)
-
-1. **프로젝트 선택 시 팀 자동 변경**: `onSelect` 콜백에서 `project.teamIds` 확인 후 팀 자동 전환
-2. **제출 전 최종 검증**: 프로젝트-팀 불일치 시 에러 메시지 표시하고 제출 차단
-3. **디버그 로깅 추가**: 개발자 도구 콘솔에서 `project.teamIds` 값 확인 가능
-
-```javascript
-// src/renderer/index.html - onSelect 콜백
-onSelect: (value, label, project) => {
-  console.log('Project selected:', { value, label, project });
-  console.log('Project teamIds:', project?.teamIds);
-  // ...팀 자동 변경 로직
-}
-```
-
-### 테스트 방법
-
-1. 개발자 도구 열기 (View > Toggle Developer Tools)
-2. Education 팀 선택 후 Product 팀 프로젝트 선택
-3. 콘솔에서 `Project teamIds:` 로그 확인
-4. 팀이 자동으로 Product로 변경되는지 확인
-
-## 자동 업데이트
-
-- GitHub Releases에서 `latest-mac.yml` 확인
-- **현재 상태**: Developer ID 서명 + 공증 완료 → 자동 업데이트 가능
-- **주의**: v1.1.x 이하 버전은 자동 업데이트 미지원 → 수동 재설치 필요
-
-### 사용자 문제 해결 (앱 재설치)
-
-앱이 이상 동작하거나 업데이트 후 문제 발생 시:
-```bash
-# 1. 기존 앱 삭제
-rm -rf /Applications/Linear\ Capture.app
-
-# 2. 캐시 삭제
-rm -rf ~/Library/Application\ Support/linear-capture
-rm -rf ~/Library/Caches/linear-capture*
-
-# 3. GitHub Releases에서 최신 DMG 다운로드 후 재설치
-```
+## 권한 참고
+- macOS TCC: 앱이 `screencapture` 호출해야 권한 목록 등록됨
+- 권한 리셋: `tccutil reset ScreenCapture com.gpters.linear-capture`
+- 온보딩 리셋: `rm -rf ~/Library/Application\ Support/linear-capture`
+- 프로젝트-팀 불일치 시 자동 전환 로직 있음 (`onSelect` 콜백)

@@ -9,6 +9,7 @@ import type { ContextItem, SearchResult } from '../types/context-search';
 import { SyncOrchestrator } from './sync-orchestrator';
 import { SearchService } from './search-service';
 import type { SyncResult, SyncStatus, SyncProgressCallback } from '../types';
+import { logger } from './utils/logger';
 
 // Re-export types so existing `import { ... } from '../local-search'` still works
 export type { SyncResult, SyncProgress, SyncProgressCallback, SyncStatus } from '../types';
@@ -18,7 +19,7 @@ export class LocalSearchService {
   private searchService = new SearchService();
 
   constructor() {
-    console.log('[LocalSearch] EmbeddingClient initialized (Worker-based)');
+    logger.info('[LocalSearch] EmbeddingClient initialized (Worker-based)');
   }
 
   canSync(): boolean {
@@ -54,7 +55,7 @@ export function getLocalSearchService(): LocalSearchService | null {
     try {
       localSearchService = new LocalSearchService();
     } catch (error) {
-      console.error('[LocalSearch] Failed to initialize:', error);
+      logger.error('[LocalSearch] Failed to initialize:', error);
       return null;
     }
   }

@@ -1,5 +1,6 @@
 import { getDeviceId } from './settings-store';
 import { WORKER_BASE_URL } from './config';
+import { logger } from './utils/logger';
 
 interface SlackUser {
   id: string;
@@ -40,20 +41,20 @@ class SlackUserCache {
         for (const user of data.users) {
           this.userMap.set(user.id, user.name);
         }
-        console.log(`[SlackUserCache] Loaded ${this.userMap.size} users`);
+        logger.info(`[SlackUserCache] Loaded ${this.userMap.size} users`);
         this.loaded = true;
       } else {
-        console.warn('[SlackUserCache] Failed to load users:', data.error);
+        logger.warn('[SlackUserCache] Failed to load users:', data.error);
       }
     } catch (error) {
-      console.error('[SlackUserCache] Load error:', error);
+      logger.error('[SlackUserCache] Load error:', error);
     } finally {
       this.loading = null;
     }
   }
 
   resolve(text: string): string {
-    console.log('[SlackUserCache.resolve] input:', text);
+    logger.info('[SlackUserCache.resolve] input:', text);
     let result = text;
 
     // 1. 사용자 멘션 (userMap 필요 - 조건부)
@@ -68,7 +69,7 @@ class SlackUserCache {
         return match;
       });
       if (resolved > 0) {
-        console.log(`[SlackUserCache] Resolved ${resolved} mentions`);
+        logger.info(`[SlackUserCache] Resolved ${resolved} mentions`);
       }
     }
 
@@ -92,14 +93,14 @@ class SlackUserCache {
       result = result.replace(/^#([A-Z][A-Z0-9]+)$/, (match, userId) => {
         const displayName = this.userMap.get(userId);
         if (displayName) {
-          console.log(`[SlackUserCache] Resolved DM title: ${match} → @${displayName}`);
+          logger.info(`[SlackUserCache] Resolved DM title: ${match} → @${displayName}`);
           return `@${displayName}`;
         }
         return match;
       });
     }
 
-    console.log('[SlackUserCache.resolve] output:', result);
+    logger.info('[SlackUserCache.resolve] output:', result);
     return result;
   }
 

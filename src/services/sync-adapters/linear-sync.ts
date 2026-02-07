@@ -20,6 +20,7 @@ import type { TextPreprocessor } from '../text-preprocessor';
 import type { SyncProgressCallback } from '../local-search';
 import type { Issue } from '@linear/sdk';
 import type { SyncResult } from '../../types';
+import { logger } from '../utils/logger';
 
 // Re-export for backwards compatibility
 export type { SyncResult } from '../../types';
@@ -56,7 +57,7 @@ export class LinearSyncAdapter extends BaseSyncAdapter {
   }
 
    async sync(): Promise<SyncResult> {
-     console.log('[LinearSync] Starting full sync');
+     logger.info('[LinearSync] Starting full sync');
 
      const result: SyncResult = {
        success: true,
@@ -66,7 +67,7 @@ export class LinearSyncAdapter extends BaseSyncAdapter {
      };
 
      if (!this.linearService) {
-       console.error('[LinearSync] LinearService not initialized');
+       logger.error('[LinearSync] LinearService not initialized');
        return { ...result, success: false, errors: [{ id: 'init', error: 'LinearService not initialized' }] };
      }
 
@@ -76,7 +77,7 @@ export class LinearSyncAdapter extends BaseSyncAdapter {
       const client = (this.linearService as any).client;
       const allIssues = await this.fetchAllIssues(client, {});
 
-      console.log(`[LinearSync] Found ${allIssues.length} issues`);
+      logger.info(`[LinearSync] Found ${allIssues.length} issues`);
 
       let latestUpdatedAt: string | null = null;
 
@@ -101,7 +102,7 @@ export class LinearSyncAdapter extends BaseSyncAdapter {
           await this.updateSyncCursor(latestUpdatedAt, result.itemsSynced);
           result.lastCursor = latestUpdatedAt;
         } else {
-          console.warn(
+          logger.warn(
             `[LinearSync] Cursor not advanced: only ${result.itemsSynced}/${totalFetched} items synced (${(syncRatio * 100).toFixed(1)}% < 80% threshold)`
           );
         }
@@ -109,11 +110,11 @@ export class LinearSyncAdapter extends BaseSyncAdapter {
 
       await this.updateSyncStatus('idle');
 
-      console.log(
+      logger.info(
         `[LinearSync] Full sync complete: ${result.itemsSynced} synced, ${result.itemsFailed} failed`
       );
     } catch (error) {
-      console.error('[LinearSync] Full sync failed:', error);
+      logger.error('[LinearSync] Full sync failed:', error);
       result.success = false;
       await this.updateSyncStatus('error');
       throw error;
@@ -123,7 +124,7 @@ export class LinearSyncAdapter extends BaseSyncAdapter {
   }
 
    async syncIncremental(onProgress?: SyncProgressCallback): Promise<SyncResult> {
-     console.log('[LinearSync] Starting incremental sync');
+     logger.info('[LinearSync] Starting incremental sync');
 
      const result: SyncResult = {
        success: true,
@@ -133,7 +134,7 @@ export class LinearSyncAdapter extends BaseSyncAdapter {
      };
 
      if (!this.linearService) {
-       console.error('[LinearSync] LinearService not initialized');
+       logger.error('[LinearSync] LinearService not initialized');
        return { ...result, success: false, errors: [{ id: 'init', error: 'LinearService not initialized' }] };
      }
 
@@ -142,18 +143,18 @@ export class LinearSyncAdapter extends BaseSyncAdapter {
        onProgress?.({ source: 'linear', phase: 'discovering', current: 0, total: 0 });
 
       const lastCursor = await this.getLastSyncCursor();
-      console.log(`[LinearSync] Last sync cursor: ${lastCursor || 'none'}`);
+      logger.info(`[LinearSync] Last sync cursor: ${lastCursor || 'none'}`);
 
       const client = (this.linearService as any).client;
       const filter = lastCursor
         ? { updatedAt: { gt: new Date(lastCursor) } }
         : {};
-      console.log(`[LinearSync] Incremental sync filter:`, JSON.stringify(filter));
+      logger.info(`[LinearSync] Incremental sync filter:`, JSON.stringify(filter));
 
       const allIssues = await this.fetchAllIssues(client, filter);
       const totalIssues = allIssues.length;
 
-      console.log(`[LinearSync] Found ${totalIssues} issues to sync`);
+      logger.info(`[LinearSync] Found ${totalIssues} issues to sync`);
 
       let latestUpdatedAt: string | null = lastCursor;
       let processedCount = 0;
@@ -182,7 +183,7 @@ export class LinearSyncAdapter extends BaseSyncAdapter {
           await this.updateSyncCursor(latestUpdatedAt, result.itemsSynced);
           result.lastCursor = latestUpdatedAt;
         } else {
-          console.warn(
+          logger.warn(
             `[LinearSync] Cursor not advanced: only ${result.itemsSynced}/${totalFetched} items synced (${(syncRatio * 100).toFixed(1)}% < 80% threshold)`
           );
         }
@@ -191,11 +192,11 @@ export class LinearSyncAdapter extends BaseSyncAdapter {
       await this.updateSyncStatus('idle');
       onProgress?.({ source: 'linear', phase: 'complete', current: result.itemsSynced, total: result.itemsSynced });
 
-      console.log(
+      logger.info(
         `[LinearSync] Incremental sync complete: ${result.itemsSynced} synced, ${result.itemsFailed} failed`
       );
     } catch (error) {
-      console.error('[LinearSync] Incremental sync failed:', error);
+      logger.error('[LinearSync] Incremental sync failed:', error);
       result.success = false;
       onProgress?.({ source: 'linear', phase: 'complete', current: 0, total: 0 });
       await this.updateSyncStatus('error');
@@ -218,7 +219,7 @@ export class LinearSyncAdapter extends BaseSyncAdapter {
         allNodes.push(node);
       }
     }
-    console.log(`[LinearSync] Page ${pageCount}: fetched ${connection.nodes.length} issues (${allNodes.length} unique total)`);
+    logger.info(`[LinearSync] Page ${pageCount}: fetched ${connection.nodes.length} issues (${allNodes.length} unique total)`);
 
     while (connection.pageInfo.hasNextPage && pageCount < MAX_PAGES) {
       try {
@@ -237,25 +238,25 @@ export class LinearSyncAdapter extends BaseSyncAdapter {
           }
         }
 
-        console.log(`[LinearSync] Page ${pageCount}: fetched ${connection.nodes.length} (${newCount} new, ${dupCount} duplicates) — ${allNodes.length} unique total`);
+        logger.info(`[LinearSync] Page ${pageCount}: fetched ${connection.nodes.length} (${newCount} new, ${dupCount} duplicates) — ${allNodes.length} unique total`);
 
         // Detect pagination loop: if entire page is duplicates, stop
         if (newCount === 0 && connection.nodes.length > 0) {
-          console.warn(`[LinearSync] Pagination loop detected at page ${pageCount}: all ${dupCount} items are duplicates. Stopping.`);
+          logger.warn(`[LinearSync] Pagination loop detected at page ${pageCount}: all ${dupCount} items are duplicates. Stopping.`);
           break;
         }
       } catch (error) {
-        console.error(`[LinearSync] Error fetching page ${pageCount}:`, error);
-        console.warn(`[LinearSync] Returning partial results: ${allNodes.length} issues from ${pageCount - 1} complete pages`);
+        logger.error(`[LinearSync] Error fetching page ${pageCount}:`, error);
+        logger.warn(`[LinearSync] Returning partial results: ${allNodes.length} issues from ${pageCount - 1} complete pages`);
         break;
       }
     }
 
     if (pageCount >= MAX_PAGES) {
-      console.warn(`[LinearSync] Reached max page limit (${MAX_PAGES}). Returning ${allNodes.length} issues.`);
+      logger.warn(`[LinearSync] Reached max page limit (${MAX_PAGES}). Returning ${allNodes.length} issues.`);
     }
 
-    console.log(`[LinearSync] fetchAllIssues complete: ${allNodes.length} unique issues from ${pageCount} pages`);
+    logger.info(`[LinearSync] fetchAllIssues complete: ${allNodes.length} unique issues from ${pageCount} pages`);
     return allNodes;
   }
 
@@ -307,10 +308,10 @@ export class LinearSyncAdapter extends BaseSyncAdapter {
        embeddings = await this.embeddingClient.embed(texts);
        const emptyEmbeddings = embeddings.filter(e => e.length === 0 || e.every(v => v === 0)).length;
        if (emptyEmbeddings > 0) {
-         console.warn(`[LinearSync] ${emptyEmbeddings}/${embeddings.length} embeddings are empty/zero`);
+         logger.warn(`[LinearSync] ${emptyEmbeddings}/${embeddings.length} embeddings are empty/zero`);
        }
      } catch (error) {
-       console.error(`[LinearSync] Batch embedding failed for ${needsUpdate.length} items:`, error);
+       logger.error(`[LinearSync] Batch embedding failed for ${needsUpdate.length} items:`, error);
        for (const p of needsUpdate) {
          result.failed++;
          result.errors.push({

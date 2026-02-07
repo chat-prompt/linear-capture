@@ -1646,13 +1646,11 @@
   </div>
 
   <script>
-    console.log('[index.html] Script loading...');
-    const { ipcRenderer } = require('electron');
-    window.ipcRenderer = ipcRenderer;
+    // electronAPI is exposed globally by contextBridge.exposeInMainWorld
 
     // ==================== i18n Functions ====================
     async function t(key, options = {}) {
-      return await ipcRenderer.invoke('translate', key, options);
+      return await window.electronAPI.invoke('translate', key, options);
     }
 
     async function translatePage() {
@@ -1683,7 +1681,7 @@
     }
 
     async function autoTranslate() {
-      const reverseMap = await ipcRenderer.invoke('get-reverse-translation-map');
+      const reverseMap = await window.electronAPI.invoke('get-reverse-translation-map');
       
       const walker = document.createTreeWalker(
         document.body, NodeFilter.SHOW_TEXT, null, false
@@ -1711,7 +1709,7 @@
       }
     }
 
-    ipcRenderer.on('language-changed', async () => {
+    window.electronAPI.on('language-changed', async () => {
       try {
         await translatePage();
         await autoTranslate();
@@ -1730,20 +1728,20 @@
     // Settings button
     const settingsBtn = document.getElementById('settingsBtn');
     settingsBtn.addEventListener('click', () => {
-      ipcRenderer.invoke('open-settings');
+      window.electronAPI.invoke('open-settings');
     });
 
     // Token warning banner
     const tokenWarning = document.getElementById('tokenWarning');
     const tokenWarningBtn = document.getElementById('tokenWarningBtn');
     tokenWarningBtn.addEventListener('click', () => {
-      ipcRenderer.invoke('open-settings');
+      window.electronAPI.invoke('open-settings');
     });
 
     // Check token status on load
     async function checkTokenStatus() {
       try {
-        const settings = await ipcRenderer.invoke('get-settings');
+        const settings = await window.electronAPI.invoke('get-settings');
         if (!settings || !settings.linearApiToken) {
           tokenWarning.classList.remove('hidden');
         } else {
@@ -1756,12 +1754,12 @@
     checkTokenStatus();
 
     // Listen for settings changes to update warning
-    ipcRenderer.on('settings-updated', () => {
+    window.electronAPI.on('settings-updated', () => {
       checkTokenStatus();
     });
 
     // Listen for Linear data updates (after token is saved)
-    ipcRenderer.on('linear-data-updated', (event, data) => {
+    window.electronAPI.on('linear-data-updated', (data) => {
       console.log('Linear data updated:', data);
 
       // Update cached data
@@ -1849,14 +1847,14 @@ updateTeamDependentDropdowns(teamSelect.value);
       modalImage.src = src;
       imageModal.classList.remove('hidden');
       // 모달이 열리면 신호등 숨기기
-      ipcRenderer.invoke('set-traffic-lights-visible', false);
+      window.electronAPI.invoke('set-traffic-lights-visible', false);
     }
 
     function hideImageModal() {
       imageModal.classList.add('hidden');
       modalImage.src = '';
       // 모달이 닫히면 신호등 다시 표시
-      ipcRenderer.invoke('set-traffic-lights-visible', true);
+      window.electronAPI.invoke('set-traffic-lights-visible', true);
     }
 
     modalClose.addEventListener('click', (e) => {
@@ -1921,19 +1919,19 @@ updateTeamDependentDropdowns(teamSelect.value);
     // Request additional capture via IPC
     function requestAddCapture() {
       if (isSubmitting) return;
-      ipcRenderer.invoke('add-capture');
+      window.electronAPI.invoke('add-capture');
     }
 
     // Handle remove button clicks via event delegation
     imageGallery.addEventListener('click', (e) => {
       if (e.target.classList.contains('gallery-remove') && !isSubmitting) {
         const index = parseInt(e.target.dataset.index);
-        ipcRenderer.invoke('remove-capture', { index });
+        window.electronAPI.invoke('remove-capture', { index });
       }
     });
 
     // Handle new image added
-    ipcRenderer.on('capture-added', (event, data) => {
+    window.electronAPI.on('capture-added', (data) => {
       console.log('Capture added:', data);
       images.push({ filePath: data.filePath });
       maxImages = data.canAddMore ? maxImages : images.length;
@@ -1941,7 +1939,7 @@ updateTeamDependentDropdowns(teamSelect.value);
     });
 
     // Handle image removed
-    ipcRenderer.on('capture-removed', (event, data) => {
+    window.electronAPI.on('capture-removed', (data) => {
       console.log('Capture removed:', data);
       images.splice(data.index, 1);
       renderGallery();
@@ -2323,7 +2321,7 @@ updateTeamDependentDropdowns(teamSelect.value);
     }
 
     // Receive capture data from main process
-    ipcRenderer.on('capture-ready', async (event, data) => {
+    window.electronAPI.on('capture-ready', async (data) => {
       console.log('Capture ready:', data);
 
       try {
@@ -2456,7 +2454,7 @@ updateTeamDependentDropdowns(teamSelect.value);
     });
 
     // Handle AI analysis results (received after window is shown)
-    ipcRenderer.on('ai-analysis-ready', async (event, data) => {
+    window.electronAPI.on('ai-analysis-ready', async (data) => {
       console.log('AI analysis ready:', data);
 
       // Hide AI loading spinner
@@ -2541,7 +2539,7 @@ updateTeamDependentDropdowns(teamSelect.value);
       renderGallery(); // Re-render to hide add button
 
       try {
-        const result = await ipcRenderer.invoke('create-issue', {
+        const result = await window.electronAPI.invoke('create-issue', {
           title,
           description,
           teamId,
@@ -2590,7 +2588,7 @@ updateTeamDependentDropdowns(teamSelect.value);
 
     // Handle cancel
     cancelBtn.addEventListener('click', () => {
-      ipcRenderer.invoke('cancel');
+      window.electronAPI.invoke('cancel');
     });
 
     // Handle Escape key
@@ -2601,7 +2599,7 @@ updateTeamDependentDropdowns(teamSelect.value);
           hideImageModal();
           return;
         }
-        ipcRenderer.invoke('cancel');
+        window.electronAPI.invoke('cancel');
       }
     });
 
@@ -2619,7 +2617,7 @@ updateTeamDependentDropdowns(teamSelect.value);
       reanalyzeBtn.disabled = true;
 
       try {
-        await ipcRenderer.invoke('reanalyze', {
+        await window.electronAPI.invoke('reanalyze', {
           filePath: currentFilePath,
           model: model,
           instruction: instruction || undefined
@@ -2634,14 +2632,14 @@ updateTeamDependentDropdowns(teamSelect.value);
     // Success screen: View issue button
     viewIssueBtn.addEventListener('click', () => {
       if (createdIssueUrl) {
-        require('electron').shell.openExternal(createdIssueUrl);
+        window.electronAPI.openExternal(createdIssueUrl);
       }
-      ipcRenderer.invoke('close-window');
+      window.electronAPI.invoke('close-window');
     });
 
     // Success screen: Close button
     closeSuccessBtn.addEventListener('click', () => {
-      ipcRenderer.invoke('close-window');
+      window.electronAPI.invoke('close-window');
     });
 
     // 페이지 로드 시 초기 갤러리 렌더링 (캡처하기 버튼 표시)
@@ -2653,7 +2651,7 @@ updateTeamDependentDropdowns(teamSelect.value);
     // Load and display current hotkey
     async function updateShortcutHint() {
       try {
-        const result = await ipcRenderer.invoke('get-hotkey');
+        const result = await window.electronAPI.invoke('get-hotkey');
         if (result && result.displayHotkey) {
           // Parse display hotkey (e.g., "⌘ + ⇧ + L") into kbd elements
           const parts = result.displayHotkey.split(' + ').map(part => part.trim());
@@ -2668,7 +2666,7 @@ updateTeamDependentDropdowns(teamSelect.value);
     updateShortcutHint();
 
     // Listen for hotkey changes
-    ipcRenderer.on('hotkey-changed', async (event, data) => {
+    window.electronAPI.on('hotkey-changed', async (data) => {
       if (data && data.displayHotkey) {
         const parts = data.displayHotkey.split(' + ').map(part => part.trim());
         const kbdHtml = parts.map(p => `<kbd>${p}</kbd>`).join(' + ');
@@ -2779,9 +2777,9 @@ updateTeamDependentDropdowns(teamSelect.value);
       semantic_currentResults = [];
 
       try {
-        console.log('[SemanticSearch:JS] ipcRenderer:', ipcRenderer ? 'available' : 'NOT available');
-        if (!ipcRenderer) {
-          console.error('[SemanticSearch:JS] ipcRenderer not available');
+        console.log('[SemanticSearch:JS] electronAPI:', window.electronAPI ? 'available' : 'NOT available');
+        if (!window.electronAPI) {
+          console.error('[SemanticSearch:JS] electronAPI not available');
           if (loadingEl) loadingEl.style.display = 'none';
           if (emptyEl) {
             emptyEl.textContent = 'IPC not available. Please restart the app.';
@@ -2789,13 +2787,13 @@ updateTeamDependentDropdowns(teamSelect.value);
           }
           return;
         }
-        
-        console.log('[SemanticSearch:JS] Calling ipcRenderer.invoke...');
-        const result = await ipcRenderer.invoke('context-semantic-search', {
+
+        console.log('[SemanticSearch:JS] Calling window.electronAPI.invoke...');
+        const result = await window.electronAPI.invoke('context-semantic-search', {
           query: query,
           source: 'slack'
         });
-        console.log('[SemanticSearch:JS] ipcRenderer.invoke returned:', result);
+        console.log('[SemanticSearch:JS] window.electronAPI.invoke returned:', result);
 
         if (loadingEl) loadingEl.style.display = 'none';
 
@@ -3019,7 +3017,7 @@ updateTeamDependentDropdowns(teamSelect.value);
 
     // Open settings button handler
     relatedContextOpenSettings.addEventListener('click', () => {
-      ipcRenderer.invoke('open-settings');
+      window.electronAPI.invoke('open-settings');
     });
 
     // Toggle section expand/collapse
@@ -3083,7 +3081,7 @@ updateTeamDependentDropdowns(teamSelect.value);
       relatedContextStatus.innerHTML = '<span>🔍</span><span>Searching for "' + escapeHtml(query.substring(0, 30)) + '"...</span>';
 
       try {
-        const result = await ipcRenderer.invoke('context.getRelated', { query, limit: 20 });
+        const result = await window.electronAPI.invoke('context.getRelated', { query, limit: 20 });
         console.log('[RelatedContext] Result:', result);
         
         relatedContextLoading.style.display = 'none';

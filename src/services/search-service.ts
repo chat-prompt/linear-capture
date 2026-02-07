@@ -15,6 +15,7 @@ import { TextPreprocessor } from './text-preprocessor';
 import { getSelectedSlackChannels } from './settings-store';
 import { rerank } from './reranker';
 import { applyRecencyBoost } from './recency-boost';
+import { logger } from './utils/logger';
 
 const RRF_K = 60;
 const RETRIEVAL_LIMIT = 100;
@@ -56,7 +57,7 @@ export class SearchService {
     }
 
     if (!this.isInitialized()) {
-      console.warn('[SearchService] Search skipped - DB not initialized');
+      logger.warn('[SearchService] Search skipped - DB not initialized');
       return [];
     }
 
@@ -69,7 +70,7 @@ export class SearchService {
         this.keywordSearch(query, RETRIEVAL_LIMIT, source),
       ]);
 
-      console.log(
+      logger.info(
         `[SearchService] Semantic: ${semanticResults.length}, Keyword: ${keywordResults.length}${source ? `, source: ${source}` : ''}`
       );
 
@@ -81,7 +82,7 @@ export class SearchService {
 
       return sorted.slice(0, limit);
     } catch (error) {
-      console.error('[SearchService] Search failed:', error);
+      logger.error('[SearchService] Search failed:', error);
       return [];
     }
   }
@@ -110,7 +111,7 @@ export class SearchService {
     source?: string
   ): Promise<SearchResult[]> {
     if (!this.isInitialized()) {
-      console.warn('[SearchService] semanticSearch skipped - DB not initialized');
+      logger.warn('[SearchService] semanticSearch skipped - DB not initialized');
       return [];
     }
 
@@ -146,20 +147,20 @@ export class SearchService {
 
   private async keywordSearch(query: string, limit: number, source?: string): Promise<SearchResult[]> {
     if (!this.isInitialized()) {
-      console.warn('[SearchService] keywordSearch skipped - DB not initialized');
+      logger.warn('[SearchService] keywordSearch skipped - DB not initialized');
       return [];
     }
 
     // PostgreSQL websearch_to_tsquery ignores short tokens (<=3 chars) like "cto", "kr"
     if (query.length <= 3) {
-      console.log(`[SearchService] Short query "${query}" - using LIKE search`);
+      logger.info(`[SearchService] Short query "${query}" - using LIKE search`);
       return this.likeSearch(query, limit, source);
     }
 
     const ftsResults = await this.ftsSearch(query, limit, source);
 
     if (ftsResults.length === 0) {
-      console.log(`[SearchService] FTS returned 0 results for "${query}", falling back to LIKE`);
+      logger.info(`[SearchService] FTS returned 0 results for "${query}", falling back to LIKE`);
       return this.likeSearch(query, limit, source);
     }
 
@@ -258,7 +259,7 @@ export class SearchService {
         score: scoreMap.get(`${result.source}:${result.id}`) ?? result.score,
       }));
     } catch (error) {
-      console.error('[SearchService] Rerank failed, using original scores:', error);
+      logger.error('[SearchService] Rerank failed, using original scores:', error);
       return results;
     }
   }
