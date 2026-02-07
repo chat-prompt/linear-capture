@@ -39,7 +39,7 @@ interface PreparedIssue {
 interface BatchResult {
   synced: number;
   failed: number;
-  errors: Array<{ itemId: string; error: string }>;
+  errors: Array<{ id: string; error: string }>;
   latestUpdatedAt: string | null;
 }
 
@@ -56,20 +56,20 @@ export class LinearSyncAdapter {
     this.embeddingClient = getEmbeddingClient();
   }
 
-  async sync(): Promise<SyncResult> {
-    console.log('[LinearSync] Starting full sync');
+   async sync(): Promise<SyncResult> {
+     console.log('[LinearSync] Starting full sync');
 
-    const result: SyncResult = {
-      success: true,
-      itemsSynced: 0,
-      itemsFailed: 0,
-      errors: [],
-    };
+     const result: SyncResult = {
+       success: true,
+       itemsSynced: 0,
+       itemsFailed: 0,
+       errors: [],
+     };
 
-    if (!this.linearService) {
-      console.error('[LinearSync] LinearService not initialized');
-      return { ...result, success: false, errors: [{ itemId: 'init', error: 'LinearService not initialized' }] };
-    }
+     if (!this.linearService) {
+       console.error('[LinearSync] LinearService not initialized');
+       return { ...result, success: false, errors: [{ id: 'init', error: 'LinearService not initialized' }] };
+     }
 
     try {
       await this.updateSyncStatus('syncing');
@@ -114,24 +114,24 @@ export class LinearSyncAdapter {
     return result;
   }
 
-  async syncIncremental(onProgress?: SyncProgressCallback): Promise<SyncResult> {
-    console.log('[LinearSync] Starting incremental sync');
+   async syncIncremental(onProgress?: SyncProgressCallback): Promise<SyncResult> {
+     console.log('[LinearSync] Starting incremental sync');
 
-    const result: SyncResult = {
-      success: true,
-      itemsSynced: 0,
-      itemsFailed: 0,
-      errors: [],
-    };
+     const result: SyncResult = {
+       success: true,
+       itemsSynced: 0,
+       itemsFailed: 0,
+       errors: [],
+     };
 
-    if (!this.linearService) {
-      console.error('[LinearSync] LinearService not initialized');
-      return { ...result, success: false, errors: [{ itemId: 'init', error: 'LinearService not initialized' }] };
-    }
+     if (!this.linearService) {
+       console.error('[LinearSync] LinearService not initialized');
+       return { ...result, success: false, errors: [{ id: 'init', error: 'LinearService not initialized' }] };
+     }
 
-    try {
-      await this.updateSyncStatus('syncing');
-      onProgress?.({ source: 'linear', phase: 'discovering', current: 0, total: 0 });
+     try {
+       await this.updateSyncStatus('syncing');
+       onProgress?.({ source: 'linear', phase: 'discovering', current: 0, total: 0 });
 
       const lastCursor = await this.getLastSyncCursor();
       console.log(`[LinearSync] Last sync cursor: ${lastCursor || 'none'}`);
@@ -140,6 +140,7 @@ export class LinearSyncAdapter {
       const filter = lastCursor
         ? { updatedAt: { gt: new Date(lastCursor) } }
         : {};
+      console.log(`[LinearSync] Incremental sync filter:`, JSON.stringify(filter));
 
       const allIssues = await this.fetchAllIssues(client, filter);
       const totalIssues = allIssues.length;
@@ -189,15 +190,25 @@ export class LinearSyncAdapter {
 
   private async fetchAllIssues(client: any, filter: Record<string, unknown>): Promise<Issue[]> {
     const allNodes: Issue[] = [];
+    let pageCount = 1;
     let connection = await client.issues({ first: 100, filter });
     allNodes.push(...connection.nodes);
+    console.log(`[LinearSync] Page ${pageCount}: fetched ${connection.nodes.length} issues (${allNodes.length} total)`);
 
     while (connection.pageInfo.hasNextPage) {
-      console.log(`[LinearSync] Fetching next page... (${allNodes.length} issues so far)`);
-      connection = await connection.fetchNext();
-      allNodes.push(...connection.nodes);
+      try {
+        pageCount++;
+        connection = await connection.fetchNext();
+        allNodes.push(...connection.nodes);
+        console.log(`[LinearSync] Page ${pageCount}: fetched ${connection.nodes.length} issues (${allNodes.length} total)`);
+      } catch (error) {
+        console.error(`[LinearSync] Error fetching page ${pageCount + 1}:`, error);
+        console.warn(`[LinearSync] Returning partial results: ${allNodes.length} issues from ${pageCount} pages`);
+        break;
+      }
     }
 
+    console.log(`[LinearSync] fetchAllIssues complete: ${allNodes.length} issues from ${pageCount} pages`);
     return allNodes;
   }
 
@@ -218,15 +229,15 @@ export class LinearSyncAdapter {
     const prepared: PreparedIssue[] = [];
     for (let i = 0; i < prepareResults.length; i++) {
       const prepResult = prepareResults[i];
-      if (prepResult.status === 'fulfilled') {
-        prepared.push(prepResult.value);
-      } else {
-        result.failed++;
-        result.errors.push({
-          itemId: issues[i].id,
-          error: prepResult.reason instanceof Error ? prepResult.reason.message : 'Prepare failed',
-        });
-      }
+       if (prepResult.status === 'fulfilled') {
+         prepared.push(prepResult.value);
+       } else {
+         result.failed++;
+         result.errors.push({
+           id: issues[i].id,
+           error: prepResult.reason instanceof Error ? prepResult.reason.message : 'Prepare failed',
+         });
+       }
     }
 
     const needsUpdate = prepared.filter(p => p.needsUpdate);
@@ -245,17 +256,21 @@ export class LinearSyncAdapter {
     const texts = needsUpdate.map(p => p.preprocessedText);
     let embeddings: Float32Array[];
 
-    try {
-      embeddings = await this.embeddingClient.embed(texts);
-    } catch (error) {
-      console.error('[LinearSync] Batch embedding failed:', error);
-      for (const p of needsUpdate) {
-        result.failed++;
-        result.errors.push({
-          itemId: p.issue.id,
-          error: 'Embedding failed',
-        });
-      }
+     try {
+       embeddings = await this.embeddingClient.embed(texts);
+       const emptyEmbeddings = embeddings.filter(e => e.length === 0 || e.every(v => v === 0)).length;
+       if (emptyEmbeddings > 0) {
+         console.warn(`[LinearSync] ${emptyEmbeddings}/${embeddings.length} embeddings are empty/zero`);
+       }
+     } catch (error) {
+       console.error(`[LinearSync] Batch embedding failed for ${needsUpdate.length} items:`, error);
+       for (const p of needsUpdate) {
+         result.failed++;
+         result.errors.push({
+           id: p.issue.id,
+           error: 'Embedding failed',
+         });
+       }
       result.synced = prepared.length - needsUpdate.length;
       return result;
     }
@@ -270,19 +285,19 @@ export class LinearSyncAdapter {
       const p = needsUpdate[i];
       const updatedAt = p.issue.updatedAt?.toISOString();
 
-      if (saveResult.status === 'fulfilled') {
-        result.synced++;
-        if (updatedAt && (!result.latestUpdatedAt || updatedAt > result.latestUpdatedAt)) {
-          result.latestUpdatedAt = updatedAt;
-        }
-      } else {
-        result.failed++;
-        result.errors.push({
-          itemId: p.issue.id,
-          error: saveResult.reason instanceof Error ? saveResult.reason.message : 'Save failed',
-        });
-      }
-    }
+       if (saveResult.status === 'fulfilled') {
+         result.synced++;
+         if (updatedAt && (!result.latestUpdatedAt || updatedAt > result.latestUpdatedAt)) {
+           result.latestUpdatedAt = updatedAt;
+         }
+       } else {
+         result.failed++;
+         result.errors.push({
+           id: p.issue.id,
+           error: saveResult.reason instanceof Error ? saveResult.reason.message : 'Save failed',
+         });
+       }
+     }
 
     const unchangedCount = prepared.length - needsUpdate.length;
     result.synced += unchangedCount;
