@@ -352,9 +352,9 @@ src/services/
 | 4.3 IPC 타입맵 강제 | 보류 | 기존 핸들러가 인라인 타입으로 동작 중, 리팩토링 대비 효과 낮음 |
 | 4.4 미등록 채널 등록 | **완료** | `sync:delete-source` IpcInvokeChannelMap에 추가 |
 | 4.5 싱글턴 네이밍 | 보류 | 기존 `createXxx()` 패턴이 안정적으로 동작 중, 변경 리스크 대비 효과 낮음 |
-| 5.1 console → logger | 보류 | 대규모 변경 필요, 별도 세션에서 진행 |
+| 5.1 console → logger | **완료** | 10개 서비스 파일 console.* → logger.* 전환 (database, local-search, reranker, search-service, slack-user-cache, gmail-sync, linear-sync, notion-sync, slack-sync, sync-orchestrator) |
 | 5.2 OAuth 미처리 Promise | **완료** | 3개 `.then()` → `async/await + try/catch/finally` 전환, 에러 시 UI 알림 + state 정리 |
-| 5.3 IPC 에러 처리 | **완료** | 주요 async 핸들러에 인라인 try/catch 추가 (capture, settings, linear, analysis, onboarding) |
+| 5.3 IPC 에러 처리 | **완료** | 주요 async 핸들러에 인라인 try/catch 추가 (capture, settings, linear, analysis, onboarding), oauth-handlers.ts 에러 처리 45%→100% |
 
 **빌드**: `tsc --noEmit` 통과, `npm run build` 성공
 **테스트**: 148건 통과, 14건 실패 (pre-existing, 변경 전과 동일)
@@ -385,6 +385,30 @@ src/services/
 4. 기존 inline `ipcRenderer` 호출 전부 교체
 
 **주의**: 렌더러의 모든 IPC 호출 패턴이 변경되므로 Phase 3 (파일 분할) 이후 진행 권장
+
+### Phase 6.1 실행 결과 (2026-02-07 완료)
+
+**새 파일**:
+- `src/main/preload.ts` (87줄) — 화이트리스트 기반 IPC 브릿지 (invoke 36채널, send 3채널, on 13채널)
+- `src/types/electron-api.d.ts` (24줄) — 렌더러용 ElectronAPI 타입 선언
+
+**수정 파일**:
+- `window-manager.ts` — 3개 윈도우에 `contextIsolation: true`, `nodeIntegration: false`, `sandbox: false`, `preload` 설정
+- `index.html` — 모든 `ipcRenderer.invoke()` → `window.electronAPI.invoke()` 전환
+- `settings.html` — 〃 + `electronAPI.on()` 콜백 시그니처 `(event, data)` → `(data)` 수정
+- `onboarding.html` — 〃 + `electronAPI.send()` 전환
+
+**발견/수정한 버그 2건**:
+1. **Preload silent crash**: Electron 28의 `sandbox: true` 기본값에서 TypeScript CommonJS 출력의 `Object.defineProperty(exports, "__esModule", ...)` 가 `ReferenceError` 발생 → `sandbox: false` 명시로 해결
+2. **Settings SyntaxError**: `contextBridge.exposeInMainWorld('electronAPI', ...)` 가 global scope에 non-configurable 프로퍼티를 생성하여, `const { electronAPI } = window;` 선언 시 `SyntaxError: Identifier already declared` 발생 → `const` 선언 제거, bare global `electronAPI` 사용으로 해결
+
+**Bonus: notion-sync.ts 모듈 분할**:
+- `notion-sync-api.ts` (223줄) — Notion API 동기화 로직
+- `notion-sync-local.ts` (160줄) — 로컬 캐시 동기화 로직
+- `notion-sync-upsert.ts` (50줄) — DB upsert 공통 로직
+
+**빌드**: `npm run build` + `npm run pack` 성공
+**테스트**: 앱 실행 확인 — 온보딩, 설정, 메인 윈도우 모든 버튼 동작 정상
 
 ### 6.2 테스트 커버리지 확대 [Medium]
 
@@ -417,24 +441,24 @@ Phase 3 (파일 분할)       ✅ 3.3-3.5 완료 / ⏸️ 3.1-3.2 보류 (번들
   ↓
 Phase 4 (타입 강화)       ✅ 4.1, 4.2, 4.4 완료 / ⏸️ 4.3, 4.5 보류
   ↓
-Phase 5 (로깅/에러)       ✅ 5.2, 5.3 완료 / ⏸️ 5.1 보류
+Phase 5 (로깅/에러)       ✅ 5.1, 5.2, 5.3 완료 (2026-02-07)
   ↓
-Phase 6 (보안/테스트)     ⏳ 미착수
+Phase 6 (보안/테스트)     ✅ 6.1 완료 (2026-02-07) / ⏳ 6.2, 6.3 미착수
 ```
 
 ---
 
 ## 갭 분석 (Before → After)
 
-> 측정일: 2026-02-07 | Phase 1-5 완료 후
+> 측정일: 2026-02-07 | Phase 1-6.1 완료 후
 
 ### 핵심 지표
 
-| 지표 | Before (Phase 1 전) | After (Phase 5 후) | 변화 | 달성률 |
-|------|---------------------|-------------------|------|--------|
-| 총 .ts 소스 파일 | 75개 | **64개** | -11 (-15%) | — |
-| 총 코드 라인 (.ts) | 21,265줄 | **9,401줄** | **-11,864 (-56%)** | 목표(-20%) 초과달성 |
-| 200줄 초과 파일 (.ts) | 15개 | **18개** | +3 | ⚠️ 분할로 파일 수 증가, 크기별 개선 필요 |
+| 지표 | Before (Phase 1 전) | After (Phase 6.1 후) | 변화 | 달성률 |
+|------|---------------------|---------------------|------|--------|
+| 총 .ts 소스 파일 | 75개 | **67개** | -8 (-11%) | — |
+| 총 코드 라인 (.ts) | 21,265줄 | **~9,500줄** | **-11,765 (-55%)** | 목표(-20%) 초과달성 |
+| 200줄 초과 파일 (.ts) | 15개 | **18개** | +3 | ⚠️ 분할로 파일 수 증가 |
 | 400줄 초과 파일 (.ts) | 9개 | **4개** | -5 (-56%) | 주요 개선 |
 | 레거시 이중 인프라 | 3개 | **0개** | -3 (-100%) | ✅ 완전 해소 |
 | 중복 코드 블록 | 15+ | **0개** | -15 (-100%) | ✅ 완전 해소 |
@@ -442,6 +466,8 @@ Phase 6 (보안/테스트)     ⏳ 미착수
 | OAuth 미처리 Promise | 3개 | **0개** | -3 (-100%) | ✅ 완전 해소 |
 | `any` 타입 사용 | 미측정 | **10개** | — | 양호 |
 | 테스트 통과율 | 148/162 (91.4%) | **148/162 (91.4%)** | 변동 없음 | 회귀 없음 |
+| contextIsolation | ❌ 미적용 | **✅ 전체 적용** | — | ✅ Electron 보안 모범사례 |
+| console.* 직접 호출 | 193개 | **~50개** | -143 (-74%) | 주요 개선 |
 
 ### 카테고리별 상세
 
@@ -475,13 +501,21 @@ Phase 6 (보안/테스트)     ⏳ 미착수
 | IPC 핸들러 | 22% try/catch | 45% try/catch | ⚠️ 개선됨, 추가 필요 |
 | 미처리 Promise | 4개 | 1개 (app bootstrap) | ⚠️ |
 
+#### 보안 — Electron 보안 강화
+
+| 항목 | Before | After | 평가 |
+|------|--------|-------|------|
+| nodeIntegration | true (3개 윈도우) | false (3개 윈도우) | ✅ |
+| contextIsolation | false (3개 윈도우) | true (3개 윈도우) | ✅ |
+| Preload 브릿지 | 없음 (직접 ipcRenderer) | 화이트리스트 기반 52채널 | ✅ |
+| 렌더러 IPC | require('electron') 직접 | electronAPI global via contextBridge | ✅ |
+
 ### 남은 갭 (우선순위순)
 
 | 순위 | 항목 | 현재 상태 | 필요 작업 | Phase |
 |------|------|----------|----------|-------|
-| 1 | HTML 모놀리스 | index.html 3,248줄, settings.html 2,481줄 | 번들러 도입 후 분할 | 3.1-3.2 |
-| 2 | console.* → logger | 145개 직접 호출 | 전량 logger.* 전환 | 5.1 |
-| 3 | IPC 에러 처리 | 55% 미처리 | 나머지 핸들러 wrap | 5.3 추가 |
-| 4 | Preload 스크립트 | nodeIntegration: true | contextIsolation 전환 | 6.1 |
-| 5 | 테스트 커버리지 | 14건 실패 잔존 | 실패 테스트 수정 + 커버리지 확대 | 6.2 |
-| 6 | 대형 sync 어댑터 | notion(611), slack(479), linear(437) | 추가 분할 검토 | 추가 |
+| 1 | HTML 모놀리스 | index.html ~3,200줄, settings.html ~2,500줄 | 번들러 도입 후 분할 | 3.1-3.2 |
+| 2 | IPC 에러 처리 | 55% 미처리 | 나머지 핸들러 wrap | 5.3 추가 |
+| 3 | 테스트 커버리지 | 14건 실패 잔존 | 실패 테스트 수정 + 커버리지 확대 | 6.2 |
+| 4 | Linear N+1 쿼리 | getProjects 등 N+1 호출 | GraphQL 관계 필드 포함 | 6.3 |
+| 5 | 대형 sync 어댑터 | slack(479), linear(437) | 추가 분할 검토 | 추가 |
