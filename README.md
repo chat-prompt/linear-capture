@@ -6,9 +6,13 @@
 
 - **⌘+Shift+L**: 화면 영역을 선택해서 캡처
 - **다중 이미지**: 최대 10장의 스크린샷을 하나의 이슈에 첨부
-- **AI 분석**: Claude Haiku가 스크린샷을 분석하여 제목/설명/담당자/우선순위 자동 추천
+- **AI 분석**: Claude Haiku / Gemini Flash가 스크린샷을 분석하여 제목/설명/담당자/우선순위 자동 추천
+- **AI 컨텍스트 검색**: Notion, Slack, Gmail, Linear 데이터를 로컬 검색하여 관련 컨텍스트 자동 추천
 - **자동 업로드**: 캡처 이미지가 Cloudflare R2에 자동 업로드
 - **Linear 이슈 생성**: 팀, 프로젝트, 사이클 선택 후 이슈 생성
+- **Notion 동기화**: 로컬 캐시(21k+ 페이지) 또는 API를 통한 배치 동기화
+- **Slack/Gmail 연동**: OAuth 기반 메시지/이메일 동기화
+- **다국어 지원**: 영어, 한국어, 독일어, 프랑스어, 스페인어
 - **자동 업데이트**: 새 버전 알림 및 업데이트 (Settings에서 확인)
 
 ## 설치
@@ -41,7 +45,15 @@ LINEAR_API_TOKEN=lin_api_xxxxx
 DEFAULT_TEAM_ID=your-team-id  # 선택사항
 ```
 
-**참고**: R2 및 AI API 키는 서버(Cloudflare Worker)에서 관리되므로 설정 불필요.
+### OpenAI API Key (로컬 검색용)
+
+Settings → General에서 OpenAI API Key를 입력하면 로컬 임베딩 검색이 활성화됩니다.
+
+### Slack / Gmail 연동
+
+Settings → Integrations에서 OAuth 연결로 동기화를 활성화합니다.
+
+**참고**: AI 분석용 API 키(Anthropic, Gemini)는 서버에서 관리되므로 별도 설정 불필요.
 
 ## 사용법
 
@@ -74,11 +86,15 @@ tccutil reset ScreenCapture com.gpters.linear-capture
 
 ## 기술 스택
 
-- **Frontend**: Electron + TypeScript
-- **Backend**: Cloudflare Workers (AI 분석 + R2 업로드)
-- **AI**: Claude Haiku 4.5 / Gemini Flash
-- **Storage**: Cloudflare R2
-- **API**: Linear GraphQL
+- **App**: Electron + TypeScript
+- **AI 분석**: Claude Haiku 4.5 / Gemini Flash (Cloudflare Worker)
+- **Local DB**: PGlite (PostgreSQL in WASM) + pgvector
+- **검색**: 벡터 + FTS 하이브리드 검색 (RRF)
+- **임베딩**: OpenAI text-embedding-3-small
+- **Notion 캐시**: sql.js (로컬 SQLite 직접 읽기)
+- **스토리지**: Cloudflare R2
+- **API**: Linear GraphQL, Slack Web API, Gmail API
+- **다국어**: i18next (en, ko, de, fr, es)
 
 ## License
 

@@ -1,6 +1,6 @@
 # Linear Capture
 
-macOS/Windows 화면 캡처 → Linear 이슈 자동 생성 앱 (v1.2.9)
+macOS/Windows 화면 캡처 → Linear 이슈 자동 생성 앱 (v1.2.10)
 
 ## 실행 방법
 
@@ -15,54 +15,91 @@ npm start
 ## 아키텍처
 
 ```
-┌─────────────────┐     ┌─────────────────────────────────────┐
-│  Electron App   │────▶│  Cloudflare Worker (linear-capture-ai) │
-│  (Linear Capture)│     │  - AI 분석 (Haiku/Gemini)           │
-└─────────────────┘     │  - R2 이미지 업로드                  │
-        │               └─────────────────────────────────────┘
+┌──────────────────────┐     ┌─────────────────────────────────────┐
+│  Electron App        │────▶│  Cloudflare Worker (linear-capture-ai) │
+│  (Linear Capture)    │     │  - AI 분석 (Haiku/Gemini)           │
+│                      │     │  - R2 이미지 업로드                  │
+│  ┌────────────────┐  │     │  - Notion API 프록시                 │
+│  │ PGlite DB      │  │     └─────────────────────────────────────┘
+│  │ (벡터검색+FTS)  │  │
+│  └────────────────┘  │            ┌──────────────────┐
+│  ┌────────────────┐  │───────────▶│  OpenAI API      │
+│  │ Notion 로컬캐시 │  │            │  (임베딩 생성)    │
+│  │ (sql.js)       │  │            └──────────────────┘
+│  └────────────────┘  │
+└──────────────────────┘
         │
         ▼
-┌─────────────────┐
-│  Linear API     │
-│  (이슈 생성)     │
-└─────────────────┘
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│  Linear API  │  │  Slack API   │  │  Gmail API   │
+│  (이슈 생성)  │  │  (OAuth)     │  │  (OAuth)     │
+└──────────────┘  └──────────────┘  └──────────────┘
 ```
 
-**핵심**: API 키(Anthropic, Gemini, R2)는 모두 Worker에서 관리. 앱에는 Linear API 토큰만 필요.
+**핵심**:
+- AI 분석용 API 키(Anthropic, Gemini, R2)는 Worker에서 관리, 앱에는 불필요
+- 로컬 검색용 임베딩은 앱 내 OpenAI API key 필요 (Settings에서 설정)
+- Notion 로컬 캐시(SQLite)를 직접 읽어 21k+ 페이지 고속 동기화
 
 ## 프로젝트 구조
 
 ```
 linear-capture/
 ├── src/
-│   ├── main/
-│   │   ├── index.ts          # 메인 프로세스, IPC 핸들러
-│   │   ├── hotkey.ts         # ⌘+Shift+L (Ctrl+Shift+L) 글로벌 단축키
-│   │   └── tray.ts           # 메뉴바/시스템 트레이 아이콘
+│   ├── main/                         # Electron 메인 프로세스 (CLAUDE.md 참조)
+│   │   ├── index.ts                  # 앱 라이프사이클, 엔트리포인트
+│   │   ├── ipc-handlers.ts           # IPC 핸들러 (렌더러↔메인 통신)
+│   │   ├── window-manager.ts         # 윈도우 생성/관리
+│   │   ├── capture-session.ts        # 캡처 세션 관리
+│   │   ├── hotkey.ts                 # ⌘+Shift+L 글로벌 단축키
+│   │   ├── tray.ts                   # 메뉴바/시스템 트레이
+│   │   ├── oauth-handlers.ts         # Slack/Gmail OAuth 콜백
+│   │   ├── i18n.ts                   # 다국어 초기화
+│   │   ├── state.ts                  # 앱 상태 관리
+│   │   └── types.ts                  # 공통 타입
 │   ├── renderer/
-│   │   ├── index.html        # 이슈 생성 폼 UI
-│   │   └── settings.html     # 설정 UI
-│   └── services/
-│       ├── capture/                 # 크로스 플랫폼 캡처 서비스
-│       │   ├── index.ts            # 인터페이스 + 팩토리
-│       │   ├── capture.darwin.ts   # macOS 구현 (screencapture CLI)
-│       │   └── capture.win32.ts    # Windows 구현 (예정)
-│       ├── r2-uploader.ts    # Worker 통해 R2 업로드
-│       ├── anthropic-analyzer.ts  # Worker 통해 AI 분석
-│       ├── linear-client.ts  # Linear SDK 래퍼
-│       └── auto-updater.ts   # 자동 업데이트
-├── .env                      # LINEAR_API_TOKEN만 필요
+│   │   ├── index.html                # 이슈 생성 폼 UI
+│   │   ├── settings.html             # 설정 UI (토큰, 동기화, 연동)
+│   │   └── onboarding.html           # 최초 실행 온보딩
+│   ├── services/                     # 비즈니스 로직 (CLAUDE.md 참조)
+│   │   ├── capture/                  # 크로스 플랫폼 캡처
+│   │   ├── sync-adapters/            # 소스별 동기화 어댑터
+│   │   ├── context-adapters/         # AI 컨텍스트 어댑터
+│   │   ├── local-search.ts           # 로컬 검색 오케스트레이터
+│   │   ├── hybrid-search.ts          # 벡터 + FTS 하이브리드 검색
+│   │   ├── embedding-service.ts      # OpenAI 임베딩 (배치 지원)
+│   │   ├── database.ts               # PGlite (PostgreSQL in WASM)
+│   │   ├── notion-local-reader.ts    # Notion 로컬 SQLite 캐시 읽기
+│   │   ├── linear-client.ts          # Linear SDK 래퍼
+│   │   ├── slack-client.ts           # Slack API 클라이언트
+│   │   ├── gmail-client.ts           # Gmail API 클라이언트
+│   │   ├── settings-store.ts         # 설정 저장소 (electron-store)
+│   │   └── auto-updater.ts           # 자동 업데이트
+│   └── types/
+│       └── context-search.ts         # 컨텍스트 검색 타입
+├── scripts/                          # 빌드/배포/i18n 스크립트
+├── locales/{en,ko,de,fr,es}/         # 다국어 번역 파일
+├── .env                              # LINEAR_API_TOKEN
 └── package.json
 ```
 
-## 설정 (.env)
+## 설정
+
+### .env (필수)
 
 ```env
 LINEAR_API_TOKEN=lin_api_xxxxx
 DEFAULT_TEAM_ID=e108ae14-a354-4c09-86ac-6c1186bc6132
 ```
 
-**참고**: R2/Gemini/Anthropic API 키는 Worker에서 관리되므로 앱에는 불필요.
+### Settings UI (앱 내 설정)
+
+- **OpenAI API Key**: 로컬 검색용 임베딩 생성에 필요 (Settings → General)
+- **Slack 연동**: OAuth 연결 (Settings → Integrations)
+- **Gmail 연동**: OAuth 연결 (Settings → Integrations)
+- **Notion 동기화**: Notion 앱 설치 시 로컬 캐시 자동 활용
+
+**참고**: AI 분석용 Anthropic/Gemini/R2 API 키는 Worker에서 관리, 앱에는 불필요.
 
 ## 사용자 흐름
 
@@ -85,6 +122,9 @@ npm run dist:mac     # DMG 패키징 (서명 + 공증 - 배포용)
 npm run reinstall    # 완전 클린 재설치 (권한 리셋 포함)
 npm run translate    # i18n 자동 번역 (누락 키 → Gemini API)
 npm run validate:i18n # i18n 검증 (누락/중복 키 확인)
+npm test             # vitest 실행 (watch 모드)
+npx vitest run       # 전체 테스트 1회 실행
+npm run clean        # dist, release 폴더 삭제
 ```
 
 ## i18n 자동 번역
