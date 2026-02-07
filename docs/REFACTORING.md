@@ -253,23 +253,72 @@ src/services/
 
 ### Phase 3 합계: 파일 20+ 개로 분할, 평균 파일 크기 ~150줄
 
-### Phase 3 실행 결과 (2026-02-07 부분 완료)
+### Phase 3 실행 결과 (2026-02-07 완료)
 
 | 항목 | 상태 | 내용 |
 |------|------|------|
-| 3.1 index.html 분할 | 보류 | Electron nodeIntegration 환경에서 HTML 인라인 스크립트 분할은 번들러 도입 필요 → Phase 6 이후 진행 |
-| 3.2 settings.html 분할 | 보류 | 3.1과 동일 사유 |
+| 3.1 index.html 분할 | **완료** | 3,247줄 → 271줄 (92% 감소), esbuild 번들러 도입, CSS 4파일 + JS 8모듈로 분할 |
+| 3.2 settings.html 분할 | **완료** | 2,483줄 → 236줄 (90% 감소), CSS 1파일 + JS 11모듈로 분할 |
 | 3.3 ipc-handlers.ts 분할 | **완료** | 894줄 → 9개 도메인별 파일로 분할 (index, linear, capture, analysis, sync, search, settings, oauth, onboarding) |
 | 3.4 notion-local-reader.ts 분할 | **완료** | 805줄 → facade (207줄) + 4개 모듈 (types, block-utils, page-parser, search) |
 | 3.5 local-search.ts 분할 | **완료** | 517줄 → facade (63줄) + SyncOrchestrator (128줄) + SearchService (317줄), types를 shared.ts로 이동 |
 
-**빌드**: `tsc --noEmit` 통과, `npm run build` 성공
-**테스트**: 148건 통과, 14건 실패 (pre-existing)
+**빌드**: `tsc --noEmit` 통과, `npm run build` 성공 (esbuild 12ms)
+**테스트**: `npm run pack` 성공, 앱 실행 정상
+
+**Phase 3.1-3.2 상세 (esbuild 도입 + HTML 모놀리스 분할)**:
+
+번들러: esbuild (IIFE format, platform: browser, target: chrome120)
+- 메인 프로세스: 기존 tsc 유지 (CJS)
+- 렌더러 프로세스: esbuild로 TS → JS 번들링
+
+새 인프라 파일:
+- `esbuild.renderer.mjs` — 번들러 설정 + 정적 파일 복사
+- `src/renderer/scripts/tsconfig.json` — 에디터 IntelliSense용 (noEmit)
+
+CSS 추출 (5개):
+- `styles/main.css` (390줄) — 기본 레이아웃, 폼, 버튼, 모달
+- `styles/gallery.css` (110줄) — 이미지 갤러리
+- `styles/dropdown.css` (248줄) — searchable-select, 라벨 칩
+- `styles/context.css` (906줄) — 관련 컨텍스트 + 시맨틱 검색 (semantic-search.css 통합)
+- `styles/settings.css` (960줄) — 설정 페이지
+
+공유 모듈 (3개):
+- `scripts/shared/ipc.ts` — window.electronAPI 타입 래퍼
+- `scripts/shared/utils.ts` — escapeHtml, capitalizeFirst
+- `scripts/shared/i18n.ts` — t(), translatePage(), autoTranslate()
+
+index.html JS 모듈 (8개):
+- `scripts/main/state.ts` (103줄) — 공유 상태 + setter 함수 + initDomElements
+- `scripts/main/searchable-dropdown.ts` (107줄) — 재사용 드롭다운 팩토리
+- `scripts/main/image-gallery.ts` (116줄) — 갤러리 렌더, 추가/삭제, 모달
+- `scripts/main/linear-dropdowns.ts` (280줄) — 라벨/팀/상태/사이클 드롭다운
+- `scripts/main/issue-form.ts` (341줄) — 폼 제출, AI 분석, 성공 화면
+- `scripts/main/semantic-search.ts` (252줄) — 시맨틱 검색 UI
+- `scripts/main/related-context.ts` (260줄) — 관련 컨텍스트 검색/삽입
+- `scripts/main/app.ts` (177줄) — 엔트리포인트, i18n, IPC 리스너
+
+settings.html JS 모듈 (11개):
+- `scripts/settings/token.ts` — 토큰 입력/검증/저장
+- `scripts/settings/hotkey.ts` — 단축키 녹음/저장
+- `scripts/settings/slack.ts` — Slack 연결/해제/상태
+- `scripts/settings/channel-modal.ts` — 채널 선택 모달
+- `scripts/settings/notion.ts` — Notion 연결/해제
+- `scripts/settings/gmail.ts` — Gmail 연결/해제
+- `scripts/settings/sync-status.ts` — 동기화 상태/진행률
+- `scripts/settings/menu-dropdown.ts` — 드롭다운 메뉴 토글
+- `scripts/settings/language.ts` — 언어 선택
+- `scripts/settings/version.ts` — 버전 확인/업데이트
+- `scripts/settings/app.ts` — 엔트리포인트
+
+삭제된 파일:
+- `src/renderer/semantic-search.css` (styles/context.css에 통합)
+- `src/renderer/i18n.ts` (scripts/shared/i18n.ts로 대체)
 
 **전체 Phase 2+3 누적 변경**:
-- 수정: 6개 파일 (+132/-2,147줄)
-- 새 파일: 15개 (ipc-handlers/ 9개, notion/ 4개, sync-orchestrator.ts, search-service.ts)
-- 삭제: 1개 (ipc-handlers.ts)
+- 수정: 6개 파일 (+132/-2,147줄) + index.html, settings.html 리라이트
+- 새 파일: 15개 (ipc-handlers/ 9개, notion/ 4개, sync-orchestrator.ts, search-service.ts) + 27개 (렌더러 모듈)
+- 삭제: 1개 (ipc-handlers.ts) + 2개 (semantic-search.css, i18n.ts)
 
 ---
 
@@ -437,7 +486,7 @@ Phase 1 (레거시 제거)     ✅ 완료 (2026-02-07)
   ↓
 Phase 2 (중복 제거)       ✅ 완료 (2026-02-07)
   ↓
-Phase 3 (파일 분할)       ✅ 3.3-3.5 완료 / ⏸️ 3.1-3.2 보류 (번들러 필요)
+Phase 3 (파일 분할)       ✅ 완료 (2026-02-07) — 3.1-3.2: esbuild 도입 + HTML 분할
   ↓
 Phase 4 (타입 강화)       ✅ 4.1, 4.2, 4.4 완료 / ⏸️ 4.3, 4.5 보류
   ↓
@@ -450,14 +499,14 @@ Phase 6 (보안/테스트)     ✅ 6.1 완료 (2026-02-07) / ⏳ 6.2, 6.3 미착
 
 ## 갭 분석 (Before → After)
 
-> 측정일: 2026-02-07 | Phase 1-6.1 완료 후
+> 측정일: 2026-02-07 | Phase 1-6.1 + Phase 3.1-3.2 완료 후
 
 ### 핵심 지표
 
 | 지표 | Before (Phase 1 전) | After (Phase 6.1 후) | 변화 | 달성률 |
 |------|---------------------|---------------------|------|--------|
 | 총 .ts 소스 파일 | 75개 | **67개** | -8 (-11%) | — |
-| 총 코드 라인 (.ts) | 21,265줄 | **~9,500줄** | **-11,765 (-55%)** | 목표(-20%) 초과달성 |
+| 총 코드 라인 (.ts) | 21,265줄 | **~9,500줄** (+렌더러 TS 27파일) | **-11,765 (-55%)** | 목표(-20%) 초과달성 |
 | 200줄 초과 파일 (.ts) | 15개 | **18개** | +3 | ⚠️ 분할로 파일 수 증가 |
 | 400줄 초과 파일 (.ts) | 9개 | **4개** | -5 (-56%) | 주요 개선 |
 | 레거시 이중 인프라 | 3개 | **0개** | -3 (-100%) | ✅ 완전 해소 |
@@ -486,6 +535,9 @@ Phase 6 (보안/테스트)     ✅ 6.1 완료 (2026-02-07) / ⏳ 6.2, 6.3 미착
 
 | 항목 | Before | After | 평가 |
 |------|--------|-------|------|
+| index.html | 3,247줄 인라인 CSS+JS | 271줄 HTML + CSS 4파일 + JS 8모듈 | ✅ |
+| settings.html | 2,483줄 인라인 CSS+JS | 236줄 HTML + CSS 1파일 + JS 11모듈 | ✅ |
+| 렌더러 번들러 | 없음 (인라인 script) | esbuild IIFE 번들 (12ms) | ✅ |
 | ipc-handlers.ts | 894줄 단일 파일 | 9개 도메인별 파일 | ✅ |
 | notion-local-reader.ts | 805줄 단일 파일 | facade + 4 모듈 | ✅ |
 | local-search.ts | 517줄 단일 파일 | facade + orchestrator + service | ✅ |
@@ -514,7 +566,7 @@ Phase 6 (보안/테스트)     ✅ 6.1 완료 (2026-02-07) / ⏳ 6.2, 6.3 미착
 
 | 순위 | 항목 | 현재 상태 | 필요 작업 | Phase |
 |------|------|----------|----------|-------|
-| 1 | HTML 모놀리스 | index.html ~3,200줄, settings.html ~2,500줄 | 번들러 도입 후 분할 | 3.1-3.2 |
+| 1 | ~~HTML 모놀리스~~ | ~~index.html ~3,200줄, settings.html ~2,500줄~~ | ~~번들러 도입 후 분할~~ | ~~3.1-3.2~~ ✅ 완료 |
 | 2 | IPC 에러 처리 | 55% 미처리 | 나머지 핸들러 wrap | 5.3 추가 |
 | 3 | 테스트 커버리지 | 14건 실패 잔존 | 실패 테스트 수정 + 커버리지 확대 | 6.2 |
 | 4 | Linear N+1 쿼리 | getProjects 등 N+1 호출 | GraphQL 관계 필드 포함 | 6.3 |

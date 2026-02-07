@@ -21,3 +21,4 @@ AI_CASE_STUDY*.md
 __pycache__/
 *.pyc
 scripts/test-search-quality.mjs
+preload.js
