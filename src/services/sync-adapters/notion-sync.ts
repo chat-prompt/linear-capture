@@ -294,8 +294,10 @@ export class NotionSyncAdapter {
 
   /**
    * Fallback sync using Notion API (when local cache unavailable)
+   * Collects pages first, then batch-embeds for performance.
    */
   private async syncFromApi(onProgress?: SyncProgressCallback): Promise<SyncResult> {
+    const startTime = Date.now();
     const result: SyncResult = {
       success: true,
       itemsSynced: 0,
@@ -310,20 +312,14 @@ export class NotionSyncAdapter {
       const lastSyncCursor = await this.getLastSyncCursor();
       console.log(`[NotionSync] Last sync cursor: ${lastSyncCursor || 'none'}`);
 
+      // Phase 1: Discover all pages
+      const allPages: NotionPage[] = [];
       let cursor: string | undefined;
       let hasMore = true;
-      let latestTime: string | undefined;
 
       while (hasMore) {
         console.log(`[NotionSync] Calling searchPagesForSync with cursor: ${cursor || 'none'}`);
         const searchResult = await this.notionService.searchPagesForSync(100, cursor);
-        console.log(`[NotionSync] searchPagesForSync result:`, JSON.stringify({
-          success: searchResult.success,
-          pagesCount: searchResult.pages?.length,
-          hasMore: searchResult.hasMore,
-          nextCursor: searchResult.nextCursor,
-          error: searchResult.error
-        }));
 
         if (!searchResult.success || !searchResult.pages) {
           throw new Error(searchResult.error || 'Failed to fetch pages');
@@ -337,28 +333,159 @@ export class NotionSyncAdapter {
           `[NotionSync] Found ${pagesToSync.length} pages to sync (${searchResult.pages.length} in batch, cursor: ${cursor || 'none'})`
         );
 
-        for (const page of pagesToSync) {
-          try {
-            onProgress?.({ source: 'notion', phase: 'syncing', current: result.itemsSynced, total: pagesToSync.length });
-            await this.syncPage(page);
-            result.itemsSynced++;
-          } catch (error) {
-            console.error(`[NotionSync] Failed to sync page ${page.id}:`, error);
-            result.itemsFailed++;
-            result.errors.push({
-              pageId: page.id,
-              error: error instanceof Error ? error.message : 'Unknown error',
-            });
-          }
-
-          if (!latestTime || page.lastEditedTime > latestTime) {
-            latestTime = page.lastEditedTime;
-          }
-        }
-
+        allPages.push(...pagesToSync);
         hasMore = searchResult.hasMore ?? false;
         cursor = searchResult.nextCursor ?? undefined;
       }
+
+      if (allPages.length === 0) {
+        await this.updateSyncStatus('idle');
+        onProgress?.({ source: 'notion', phase: 'complete', current: 0, total: 0 });
+        return result;
+      }
+
+      // Phase 2: Fetch page content with concurrency limit
+      const CONCURRENCY = 3;
+      const MAX_TEXT_CHARS = 5000;
+      const pagesWithContent: Array<{
+        page: NotionPage;
+        preprocessed: string;
+        hash: string;
+        metadata: Record<string, unknown>;
+      }> = [];
+
+      for (let i = 0; i < allPages.length; i += CONCURRENCY) {
+        const chunk = allPages.slice(i, i + CONCURRENCY);
+        onProgress?.({ source: 'notion', phase: 'syncing', current: i, total: allPages.length });
+
+        const results = await Promise.allSettled(
+          chunk.map(async (page) => {
+            const contentResult = await this.notionService.getPageContent(page.id);
+            return { page, contentResult };
+          })
+        );
+
+        for (const settled of results) {
+          if (settled.status === 'rejected') {
+            result.itemsFailed++;
+            result.errors.push({ pageId: 'unknown', error: String(settled.reason) });
+            continue;
+          }
+
+          const { page, contentResult } = settled.value;
+          if (!contentResult.success || !contentResult.content) {
+            result.itemsFailed++;
+            result.errors.push({
+              pageId: page.id,
+              error: contentResult.error || 'Failed to fetch page content',
+            });
+            continue;
+          }
+
+          const fullText = `${page.title}\n\n${contentResult.content}`;
+          let preprocessed = this.preprocessor.preprocess(fullText);
+          if (preprocessed.length > MAX_TEXT_CHARS) {
+            preprocessed = preprocessed.substring(0, MAX_TEXT_CHARS);
+          }
+          const hash = this.calculateContentHash(preprocessed);
+
+          if (preprocessed.trim().length === 0) continue;
+
+          pagesWithContent.push({
+            page,
+            preprocessed,
+            hash,
+            metadata: {
+              url: page.url,
+              icon: page.icon,
+              parentType: page.parentType,
+              blockCount: contentResult.blockCount,
+              truncated: contentResult.truncated,
+            },
+          });
+        }
+      }
+
+      // Phase 3: Filter unchanged pages
+      const db = this.dbService.getDb();
+      const existingHashes = await db.query<{ source_id: string; content_hash: string }>(
+        `SELECT source_id, content_hash FROM documents WHERE source_type = $1`,
+        ['notion']
+      );
+      const hashMap = new Map(existingHashes.rows.map(r => [r.source_id, r.content_hash]));
+
+      const changedPages = pagesWithContent.filter(p => hashMap.get(p.page.id) !== p.hash);
+      console.log(`[NotionSync] ${changedPages.length} pages changed (need embedding)`);
+
+      // Phase 4: Batch embed and save
+      const BATCH_SIZE = 300;
+      for (let i = 0; i < changedPages.length; i += BATCH_SIZE) {
+        const batch = changedPages.slice(i, i + BATCH_SIZE);
+        const texts = batch.map(p => p.preprocessed);
+
+        onProgress?.({ source: 'notion', phase: 'embedding', current: i, total: changedPages.length });
+        console.log(`[NotionSync] Embedding batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(changedPages.length / BATCH_SIZE)} (${batch.length} pages)`);
+
+        try {
+          const embeddings = await this.embeddingService.embedBatch(texts);
+
+          const savePromises = batch.map(async (item, idx) => {
+            try {
+              await db.query(
+                `
+                INSERT INTO documents (
+                  source_type, source_id, title, content, content_hash,
+                  embedding, metadata, source_created_at, source_updated_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                ON CONFLICT (source_type, source_id) 
+                DO UPDATE SET
+                  title = EXCLUDED.title,
+                  content = EXCLUDED.content,
+                  content_hash = EXCLUDED.content_hash,
+                  embedding = EXCLUDED.embedding,
+                  metadata = EXCLUDED.metadata,
+                  source_updated_at = EXCLUDED.source_updated_at,
+                  indexed_at = NOW()
+                `,
+                [
+                  'notion',
+                  item.page.id,
+                  item.page.title,
+                  item.preprocessed,
+                  item.hash,
+                  JSON.stringify(embeddings[idx]),
+                  JSON.stringify(item.metadata),
+                  new Date(item.page.lastEditedTime),
+                  new Date(item.page.lastEditedTime)
+                ]
+              );
+              result.itemsSynced++;
+            } catch (error) {
+              result.itemsFailed++;
+              result.errors.push({
+                pageId: item.page.id,
+                error: error instanceof Error ? error.message : 'DB insert failed',
+              });
+            }
+          });
+
+          await Promise.all(savePromises);
+        } catch (error) {
+          console.error(`[NotionSync] Batch embedding failed:`, error);
+          for (const item of batch) {
+            result.itemsFailed++;
+            result.errors.push({
+              pageId: item.page.id,
+              error: error instanceof Error ? error.message : 'Embedding failed',
+            });
+          }
+        }
+      }
+
+      const latestTime = allPages.reduce((max, p) =>
+        p.lastEditedTime > max ? p.lastEditedTime : max,
+        allPages[0]?.lastEditedTime || ''
+      );
 
       if (latestTime) {
         await this.updateSyncCursor(latestTime, result.itemsSynced);
@@ -368,8 +495,9 @@ export class NotionSyncAdapter {
       await this.updateSyncStatus('idle');
       onProgress?.({ source: 'notion', phase: 'complete', current: result.itemsSynced, total: result.itemsSynced });
 
+      const elapsed = Date.now() - startTime;
       console.log(
-        `[NotionSync] API sync complete: ${result.itemsSynced} synced, ${result.itemsFailed} failed`
+        `[NotionSync] API sync complete: ${result.itemsSynced} synced, ${result.itemsFailed} failed in ${elapsed}ms`
       );
     } catch (error) {
       console.error('[NotionSync] API sync failed:', error);
