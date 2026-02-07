@@ -156,7 +156,8 @@
     "save": "Enregistrer",
     "skip": "Ignorer",
     "editChannels": "Modifier",
-    "saveAndSync": "Enregistrer et synchroniser"
+    "saveAndSync": "Enregistrer et synchroniser",
+    "selectChannelsAction": "Sélectionner des canaux"
   },
   "notion": {
     "title": "Notion",

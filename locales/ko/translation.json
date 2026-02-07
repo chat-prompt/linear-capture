@@ -156,7 +156,8 @@
     "save": "저장",
     "skip": "건너뛰기",
     "editChannels": "채널 편집",
-    "saveAndSync": "저장 및 동기화"
+    "saveAndSync": "저장 및 동기화",
+    "selectChannelsAction": "채널 선택"
   },
   "notion": {
     "title": "Notion",

@@ -156,7 +156,8 @@
     "save": "Speichern",
     "skip": "Überspringen",
     "editChannels": "Bearbeiten",
-    "saveAndSync": "Speichern & Synchronisieren"
+    "saveAndSync": "Speichern & Synchronisieren",
+    "selectChannelsAction": "Kanäle auswählen"
   },
   "notion": {
     "title": "Notion",
