@@ -247,6 +247,16 @@
     "syncNow": "동기화",
     "ready": "동기화 준비 완료",
     "syncing": "동기화 중...",
-    "failed": "동기화 실패"
+    "failed": "동기화 실패",
+    "lastSyncPrefix": "동기화됨",
+    "justNow": "방금",
+    "minutesAgo": "{{count}}분 전",
+    "hoursAgo": "{{count}}시간 전",
+    "daysAgo": "{{count}}일 전",
+    "synced_messages": "메시지 동기화됨",
+    "synced_docs": "페이지 동기화됨",
+    "synced_emails": "이메일 동기화됨",
+    "synced_issues": "이슈 동기화됨",
+    "notSyncedYet": "아직 동기화되지 않았습니다"
   }
 }

@@ -105,11 +105,28 @@
       color: #ef4444;
     }
 
+    .token-input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .token-input-row input[type="password"],
+    .token-input-row input[type="text"] {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .token-input-row .buttons {
+      margin-top: 0;
+    }
+
     .buttons {
       display: flex;
       gap: 10px;
       justify-content: flex-end;
-      margin-top: 20px;
+      flex-shrink: 0;
+      white-space: nowrap;
     }
 
     button {
@@ -234,11 +251,21 @@
       background: #eee;
     }
 
-    /* Hotkey Section */
-    .hotkey-section {
+    /* Settings Row (Hotkey + Language side by side) */
+    .settings-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
       margin-top: 20px;
       padding-top: 16px;
       border-top: 1px solid #eee;
+    }
+
+    /* Hotkey Section */
+    .hotkey-section {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
     }
 
     .hotkey-section h2 {
@@ -342,12 +369,15 @@
     }
 
     .integration-row {
-      display: flex;
-      align-items: center;
-      padding: 10px 12px;
+      display: grid;
+      grid-template-columns: 24px 1fr auto;
+      grid-template-rows: auto auto;
+      gap: 2px 12px;
+      padding: 14px 16px;
       background: #f8f9fa;
-      border-radius: 8px;
-      margin-bottom: 6px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      align-items: center;
     }
 
     .integration-row:last-of-type {
@@ -355,26 +385,70 @@
     }
 
     .integration-logo {
-      width: 18px;
-      height: 18px;
-      margin-right: 10px;
-      flex-shrink: 0;
+      grid-row: 1 / 3;
+      grid-column: 1;
+      width: 22px;
+      height: 22px;
+      align-self: center;
     }
 
     .integration-name {
+      grid-row: 1;
+      grid-column: 2;
       font-size: 14px;
       font-weight: 500;
       color: #333;
-      width: 60px;
-      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .integration-workspace {
+      font-size: 13px;
+      color: #888;
+      font-weight: 400;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .integration-detail {
+      grid-row: 2;
+      grid-column: 2;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 18px;
+    }
+
+    .integration-doc-count {
+      font-size: 12px;
+      color: #999;
+    }
+
+    .integration-detail-sep {
+      color: #ccc;
+      font-size: 12px;
+    }
+
+    .integration-last-sync {
+      font-size: 12px;
+      color: #999;
+    }
+
+    .integration-actions {
+      grid-row: 1 / 3;
+      grid-column: 3;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .integration-status {
-      flex: 1;
       font-size: 13px;
       color: #888;
-      text-align: right;
-      margin-right: 12px;
+      white-space: nowrap;
     }
 
     .integration-status.connected {
@@ -382,8 +456,8 @@
     }
 
     .btn-integration {
-      padding: 6px 14px;
-      border-radius: 6px;
+      padding: 8px 18px;
+      border-radius: 8px;
       font-size: 13px;
       font-weight: 500;
       cursor: pointer;
@@ -391,7 +465,7 @@
       border: none;
       background: #5e6ad2;
       color: white;
-      min-width: 80px;
+      min-width: 90px;
     }
 
     .btn-integration:hover:not(:disabled) {
@@ -619,7 +693,7 @@
     .integration-channel-hint {
       font-size: 12px;
       color: #888;
-      padding-left: 28px;
+      padding-left: 36px;
       margin-top: 2px;
       margin-bottom: 6px;
     }
@@ -770,16 +844,16 @@
     }
 
     .btn-sync {
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 12px;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 13px;
       font-weight: 500;
       cursor: pointer;
       transition: all 0.2s;
       border: 1px solid #ddd;
       background: #f5f5f5;
       color: #666;
-      min-width: 70px;
+      min-width: 80px;
     }
 
     .btn-sync:hover:not(:disabled) {
@@ -873,32 +947,7 @@
     }
 
     /* Integration row enhancements for unified layout */
-    .integration-workspace {
-      font-size: 13px;
-      color: #666;
-      max-width: 120px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      margin-left: 8px;
-    }
-
-    .integration-doc-count {
-      font-size: 11px;
-      color: #999;
-      margin-left: 6px;
-    }
-
-    .integration-spacer {
-      flex: 1;
-    }
-
-    .integration-last-sync {
-      font-size: 12px;
-      color: #888;
-      margin-right: 12px;
-    }
-
+    /* Removed old styles as they are now integrated into the main CSS */
     .integration-hint {
       font-size: 12px;
       color: #888;
@@ -912,7 +961,13 @@
 
     <div class="form-group">
       <label for="token" data-i18n="settings.linearToken">Linear API Token</label>
-      <input type="password" id="token" data-i18n-placeholder="settings.tokenPlaceholder" placeholder="lin_api_xxxxxxxxxxxxx">
+      <div class="token-input-row">
+        <input type="password" id="token" data-i18n-placeholder="settings.tokenPlaceholder" placeholder="lin_api_xxxxxxxxxxxxx">
+        <div class="buttons">
+          <button class="btn-danger" id="clearBtn" style="display: none;" data-i18n="common.delete">Delete</button>
+          <button class="btn-primary" id="validateBtn" data-i18n="common.validateAndSave">Validate & Save</button>
+        </div>
+      </div>
       <div id="errorMessage" class="error-message" style="display: none;"></div>
       <p class="info-text" data-i18n="settings.tokenHint">
         Get from Linear Settings &gt; API &gt; Personal API keys
@@ -932,11 +987,6 @@
       </div>
     </div>
 
-    <div class="buttons">
-      <button class="btn-danger" id="clearBtn" style="display: none;" data-i18n="common.delete">Delete</button>
-      <button class="btn-primary" id="validateBtn" data-i18n="common.validateAndSave">Validate & Save</button>
-    </div>
-
     <!-- Integrations Section (Unified) -->
     <div class="integrations-section">
       <h2 data-i18n="settings.integrations">Integrations</h2>
@@ -950,20 +1000,26 @@
           <path d="M18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.27 0a2.528 2.528 0 0 1-2.522 2.521 2.528 2.528 0 0 1-2.52-2.521V2.522A2.528 2.528 0 0 1 15.165 0a2.528 2.528 0 0 1 2.521 2.522v6.312z" fill="#2EB67D"/>
           <path d="M15.165 18.956a2.528 2.528 0 0 1 2.521 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.27a2.527 2.527 0 0 1-2.52-2.522 2.527 2.527 0 0 1 2.52-2.52h6.313A2.528 2.528 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.521h-6.313z" fill="#ECB22E"/>
         </svg>
-        <span class="integration-name" data-i18n="slack.title">Slack</span>
-        <span class="integration-workspace" id="slackWorkspace" style="display: none;"></span>
-        <span class="integration-doc-count" id="slackDocCount"></span>
-        <span class="integration-spacer"></span>
-        <span class="integration-last-sync" id="slackLastSync" style="display: none;"></span>
-        <span class="integration-status" id="slackStatusText" data-i18n="slack.notConnected">Not connected</span>
-        <button class="btn-integration" id="slackConnectBtn" data-i18n="common.connect">Connect</button>
-        <button class="btn-sync" id="syncSlackBtn" style="display: none;" data-i18n="sync.syncNow">Sync Now</button>
-        <div class="integration-menu" id="slackMenu" style="display: none;">
-          <button class="btn-menu-trigger" id="slackMenuBtn">&#8942;</button>
-          <div class="menu-dropdown" id="slackMenuDropdown">
-            <button class="menu-item" data-action="edit-channels" data-i18n="slack.editChannels">Edit</button>
-            <button class="menu-item" data-action="reconnect" data-i18n="settings.changeWorkspace">Change workspace</button>
-            <button class="menu-item" data-action="disconnect" data-i18n="common.disconnect">Disconnect</button>
+        <div class="integration-name">
+          <span data-i18n="slack.title">Slack</span>
+          <span class="integration-workspace" id="slackWorkspace" style="display: none;"></span>
+        </div>
+        <div class="integration-detail">
+          <span class="integration-doc-count" id="slackDocCount"></span>
+          <span class="integration-detail-sep" id="slackDetailSep" style="display: none;">·</span>
+          <span class="integration-last-sync" id="slackLastSync" style="display: none;"></span>
+        </div>
+        <div class="integration-actions">
+          <span class="integration-status" id="slackStatusText" data-i18n="slack.notConnected">Not connected</span>
+          <button class="btn-integration" id="slackConnectBtn" data-i18n="common.connect">Connect</button>
+          <button class="btn-sync" id="syncSlackBtn" style="display: none;" data-i18n="sync.syncNow">Sync Now</button>
+          <div class="integration-menu" id="slackMenu" style="display: none;">
+            <button class="btn-menu-trigger" id="slackMenuBtn">&#8942;</button>
+            <div class="menu-dropdown" id="slackMenuDropdown">
+              <button class="menu-item" data-action="edit-channels" data-i18n="slack.editChannels">Edit</button>
+              <button class="menu-item" data-action="reconnect" data-i18n="settings.changeWorkspace">Change workspace</button>
+              <button class="menu-item" data-action="disconnect" data-i18n="common.disconnect">Disconnect</button>
+            </div>
           </div>
         </div>
       </div>
@@ -979,19 +1035,25 @@
         <svg class="integration-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.98-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466l1.823 1.447zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.934-.56.934-1.166V6.354c0-.606-.233-.933-.747-.886l-15.177.887c-.56.046-.747.326-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.747 0-.934-.234-1.495-.933l-4.577-7.186v6.952l1.448.327s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.886.747-.933l3.222-.186zM2.877.466L16.039.014c1.635-.14 2.055.093 2.755.606l3.596 2.521c.56.373.746.466.746 1.072v17.04c0 .72-.28 1.19-1.12 1.236L6.03 23.466c-.653.046-1.025-.046-1.4-.56l-3.5-4.624c-.374-.56-.514-.98-.514-1.493V1.906c0-.653.28-1.12.98-1.16l1.281-.28z" fill="#000"/>
         </svg>
-        <span class="integration-name" data-i18n="notion.title">Notion</span>
-        <span class="integration-workspace" id="notionWorkspace" style="display: none;"></span>
-        <span class="integration-doc-count" id="notionDocCount"></span>
-        <span class="integration-spacer"></span>
-        <span class="integration-last-sync" id="notionLastSync" style="display: none;"></span>
-        <span class="integration-status" id="notionStatusText" data-i18n="notion.notConnected">Not connected</span>
-        <button class="btn-integration" id="notionConnectBtn" data-i18n="common.connect">Connect</button>
-        <button class="btn-sync" id="syncNotionBtn" style="display: none;" data-i18n="sync.syncNow">Sync Now</button>
-        <div class="integration-menu" id="notionMenu" style="display: none;">
-          <button class="btn-menu-trigger" id="notionMenuBtn">&#8942;</button>
-          <div class="menu-dropdown" id="notionMenuDropdown">
-            <button class="menu-item" data-action="reconnect" data-i18n="settings.changeWorkspace">Change workspace</button>
-            <button class="menu-item" data-action="disconnect" data-i18n="common.disconnect">Disconnect</button>
+        <div class="integration-name">
+          <span data-i18n="notion.title">Notion</span>
+          <span class="integration-workspace" id="notionWorkspace" style="display: none;"></span>
+        </div>
+        <div class="integration-detail">
+          <span class="integration-doc-count" id="notionDocCount"></span>
+          <span class="integration-detail-sep" id="notionDetailSep" style="display: none;">·</span>
+          <span class="integration-last-sync" id="notionLastSync" style="display: none;"></span>
+        </div>
+        <div class="integration-actions">
+          <span class="integration-status" id="notionStatusText" data-i18n="notion.notConnected">Not connected</span>
+          <button class="btn-integration" id="notionConnectBtn" data-i18n="common.connect">Connect</button>
+          <button class="btn-sync" id="syncNotionBtn" style="display: none;" data-i18n="sync.syncNow">Sync Now</button>
+          <div class="integration-menu" id="notionMenu" style="display: none;">
+            <button class="btn-menu-trigger" id="notionMenuBtn">&#8942;</button>
+            <div class="menu-dropdown" id="notionMenuDropdown">
+              <button class="menu-item" data-action="reconnect" data-i18n="settings.changeWorkspace">Change workspace</button>
+              <button class="menu-item" data-action="disconnect" data-i18n="common.disconnect">Disconnect</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1002,19 +1064,25 @@
         <svg class="integration-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/>
         </svg>
-        <span class="integration-name" data-i18n="gmail.title">Gmail</span>
-        <span class="integration-workspace" id="gmailWorkspace" style="display: none;"></span>
-        <span class="integration-doc-count" id="gmailDocCount"></span>
-        <span class="integration-spacer"></span>
-        <span class="integration-last-sync" id="gmailLastSync" style="display: none;"></span>
-        <span class="integration-status" id="gmailStatusText" data-i18n="gmail.notConnected">Not connected</span>
-        <button class="btn-integration" id="gmailConnectBtn" data-i18n="common.connect">Connect</button>
-        <button class="btn-sync" id="syncGmailBtn" style="display: none;" data-i18n="sync.syncNow">Sync Now</button>
-        <div class="integration-menu" id="gmailMenu" style="display: none;">
-          <button class="btn-menu-trigger" id="gmailMenuBtn">&#8942;</button>
-          <div class="menu-dropdown" id="gmailMenuDropdown">
-            <button class="menu-item" data-action="reconnect" data-i18n="settings.changeAccount">Change account</button>
-            <button class="menu-item" data-action="disconnect" data-i18n="common.disconnect">Disconnect</button>
+        <div class="integration-name">
+          <span data-i18n="gmail.title">Gmail</span>
+          <span class="integration-workspace" id="gmailWorkspace" style="display: none;"></span>
+        </div>
+        <div class="integration-detail">
+          <span class="integration-doc-count" id="gmailDocCount"></span>
+          <span class="integration-detail-sep" id="gmailDetailSep" style="display: none;">·</span>
+          <span class="integration-last-sync" id="gmailLastSync" style="display: none;"></span>
+        </div>
+        <div class="integration-actions">
+          <span class="integration-status" id="gmailStatusText" data-i18n="gmail.notConnected">Not connected</span>
+          <button class="btn-integration" id="gmailConnectBtn" data-i18n="common.connect">Connect</button>
+          <button class="btn-sync" id="syncGmailBtn" style="display: none;" data-i18n="sync.syncNow">Sync Now</button>
+          <div class="integration-menu" id="gmailMenu" style="display: none;">
+            <button class="btn-menu-trigger" id="gmailMenuBtn">&#8942;</button>
+            <div class="menu-dropdown" id="gmailMenuDropdown">
+              <button class="menu-item" data-action="reconnect" data-i18n="settings.changeAccount">Change account</button>
+              <button class="menu-item" data-action="disconnect" data-i18n="common.disconnect">Disconnect</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1025,46 +1093,55 @@
         <svg class="integration-logo" viewBox="0 0 24 24" fill="#5E6AD2" xmlns="http://www.w3.org/2000/svg">
           <path d="M2.886 4.18A11.982 11.982 0 0 1 11.99 0C18.624 0 24 5.376 24 12.009c0 3.64-1.62 6.903-4.18 9.105L2.887 4.18ZM1.817 5.626l16.556 16.556c-.524.33-1.075.62-1.65.866L.951 7.277c.247-.575.537-1.126.866-1.65ZM.322 9.163l14.515 14.515c-.71.172-1.443.282-2.195.322L0 11.358a12 12 0 0 1 .322-2.195Zm-.17 4.862 9.823 9.824a12.02 12.02 0 0 1-9.824-9.824Z"/>
         </svg>
-        <span class="integration-name">Linear</span>
-        <span class="integration-doc-count" id="linearDocCount"></span>
-        <span class="integration-spacer"></span>
-        <span class="integration-last-sync" id="linearLastSync" style="display: none;"></span>
-        <span class="integration-status" id="linearStatusText" data-i18n="sync.notConnected">Not connected</span>
-        <button class="btn-sync" id="syncLinearBtn" disabled data-i18n="sync.syncNow">Sync</button>
-        <div class="integration-menu-placeholder"></div>
+        <div class="integration-name">
+          <span>Linear</span>
+        </div>
+        <div class="integration-detail">
+          <span class="integration-doc-count" id="linearDocCount"></span>
+          <span class="integration-detail-sep" id="linearDetailSep" style="display: none;">·</span>
+          <span class="integration-last-sync" id="linearLastSync" style="display: none;"></span>
+        </div>
+        <div class="integration-actions">
+          <span class="integration-status" id="linearStatusText" data-i18n="sync.notConnected">Not connected</span>
+          <button class="btn-sync" id="syncLinearBtn" disabled data-i18n="sync.syncNow">Sync</button>
+          <div class="integration-menu-placeholder"></div>
+        </div>
       </div>
     </div>
 
-    <!-- Hotkey Section -->
-    <div class="hotkey-section">
-      <h2 data-i18n="hotkey.title">Capture Hotkey</h2>
-      <div class="hotkey-input-container">
-        <input type="text" 
-               id="hotkeyInput" 
-               class="hotkey-input" 
-               readonly 
-               data-i18n-placeholder="hotkey.placeholder"
-               placeholder="Click to record...">
-        <button class="btn-reset" id="resetHotkeyBtn" data-i18n="common.reset">Reset</button>
+    <!-- Hotkey + Language Row -->
+    <div class="settings-row">
+      <!-- Hotkey Section -->
+      <div class="hotkey-section">
+        <h2 data-i18n="hotkey.title">Capture Hotkey</h2>
+        <div class="hotkey-input-container">
+          <input type="text" 
+                 id="hotkeyInput" 
+                 class="hotkey-input" 
+                 readonly 
+                 data-i18n-placeholder="hotkey.placeholder"
+                 placeholder="Click to record...">
+          <button class="btn-reset" id="resetHotkeyBtn" data-i18n="common.reset">Reset</button>
+        </div>
+        <div id="hotkeyHint" class="hotkey-hint" data-i18n="hotkey.hint">Click and press new key combination</div>
+        <div id="hotkeyError" class="hotkey-error" style="display: none;"></div>
+        <div id="hotkeySuccess" class="hotkey-success" style="display: none;"></div>
       </div>
-      <div id="hotkeyHint" class="hotkey-hint" data-i18n="hotkey.hint">Click and press new key combination</div>
-      <div id="hotkeyError" class="hotkey-error" style="display: none;"></div>
-      <div id="hotkeySuccess" class="hotkey-success" style="display: none;"></div>
-    </div>
 
-    <!-- Language Section -->
-    <div class="hotkey-section">
-      <h2 data-i18n="settings.language">Language</h2>
-      <div class="form-group" style="margin-bottom: 8px;">
-        <select id="languageSelect" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; cursor: pointer;">
-          <option value="en">English</option>
-          <option value="ko">한국어</option>
-          <option value="de">Deutsch</option>
-          <option value="fr">Français</option>
-          <option value="es">Español</option>
-        </select>
+      <!-- Language Section -->
+      <div class="hotkey-section">
+        <h2 data-i18n="settings.language">Language</h2>
+        <div class="form-group" style="margin-bottom: 8px;">
+          <select id="languageSelect" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; cursor: pointer;">
+            <option value="en">English</option>
+            <option value="ko">한국어</option>
+            <option value="de">Deutsch</option>
+            <option value="fr">Français</option>
+            <option value="es">Español</option>
+          </select>
+        </div>
+        <div class="hotkey-hint" data-i18n="settings.languageHint">Select app display language</div>
       </div>
-      <div class="hotkey-hint" data-i18n="settings.languageHint">Select app display language</div>
     </div>
 
     <!-- Version & Update Section -->
@@ -1549,6 +1626,7 @@
     const slackWorkspace = document.getElementById('slackWorkspace');
     const slackDocCount = document.getElementById('slackDocCount');
     const slackLastSync = document.getElementById('slackLastSync');
+    const slackDetailSep = document.getElementById('slackDetailSep');
     const slackMenu = document.getElementById('slackMenu');
     const syncSlackBtn = document.getElementById('syncSlackBtn');
     
@@ -1632,6 +1710,7 @@
         slackWorkspace.style.display = 'none';
         slackDocCount.textContent = '';
         slackLastSync.style.display = 'none';
+        slackDetailSep.style.display = 'none';
         slackStatusText.textContent = await t('slack.notConnected');
         slackStatusText.style.display = '';
         slackConnectBtn.textContent = await t('common.connect');
@@ -1899,6 +1978,7 @@
     const notionWorkspace = document.getElementById('notionWorkspace');
     const notionDocCount = document.getElementById('notionDocCount');
     const notionLastSync = document.getElementById('notionLastSync');
+    const notionDetailSep = document.getElementById('notionDetailSep');
     const notionMenu = document.getElementById('notionMenu');
     const syncNotionBtn = document.getElementById('syncNotionBtn');
 
@@ -1925,6 +2005,7 @@
         notionWorkspace.style.display = 'none';
         notionDocCount.textContent = '';
         notionLastSync.style.display = 'none';
+        notionDetailSep.style.display = 'none';
         notionStatusText.textContent = await t('notion.notConnected');
         notionStatusText.style.display = '';
         notionConnectBtn.textContent = await t('common.connect');
@@ -1983,6 +2064,7 @@
     const gmailWorkspace = document.getElementById('gmailWorkspace');
     const gmailDocCount = document.getElementById('gmailDocCount');
     const gmailLastSync = document.getElementById('gmailLastSync');
+    const gmailDetailSep = document.getElementById('gmailDetailSep');
     const gmailMenu = document.getElementById('gmailMenu');
     const syncGmailBtn = document.getElementById('syncGmailBtn');
 
@@ -2009,6 +2091,7 @@
         gmailWorkspace.style.display = 'none';
         gmailDocCount.textContent = '';
         gmailLastSync.style.display = 'none';
+        gmailDetailSep.style.display = 'none';
         gmailStatusText.textContent = await t('gmail.notConnected');
         gmailStatusText.style.display = '';
         gmailConnectBtn.textContent = await t('common.connect');
@@ -2064,9 +2147,10 @@
     const linearRow = document.getElementById('linearRow');
     const linearDocCount = document.getElementById('linearDocCount');
     const linearLastSync = document.getElementById('linearLastSync');
+    const linearDetailSep = document.getElementById('linearDetailSep');
     const linearStatusText = document.getElementById('linearStatusText');
 
-    function formatLastSync(timestamp) {
+    async function formatLastSync(timestamp) {
       if (!timestamp) return null;
       const now = Date.now();
       const diff = now - timestamp;
@@ -2074,15 +2158,17 @@
       const hours = Math.floor(diff / 3600000);
       const days = Math.floor(diff / 86400000);
 
-      if (minutes < 1) return 'just now';
-      if (minutes < 60) return `${minutes}m ago`;
-      if (hours < 24) return `${hours}h ago`;
-      return `${days}d ago`;
+      const prefix = await t('sync.lastSyncPrefix');
+      if (minutes < 1) return `${prefix} ${await t('sync.justNow')}`;
+      if (minutes < 60) return `${prefix} ${await t('sync.minutesAgo', { count: minutes })}`;
+      if (hours < 24) return `${prefix} ${await t('sync.hoursAgo', { count: hours })}`;
+      return `${prefix} ${await t('sync.daysAgo', { count: days })}`;
     }
 
-    function formatDocCount(count) {
-      if (!count) return '';
-      return `${count.toLocaleString()} docs`;
+    async function formatDocCount(count, unit = 'docs') {
+      if (!count) return await t('sync.notSyncedYet');
+      const label = await t(`sync.synced_${unit}`);
+      return `${count.toLocaleString()} ${label}`;
     }
 
     async function loadSyncStatus() {
@@ -2096,62 +2182,87 @@
 
         const linearConnected = !!(await ipcRenderer.invoke('get-settings'))?.linearApiToken;
 
-        if (slackStatus.connected) {
-          const src = syncStatus?.sources?.slack;
-          slackDocCount.textContent = formatDocCount(src?.documentCount);
-          if (!activeSyncs.has('slack')) {
-            const lastSync = src?.lastSync;
-            if (lastSync) {
-              slackLastSync.textContent = formatLastSync(lastSync);
-              slackLastSync.style.display = '';
-            }
+         if (slackStatus.connected) {
+           const src = syncStatus?.sources?.slack;
+           slackDocCount.textContent = await formatDocCount(src?.documentCount, 'messages');
+           slackDocCount.style.display = '';
+          const lastSync = src?.lastSync;
+          if (lastSync) {
+            slackLastSync.textContent = await formatLastSync(lastSync);
+            slackLastSync.style.display = '';
+            slackDetailSep.style.display = '';
+          } else {
+            slackLastSync.style.display = 'none';
+            slackDetailSep.style.display = 'none';
           }
+        } else {
+          slackDocCount.textContent = '';
+          slackLastSync.style.display = 'none';
+          slackDetailSep.style.display = 'none';
         }
 
-        if (notionStatus.connected) {
-          const src = syncStatus?.sources?.notion;
-          notionDocCount.textContent = formatDocCount(src?.documentCount);
-          if (!activeSyncs.has('notion')) {
-            const lastSync = src?.lastSync;
-            if (lastSync) {
-              notionLastSync.textContent = formatLastSync(lastSync);
-              notionLastSync.style.display = '';
-            }
+         if (notionStatus.connected) {
+           const src = syncStatus?.sources?.notion;
+           notionDocCount.textContent = await formatDocCount(src?.documentCount, 'docs');
+           notionDocCount.style.display = '';
+          const lastSync = src?.lastSync;
+          if (lastSync) {
+            notionLastSync.textContent = await formatLastSync(lastSync);
+            notionLastSync.style.display = '';
+            notionDetailSep.style.display = '';
+          } else {
+            notionLastSync.style.display = 'none';
+            notionDetailSep.style.display = 'none';
           }
+        } else {
+          notionDocCount.textContent = '';
+          notionLastSync.style.display = 'none';
+          notionDetailSep.style.display = 'none';
         }
 
-        if (linearConnected) {
-          syncLinearBtn.disabled = false;
-          linearRow.classList.remove('disabled');
-          linearStatusText.style.display = 'none';
-          const src = syncStatus?.sources?.linear;
-          linearDocCount.textContent = formatDocCount(src?.documentCount);
-          if (!activeSyncs.has('linear')) {
-            const lastSync = src?.lastSync;
-            if (lastSync) {
-              linearLastSync.textContent = formatLastSync(lastSync);
-              linearLastSync.style.display = '';
-            }
+         if (linearConnected) {
+           syncLinearBtn.disabled = false;
+           linearRow.classList.remove('disabled');
+           linearStatusText.style.display = 'none';
+           const src = syncStatus?.sources?.linear;
+           linearDocCount.textContent = await formatDocCount(src?.documentCount, 'issues');
+           linearDocCount.style.display = '';
+          const lastSync = src?.lastSync;
+          if (lastSync) {
+            linearLastSync.textContent = await formatLastSync(lastSync);
+            linearLastSync.style.display = '';
+            linearDetailSep.style.display = '';
+          } else {
+            linearLastSync.style.display = 'none';
+            linearDetailSep.style.display = 'none';
           }
         } else {
           syncLinearBtn.disabled = true;
           linearRow.classList.add('disabled');
           linearDocCount.textContent = '';
           linearLastSync.style.display = 'none';
+          linearDetailSep.style.display = 'none';
           linearStatusText.textContent = await t('sync.notConnected');
           linearStatusText.style.display = '';
         }
 
-        if (gmailStatus.connected) {
-          const src = syncStatus?.sources?.gmail;
-          gmailDocCount.textContent = formatDocCount(src?.documentCount);
-          if (!activeSyncs.has('gmail')) {
-            const lastSync = src?.lastSync;
-            if (lastSync) {
-              gmailLastSync.textContent = formatLastSync(lastSync);
-              gmailLastSync.style.display = '';
-            }
+         if (gmailStatus.connected) {
+           const src = syncStatus?.sources?.gmail;
+           gmailDocCount.textContent = await formatDocCount(src?.documentCount, 'emails');
+           gmailDocCount.style.display = '';
+          const lastSync = src?.lastSync;
+          if (lastSync) {
+            gmailLastSync.textContent = await formatLastSync(lastSync);
+            gmailLastSync.style.display = '';
+            gmailDetailSep.style.display = '';
+          } else {
+            gmailLastSync.style.display = 'none';
+            gmailDetailSep.style.display = 'none';
           }
+        } else {
+          gmailDocCount.textContent = '';
+          gmailLastSync.style.display = 'none';
+          gmailDetailSep.style.display = 'none';
         }
       } catch (error) {
         console.error('Failed to load sync status:', error);
@@ -2172,6 +2283,13 @@
       btn.disabled = true;
       btn.classList.add('syncing');
       btn.textContent = await t('sync.syncing');
+
+      const row = btn.closest('.integration-row');
+      const docCountEl = row?.querySelector('.integration-doc-count');
+      const sepEl = row?.querySelector('.integration-detail-sep');
+      if (docCountEl) docCountEl.style.display = 'none';
+      if (sepEl) sepEl.style.display = 'none';
+
       if (lastSyncEl) {
         lastSyncEl.textContent = await t('sync.syncing');
         lastSyncEl.style.display = '';
@@ -2213,9 +2331,7 @@
       if (progress.phase === 'complete') return;
 
       if (progress.total > 0) {
-        lastSyncEl.textContent = `(${progress.total} emails) Syncing...`;
-      } else if (progress.current > 0) {
-        lastSyncEl.textContent = `(${progress.current} emails) Syncing...`;
+        lastSyncEl.textContent = `(${progress.current}/${progress.total}) Syncing...`;
       } else {
         lastSyncEl.textContent = 'Discovering...';
       }
