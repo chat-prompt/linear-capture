@@ -40,7 +40,19 @@ import { MAX_IMAGES } from './types';
 import type { AnalysisContext } from '../services/gemini-analyzer';
 import type { ContextSource } from '../types/context-search';
 
+let loadingPromise: Promise<void> | null = null;
+
 export async function loadLinearData(): Promise<void> {
+  if (loadingPromise) return loadingPromise;
+  loadingPromise = _doLoadLinearData();
+  try {
+    await loadingPromise;
+  } finally {
+    loadingPromise = null;
+  }
+}
+
+async function _doLoadLinearData(): Promise<void> {
   const state = getState();
   const linear = createLinearServiceFromEnv();
   if (!linear) {

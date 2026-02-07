@@ -36,14 +36,17 @@ export interface LocalCacheData {
 export async function loadLocalCache(): Promise<LocalCacheData | null> {
   try {
     // Get script path (handle both development and packaged app)
-     const appPath = app.getAppPath();
+     let appPath = app.getAppPath();
+     if (appPath.includes('app.asar')) {
+       appPath = appPath.replace('app.asar', 'app.asar.unpacked');
+     }
      const scriptPath = path.join(appPath, 'scripts', 'export_linear_cache.py');
 
      logger.log('[LocalCache] Loading cache from:', scriptPath);
 
-    // Execute Python script with 5 second timeout
+    // Execute Python script with 8 second timeout
     const { stdout, stderr } = await execFileAsync('python3', [scriptPath], {
-      timeout: 5000,
+      timeout: 8000,
       maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large cache
     });
 

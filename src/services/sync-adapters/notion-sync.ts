@@ -361,22 +361,22 @@ export class NotionSyncAdapter {
           })
         );
 
-        for (const settled of results) {
-          if (settled.status === 'rejected') {
-            result.itemsFailed++;
-            result.errors.push({ pageId: 'unknown', error: String(settled.reason) });
-            continue;
-          }
+         for (const settled of results) {
+           if (settled.status === 'rejected') {
+             result.itemsFailed++;
+             result.errors.push({ id: 'unknown', error: String(settled.reason) });
+             continue;
+           }
 
-          const { page, contentResult } = settled.value;
-          if (!contentResult.success || !contentResult.content) {
-            result.itemsFailed++;
-            result.errors.push({
-              pageId: page.id,
-              error: contentResult.error || 'Failed to fetch page content',
-            });
-            continue;
-          }
+           const { page, contentResult } = settled.value;
+           if (!contentResult.success || !contentResult.content) {
+             result.itemsFailed++;
+             result.errors.push({
+               id: page.id,
+               error: contentResult.error || 'Failed to fetch page content',
+             });
+             continue;
+           }
 
           const fullText = `${page.title}\n\n${contentResult.content}`;
           let preprocessed = this.preprocessor.preprocess(fullText);
@@ -422,8 +422,8 @@ export class NotionSyncAdapter {
         onProgress?.({ source: 'notion', phase: 'embedding', current: i, total: changedPages.length });
         console.log(`[NotionSync] Embedding batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(changedPages.length / BATCH_SIZE)} (${batch.length} pages)`);
 
-        try {
-          const embeddings = await this.embeddingService.embedBatch(texts);
+         try {
+           const embeddings = await this.embeddingClient.embed(texts);
 
           const savePromises = batch.map(async (item, idx) => {
             try {
@@ -456,25 +456,25 @@ export class NotionSyncAdapter {
                 ]
               );
               result.itemsSynced++;
-            } catch (error) {
-              result.itemsFailed++;
-              result.errors.push({
-                pageId: item.page.id,
-                error: error instanceof Error ? error.message : 'DB insert failed',
-              });
-            }
-          });
+             } catch (error) {
+               result.itemsFailed++;
+               result.errors.push({
+                 id: item.page.id,
+                 error: error instanceof Error ? error.message : 'DB insert failed',
+               });
+             }
+           });
 
-          await Promise.all(savePromises);
-        } catch (error) {
-          console.error(`[NotionSync] Batch embedding failed:`, error);
-          for (const item of batch) {
-            result.itemsFailed++;
-            result.errors.push({
-              pageId: item.page.id,
-              error: error instanceof Error ? error.message : 'Embedding failed',
-            });
-          }
+           await Promise.all(savePromises);
+         } catch (error) {
+           console.error(`[NotionSync] Batch embedding failed:`, error);
+           for (const item of batch) {
+             result.itemsFailed++;
+             result.errors.push({
+               id: item.page.id,
+               error: error instanceof Error ? error.message : 'Embedding failed',
+             });
+           }
         }
       }
 

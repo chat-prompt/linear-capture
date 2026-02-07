@@ -10,9 +10,9 @@ const isDev = (() => {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { app } = require('electron');
-    return !app.isPackaged;
+    return !app.isPackaged || !!process.env.LINEAR_CAPTURE_DEBUG;
   } catch {
-    return process.env.NODE_ENV !== 'production';
+    return process.env.NODE_ENV !== 'production' || !!process.env.LINEAR_CAPTURE_DEBUG;
   }
 })();
 
