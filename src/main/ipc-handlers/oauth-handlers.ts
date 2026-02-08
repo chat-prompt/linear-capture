@@ -1,6 +1,8 @@
 import { ipcMain } from 'electron';
 import { logger } from '../../services/utils/logger';
 import { clearSelectedSlackChannels } from '../../services/settings-store';
+import { getDatabaseService } from '../../services/database';
+import { getLocalSearchService } from '../../services/local-search';
 import { getState } from '../state';
 
 export function registerOAuthHandlers(): void {
@@ -26,7 +28,19 @@ export function registerOAuthHandlers(): void {
     try {
       const result = await state.slackService.disconnect();
       clearSelectedSlackChannels();
-      logger.log('[OAuth] Cleared selectedSlackChannels on disconnect');
+
+      // Clean up synced Slack documents and cursor so a new workspace starts fresh
+      try {
+        const db = getDatabaseService().getDb();
+        await db.query(`DELETE FROM documents WHERE source_type = 'slack'`);
+        await db.query(`DELETE FROM sync_cursors WHERE source_type = 'slack'`);
+        logger.log('[OAuth] Cleared Slack documents and sync cursor on disconnect');
+        const localSearch = getLocalSearchService();
+        localSearch?.invalidateSyncStatusCache();
+      } catch (dbError) {
+        logger.error('[OAuth] Failed to clear Slack data from DB:', dbError);
+      }
+
       return result;
     } catch (error) {
       logger.error('slack-disconnect error:', error);

@@ -1,6 +1,8 @@
 import { logger } from '../services/utils/logger';
 import { getState } from './state';
 import { getLocalSearchService } from '../services/local-search';
+import { getDatabaseService } from '../services/database';
+import { clearSelectedSlackChannels } from '../services/settings-store';
 
 export async function handleDeepLink(url: string): Promise<void> {
   const state = getState();
@@ -28,6 +30,19 @@ export async function handleDeepLink(url: string): Promise<void> {
           try {
             const result = await state.slackService.handleCallback(code, stateParam);
             if (result.success) {
+              // Clear old Slack data before syncing new workspace
+              try {
+                const db = getDatabaseService().getDb();
+                await db.query(`DELETE FROM documents WHERE source_type = 'slack'`);
+                await db.query(`DELETE FROM sync_cursors WHERE source_type = 'slack'`);
+                clearSelectedSlackChannels();
+                logger.log('[OAuth] Cleared old Slack data for fresh workspace connection');
+                const localSearchForClear = getLocalSearchService();
+                localSearchForClear?.invalidateSyncStatusCache();
+              } catch (dbErr) {
+                logger.warn('[OAuth] Failed to clear old Slack data:', dbErr);
+              }
+
               state.settingsWindow?.webContents.send('slack-connected', result);
 
               try {
@@ -35,6 +50,7 @@ export async function handleDeepLink(url: string): Promise<void> {
                 if (localSearch) {
                   await localSearch.syncSource('slack');
                   logger.log('[OAuth] Slack sync triggered after connect');
+                  state.settingsWindow?.webContents.send('settings-updated');
                 }
               } catch (error) {
                 logger.warn('[OAuth] Failed to trigger Slack sync:', error);

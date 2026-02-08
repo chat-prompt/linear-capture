@@ -34,6 +34,10 @@ export class LocalSearchService {
     return this.syncOrchestrator.getSyncStatus();
   }
 
+  invalidateSyncStatusCache(): void {
+    this.syncOrchestrator.invalidateSyncStatusCache();
+  }
+
   async syncSource(source: string, onProgress?: SyncProgressCallback): Promise<SyncResult> {
     return this.syncOrchestrator.syncSource(source, onProgress);
   }
