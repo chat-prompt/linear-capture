@@ -263,6 +263,15 @@ export function registerSettingsHandlers(): void {
     }
   });
 
+  ipcMain.handle('translate-batch', (_event, entries: Array<{ key: string; options?: Record<string, unknown> }>) => {
+    try {
+      return entries.map(({ key, options }) => t(key, options as Record<string, any>));
+    } catch (err) {
+      logger.error('translate-batch failed:', err);
+      throw err;
+    }
+  });
+
   ipcMain.handle('get-reverse-translation-map', () => {
     try {
       const translations = i18next.getResourceBundle('en', 'translation');

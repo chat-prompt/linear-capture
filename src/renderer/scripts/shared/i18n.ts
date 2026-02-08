@@ -7,6 +7,16 @@ export async function t(key: string, options: Record<string, any> = {}): Promise
   return await ipc.invoke('translate', key, options);
 }
 
+/**
+ * Batch translate multiple keys in a single IPC call.
+ * Reduces IPC round-trips from N to 1.
+ */
+export async function tBatch(
+  entries: Array<{ key: string; options?: Record<string, any> }>
+): Promise<string[]> {
+  return await ipc.invoke('translate-batch', entries);
+}
+
 export async function translatePage(): Promise<void> {
   const elements = document.querySelectorAll('[data-i18n]');
   for (const el of elements) {

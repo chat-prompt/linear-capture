@@ -28,7 +28,7 @@ const INVOKE_CHANNELS = [
   'gmail-connect', 'gmail-disconnect', 'gmail-status', 'gmail-search',
   // i18n
   'get-device-id', 'get-language', 'set-language', 'get-supported-languages',
-  'translate', 'get-reverse-translation-map',
+  'translate', 'translate-batch', 'get-reverse-translation-map',
   // Context / Search
   'ai-recommend', 'context-semantic-search', 'context.getRelated',
   // Sync

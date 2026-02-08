@@ -14,6 +14,8 @@ import { logger } from './utils/logger';
 
 export class SyncOrchestrator {
   private dbService = getDatabaseService();
+  private syncStatusCache: { data: SyncStatus; timestamp: number } | null = null;
+  private static CACHE_TTL = 30_000; // 30 seconds
 
   isInitialized(): boolean {
     try {
@@ -27,34 +29,51 @@ export class SyncOrchestrator {
     return this.isInitialized();
   }
 
+  /** Invalidate cached sync status (call after sync completes) */
+  invalidateSyncStatusCache(): void {
+    this.syncStatusCache = null;
+  }
+
   async getSyncStatus(): Promise<SyncStatus> {
+    // Return cached result if fresh (avoids expensive DB query)
+    if (this.syncStatusCache && Date.now() - this.syncStatusCache.timestamp < SyncOrchestrator.CACHE_TTL) {
+      return this.syncStatusCache.data;
+    }
+
     const db = this.dbService?.getDb();
     if (!db) {
       return { initialized: false };
     }
 
     try {
-      const result = await db.query<{ source_type: string; count: string; last_synced_at: string | null }>(`
-        SELECT d.source_type, COUNT(*) as count, sc.last_synced_at
-        FROM documents d
-        LEFT JOIN sync_cursors sc ON d.source_type = sc.source_type
-        GROUP BY d.source_type, sc.last_synced_at
-      `);
+      // Split into two simpler queries instead of one JOIN
+      const [cursorResult, countResult] = await Promise.all([
+        db.query<{ source_type: string; last_synced_at: string | null }>(
+          `SELECT source_type, last_synced_at FROM sync_cursors`
+        ),
+        db.query<{ source_type: string; count: string }>(
+          `SELECT source_type, COUNT(*) as count FROM documents GROUP BY source_type`
+        ),
+      ]);
 
       const sources: Record<string, { lastSync?: number; documentCount?: number }> = {};
 
-      for (const row of result.rows) {
-        const sourceKey = row.source_type as 'slack' | 'notion' | 'linear' | 'gmail';
-        sources[sourceKey] = {
-          documentCount: parseInt(row.count, 10),
+      for (const row of cursorResult.rows) {
+        sources[row.source_type] = {
           lastSync: row.last_synced_at ? new Date(row.last_synced_at).getTime() : undefined,
         };
       }
 
-      return {
-        initialized: true,
-        sources,
-      } as SyncStatus;
+      for (const row of countResult.rows) {
+        if (!sources[row.source_type]) {
+          sources[row.source_type] = {};
+        }
+        sources[row.source_type].documentCount = parseInt(row.count, 10);
+      }
+
+      const status = { initialized: true, sources } as SyncStatus;
+      this.syncStatusCache = { data: status, timestamp: Date.now() };
+      return status;
     } catch (error) {
       logger.error('[SyncOrchestrator] getSyncStatus error:', error);
       return { initialized: true };
@@ -80,6 +99,7 @@ export class SyncOrchestrator {
       }
 
       const adapterResult = await adapter.syncIncremental(onProgress);
+      this.invalidateSyncStatusCache();
       logger.info(`[SyncOrchestrator] ${source} sync complete: ${adapterResult.itemsSynced} items, ${adapterResult.itemsFailed} failed`);
       return {
         success: adapterResult.success,
