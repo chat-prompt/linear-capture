@@ -18,9 +18,9 @@ const mockIssues = vi.fn();
 
 vi.mock('../../linear-client', () => ({
   createLinearServiceFromEnv: () => ({
-    client: {
+    getClient: () => ({
       issues: mockIssues,
-    },
+    }),
   }),
 }));
 

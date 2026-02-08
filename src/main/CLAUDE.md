@@ -9,48 +9,39 @@ Electron 메인 프로세스. 앱 라이프사이클, 윈도우 관리, IPC, 시
 | 파일 | 역할 |
 |------|------|
 | index.ts | 앱 엔트리포인트, 라이프사이클 (ready, quit), 동기화 스케줄러 (5분) |
-| ipc-handlers.ts | 렌더러↔메인 IPC 핸들러 등록 (40+ 핸들러) |
-| window-manager.ts | BrowserWindow 생성 (메인, 설정, 온보딩), 권한 알림 |
+| preload.ts | 화이트리스트 기반 IPC 브릿지 (contextBridge) |
+| window-manager.ts | BrowserWindow 생성 (메인, 설정, 온보딩), contextIsolation 적용 |
 | capture-session.ts | 캡처 세션 관리, 이미지 갤러리, 분석 결과 처리 |
-| hotkey.ts | 글로벌 단축키 등록/해제 (기본 ⌘+Shift+L) |
+| hotkey.ts | 글로벌 단축키 등록/해제 (기본 Cmd+Shift+L) |
 | tray.ts | 메뉴바 트레이 아이콘 + 컨텍스트 메뉴 |
 | oauth-handlers.ts | Deep link 콜백 처리 (Slack, Gmail, Notion OAuth) |
 | i18n.ts | i18next 초기화, 언어 변경, 번역 함수 (t) |
 | state.ts | AppState 싱글톤 (윈도우, 캐시, 서비스 인스턴스) |
-| types.ts | CaptureSession, OAuthCallback 등 공통 타입 |
 
-## IPC 핸들러 구조
+## IPC 핸들러 구조 (ipc-handlers/)
 
-`ipc-handlers.ts`의 `registerIpcHandlers()`에서 모든 핸들러 등록.
-카테고리별 그룹:
+도메인별 9개 파일로 분할:
 
-### Linear 데이터
+| 파일 | 핸들러 |
+|------|--------|
+| index.ts | 핸들러 등록 진입점 |
+| linear-handlers.ts | 팀/프로젝트/사이클/라벨/이슈 생성 |
+| capture-handlers.ts | 캡처 세션 관리 |
+| analysis-handlers.ts | AI 분석 + 추천 |
+| sync-handlers.ts | 동기화 상태/트리거/커서 리셋 |
+| search-handlers.ts | 컨텍스트 검색 + 시맨틱 검색 |
+| settings-handlers.ts | 설정 CRUD, 언어, 단축키 |
+| oauth-handlers.ts | Slack/Notion/Gmail OAuth + 검색 API |
+| onboarding-handlers.ts | 온보딩 완료 처리 |
 
-- get-teams, get-projects, get-users, get-states, get-cycles, get-labels
-- create-issue: 이슈 생성 → Linear API + R2 업로드
-- reload-linear-data: 캐시 갱신
+## 보안 아키텍처
 
-### 캡처
-
-- start-capture: captureSession 시작
-- add-capture: 갤러리에 이미지 추가
-- cleanup-session: 세션 정리
-
-### AI 분석
-
-- analyze-images: Worker API로 분석 요청
-- get-ai-recommendations: 컨텍스트 기반 추천
-
-### 동기화
-
-- sync-status: 소스별 동기화 상태
-- sync-source: 특정 소스 동기화 실행
-- search-context: 하이브리드 검색
-
-### 설정
-
-- get/set 설정값 (토큰, 언어, 단축키 등)
-- Slack/Gmail/Notion OAuth 시작/상태
+- `contextIsolation: true` + `nodeIntegration: false` (3개 윈도우)
+- `preload.ts`가 화이트리스트 기반 IPC 브릿지 제공
+  - INVOKE_CHANNELS (37개): ipcRenderer.invoke
+  - SEND_CHANNELS (3개): ipcRenderer.send
+  - ON_CHANNELS (13개): ipcRenderer.on
+- 렌더러는 `window.electronAPI` 통해서만 IPC 접근
 
 ## OAuth Deep Link 플로우
 
@@ -60,8 +51,6 @@ Electron 메인 프로세스. 앱 라이프사이클, 윈도우 관리, IPC, 시
 4. `oauth-handlers.ts`의 `handleDeepLink(url)` 호출
 5. URL 파싱 → code/state 추출 → 해당 서비스의 `handleCallback()` 호출
 6. 성공 시 settingsWindow에 IPC로 결과 전송 + 자동 동기화 트리거
-
-지원 프로바이더: Slack, Gmail, Notion (각각 `parsed.hostname`으로 분기)
 
 ## AppState 구조
 

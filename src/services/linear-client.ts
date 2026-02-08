@@ -84,6 +84,11 @@ export class LinearService {
     this.client = new LinearClient({ apiKey: apiToken });
   }
 
+  /** Expose the underlying LinearClient for direct SDK queries (e.g. pagination) */
+  getClient(): LinearClient {
+    return this.client;
+  }
+
   /**
    * Create a new Linear issue with optional image attachment(s)
    */

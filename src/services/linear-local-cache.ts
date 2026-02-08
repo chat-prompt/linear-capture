@@ -72,7 +72,7 @@ export async function loadLocalCache(): Promise<LocalCacheData | null> {
     if (error instanceof Error) {
       // Check for specific error types
        if ('code' in error) {
-         const code = (error as any).code;
+         const code = (error as NodeJS.ErrnoException).code;
          if (code === 'ENOENT') {
            logger.warn('[LocalCache] Python3 not found - skipping local cache');
          } else if (code === 'ETIMEDOUT') {

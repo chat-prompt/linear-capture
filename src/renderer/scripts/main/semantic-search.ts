@@ -3,7 +3,6 @@
  * Extracted from inline script lines 2685-2980.
  */
 import { ipc } from '../shared/ipc';
-import { escapeHtml } from '../shared/utils';
 
 let semantic_selectedResults = new Set<number>();
 let semantic_currentResults: any[] = [];

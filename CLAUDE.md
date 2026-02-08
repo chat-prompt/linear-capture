@@ -23,12 +23,21 @@ DEFAULT_TEAM_ID=e108ae14-a354-4c09-86ac-6c1186bc6132
 ## 프로젝트 구조
 ```
 src/
-├── main/           # index.ts(엔트리), ipc-handlers.ts(IPC), window-manager.ts(윈도우),
-│                   # capture-session.ts, hotkey.ts, tray.ts, oauth-handlers.ts, i18n.ts, state.ts
-├── renderer/       # index.html(이슈폼), settings.html(설정), onboarding.html(온보딩)
-├── services/       # capture/, sync-adapters/, context-adapters/,
-│                   # local-search.ts, hybrid-search.ts, embedding-service.ts,
-│                   # database.ts(PGlite), linear-client.ts, slack-client.ts, gmail-client.ts
+├── main/
+│   ├── index.ts, preload.ts, window-manager.ts, state.ts
+│   ├── capture-session.ts, hotkey.ts, tray.ts, oauth-handlers.ts, i18n.ts
+│   └── ipc-handlers/    # 9개 도메인별 핸들러 파일
+├── renderer/
+│   ├── index.html(270줄), settings.html(235줄), onboarding.html
+│   ├── scripts/         # main/(8), settings/(11), shared/(3) 모듈
+│   └── styles/          # CSS 5파일
+├── services/
+│   ├── sync-adapters/   # base + 4개 소스 어댑터
+│   ├── context-adapters/ # 4개 소스 포맷터
+│   ├── notion/          # 로컬 캐시 파서 4파일
+│   ├── config.ts, database.ts, local-search.ts, search-service.ts
+│   ├── ai-analyzer.ts, embedding-client.ts, reranker.ts
+│   └── *-client.ts      # Linear, Slack, Gmail, Notion API
 └── types/
 ```
 

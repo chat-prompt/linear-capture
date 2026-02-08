@@ -18,7 +18,7 @@ import type { LinearService } from '../linear-client';
 import type { DatabaseService } from '../database';
 import type { TextPreprocessor } from '../text-preprocessor';
 import type { SyncProgressCallback } from '../local-search';
-import type { Issue } from '@linear/sdk';
+import type { Issue, LinearClient } from '@linear/sdk';
 import type { SyncResult } from '../../types';
 import { logger } from '../utils/logger';
 
@@ -74,7 +74,7 @@ export class LinearSyncAdapter extends BaseSyncAdapter {
     try {
       await this.updateSyncStatus('syncing');
 
-      const client = (this.linearService as any).client;
+      const client = this.linearService.getClient();
       const allIssues = await this.fetchAllIssues(client, {});
 
       logger.info(`[LinearSync] Found ${allIssues.length} issues`);
@@ -145,7 +145,7 @@ export class LinearSyncAdapter extends BaseSyncAdapter {
       const lastCursor = await this.getLastSyncCursor();
       logger.info(`[LinearSync] Last sync cursor: ${lastCursor || 'none'}`);
 
-      const client = (this.linearService as any).client;
+      const client = this.linearService.getClient();
       const filter = lastCursor
         ? { updatedAt: { gt: new Date(lastCursor) } }
         : {};
@@ -206,7 +206,7 @@ export class LinearSyncAdapter extends BaseSyncAdapter {
     return result;
   }
 
-  private async fetchAllIssues(client: any, filter: Record<string, unknown>): Promise<Issue[]> {
+  private async fetchAllIssues(client: LinearClient, filter: Record<string, unknown>): Promise<Issue[]> {
     const seenIds = new Set<string>();
     const allNodes: Issue[] = [];
     let pageCount = 1;
