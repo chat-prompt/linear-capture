@@ -23,6 +23,7 @@
 .searchable-select .select-trigger:focus {
   outline: none;
   border-color: var(--border-focus);
+  box-shadow: var(--focus-ring);
 }
 
 .searchable-select .select-trigger::after {
@@ -69,6 +70,7 @@
   padding: var(--space-3);
   cursor: pointer;
   font-size: var(--font-size-md);
+  transition: background var(--transition-fast);
 }
 
 .searchable-select .option:hover {
@@ -115,6 +117,7 @@
 
 .label-chips-container:focus-within {
   border-color: var(--border-focus);
+  box-shadow: var(--focus-ring);
 }
 
 .label-chip {
@@ -205,6 +208,7 @@
   padding: var(--space-3);
   cursor: pointer;
   font-size: var(--font-size-md);
+  transition: background var(--transition-fast);
 }
 
 .label-option:hover {

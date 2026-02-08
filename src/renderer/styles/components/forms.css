@@ -32,6 +32,18 @@ textarea:focus,
 select:focus {
   outline: none;
   border-color: var(--border-focus);
+  box-shadow: var(--focus-ring);
+}
+
+input[type="text"]::placeholder,
+input[type="password"]::placeholder,
+textarea::placeholder {
+  color: var(--text-quaternary);
+}
+
+select {
+  cursor: pointer;
+  background: var(--surface-raised);
 }
 
 textarea {

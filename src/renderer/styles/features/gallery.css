@@ -33,6 +33,12 @@
   overflow: hidden;
   border: 1px solid var(--border-default);
   background: var(--gray-50);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.gallery-item:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
 }
 
 .gallery-thumb {

@@ -11,6 +11,7 @@ body {
   border-radius: var(--radius-2xl);
   padding: var(--space-6);
   box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-subtle);
   -webkit-app-region: no-drag;
 }
 
@@ -195,6 +196,7 @@ h1 {
   outline: none;
   border-color: var(--border-focus);
   background: var(--indigo-50);
+  box-shadow: var(--focus-ring);
 }
 
 .hotkey-input.recording {

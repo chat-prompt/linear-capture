@@ -67,6 +67,13 @@
   border-radius: var(--radius-md);
   font-size: var(--font-size-base);
   margin-right: var(--space-3);
+  transition: border-color var(--transition-normal);
+}
+
+.channel-search-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: var(--focus-ring);
 }
 
 .channel-actions {
@@ -103,6 +110,7 @@
   border-bottom: 1px solid var(--surface-sunken);
   font-size: var(--font-size-base);
   cursor: pointer;
+  transition: background var(--transition-fast);
 }
 
 .channel-item:last-child {

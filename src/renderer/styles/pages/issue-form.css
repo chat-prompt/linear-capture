@@ -31,6 +31,7 @@ body {
   margin: 52px var(--space-5) var(--space-5) var(--space-5);
   padding: var(--space-5);
   box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-subtle);
   -webkit-app-region: no-drag;
   max-height: calc(100vh - 72px);
   overflow-y: auto;
@@ -130,7 +131,7 @@ h1 {
   max-height: 85vh;
   object-fit: contain;
   border-radius: var(--radius-lg);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-xl);
 }
 
 .modal-close {

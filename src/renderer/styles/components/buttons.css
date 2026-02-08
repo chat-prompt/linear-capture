@@ -8,6 +8,12 @@ button {
   cursor: pointer;
   transition: all var(--transition-normal);
   -webkit-app-region: no-drag;
+  line-height: var(--line-height-tight);
+}
+
+button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 button:disabled {
@@ -29,6 +35,10 @@ button:disabled {
 
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-primary-hover);
+}
+
+.btn-primary:active:not(:disabled) {
+  background: var(--accent-primary-active);
 }
 
 .btn-secondary {
@@ -59,6 +69,10 @@ button:disabled {
 
 .btn-submit:hover {
   background: var(--accent-primary-hover);
+}
+
+.btn-submit:active:not(:disabled) {
+  background: var(--accent-primary-active);
 }
 
 .btn-submit:disabled {

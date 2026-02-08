@@ -13,6 +13,7 @@ body {
   border-radius: var(--radius-2xl);
   padding: var(--space-6);
   box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-subtle);
   -webkit-app-region: no-drag;
 }
 
