@@ -75,7 +75,7 @@ export function createSettingsWindow(): void {
     frame: true,
     resizable: false,
     alwaysOnTop: false,
-    title: 'Settings - Linear Capture',
+    title: t('window.settingsTitle'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

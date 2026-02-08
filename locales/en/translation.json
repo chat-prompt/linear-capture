@@ -11,6 +11,7 @@
     "validate": "Validate",
     "validateAndSave": "Validate & Save",
     "reset": "Reset",
+    "resetToAuto": "Reset to auto",
     "connect": "Connect",
     "disconnect": "Disconnect",
     "search": "Search",
@@ -30,6 +31,15 @@
     "status": "Status",
     "user": "User",
     "version": "Version"
+  },
+  "tray": {
+    "captureScreen": "Capture Screen ({{shortcut}})",
+    "settings": "Settings...",
+    "quit": "Quit",
+    "tooltip": "Linear Capture"
+  },
+  "window": {
+    "settingsTitle": "Settings - Linear Capture"
   },
   "capture": {
     "title": "Create Linear Issue",
@@ -75,7 +85,12 @@
     "creating": "Creating issue...",
     "userHintPlaceholder": "(Optional) Write what the AI should focus on when creating the Linear issue",
     "aiModel": "AI Model",
-    "prompt": "Prompt"
+    "prompt": "Prompt",
+    "titleRequiredError": "Title is required",
+    "teamRequiredError": "Team is required",
+    "createFailed": "Failed to create issue",
+    "unknownError": "Unknown error",
+    "partialUpload": "({{uploaded}}/{{total}} images uploaded)"
   },
   "context": {
     "title": "Context Search",
@@ -88,6 +103,25 @@
     "connectButton": "Connect {{service}}",
     "searching": "Searching...",
     "selected": "{{count}} selected"
+  },
+  "dropdown": {
+    "noResults": "No results found"
+  },
+  "estimate": {
+    "point": "point",
+    "points": "points"
+  },
+  "cycle": {
+    "current": "Current",
+    "upcoming": "Upcoming",
+    "previous": "Previous"
+  },
+  "semanticSearch": {
+    "ipcError": "IPC not available. Please restart the app.",
+    "notConnected": "{{service}} not connected. Connect in Settings first.",
+    "noResults": "No related documents found",
+    "matchPercent": "{{percent}}% match",
+    "selectedCount": "{{count}} selected"
   },
   "success": {
     "title": "Issue created!",
@@ -247,7 +281,13 @@
     "filterLinear": "Linear",
     "tabAuto": "Auto",
     "tabSearch": "Search",
-    "autoHint": "Enter a title to see auto-suggestions"
+    "autoHint": "Enter a title to see auto-suggestions",
+    "searchingFor": "Searching for \"{{query}}\"...",
+    "autoSuggested": "{{count}} auto-suggested",
+    "resultsCount": "{{count}} results",
+    "enterTitleHint": "Enter a title to see suggestions",
+    "enterSearchHint": "Enter a search term",
+    "recommendation": "Recommendation"
   },
   "sync": {
     "title": "Data Sync",

@@ -29,7 +29,8 @@
     "settings": "Configuración",
     "status": "Estado",
     "user": "Usuario",
-    "version": "Versión"
+    "version": "Versión",
+    "resetToAuto": "Restablecer a automático"
   },
   "capture": {
     "title": "Crear ticket de Linear",
@@ -74,7 +75,13 @@
     "createIssue": "Crear ticket",
     "creating": "Creando ticket...",
     "userHintPlaceholder": "(Opcional) Escribe en qué debe enfocarse la IA al crear el ticket de Linear",
-    "aiModel": "Modelo de IA"
+    "aiModel": "Modelo de IA",
+    "prompt": "Indicación",
+    "titleRequiredError": "El título es obligatorio",
+    "teamRequiredError": "El equipo es obligatorio",
+    "createFailed": "Error al crear el problema",
+    "unknownError": "Error desconocido",
+    "partialUpload": "({{uploaded}}/{{total}} imágenes cargadas)"
   },
   "context": {
     "title": "Búsqueda de contexto",
@@ -246,7 +253,13 @@
     "filterLinear": "Linear",
     "tabAuto": "Automático",
     "tabSearch": "Buscar",
-    "autoHint": "Introduzca un título para ver sugerencias automáticas"
+    "autoHint": "Introduzca un título para ver sugerencias automáticas",
+    "searchingFor": "Buscando \"{{query}}\"...",
+    "autoSuggested": "{{count}} auto-sugeridos",
+    "resultsCount": "{{count}} resultados",
+    "enterTitleHint": "Ingrese un título para ver sugerencias",
+    "enterSearchHint": "Ingrese un término de búsqueda",
+    "recommendation": "Recomendación"
   },
   "sync": {
     "title": "Sincronización de datos",
@@ -267,5 +280,33 @@
     "synced_emails": "correos electrónicos sincronizados",
     "synced_issues": "incidencias sincronizadas",
     "notSyncedYet": "Aún no sincronizado"
+  },
+  "tray": {
+    "captureScreen": "Capturar pantalla ({{shortcut}})",
+    "settings": "Ajustes...",
+    "quit": "Salir",
+    "tooltip": "Linear Capture"
+  },
+  "window": {
+    "settingsTitle": "Ajustes - Linear Capture"
+  },
+  "dropdown": {
+    "noResults": "No se encontraron resultados"
+  },
+  "estimate": {
+    "point": "punto",
+    "points": "puntos"
+  },
+  "cycle": {
+    "current": "Actual",
+    "upcoming": "Próximo",
+    "previous": "Anterior"
+  },
+  "semanticSearch": {
+    "ipcError": "IPC no disponible. Por favor, reinicie la aplicación.",
+    "notConnected": "{{service}} no está conectado. Conéctese primero en la Configuración.",
+    "noResults": "No se encontraron documentos relacionados",
+    "matchPercent": "{{percent}}% de coincidencia",
+    "selectedCount": "{{count}} seleccionados"
   }
 }

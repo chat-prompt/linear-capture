@@ -28,6 +28,11 @@ export async function translatePage(): Promise<void> {
     const key = el.getAttribute('data-i18n-placeholder');
     if (key) (el as HTMLInputElement).placeholder = await t(key);
   }
+  const titles = document.querySelectorAll('[data-i18n-title]');
+  for (const el of titles) {
+    const key = el.getAttribute('data-i18n-title');
+    if (key) el.setAttribute('title', await t(key));
+  }
 }
 
 export async function autoTranslate(skipNoTranslate = true): Promise<void> {

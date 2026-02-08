@@ -92,6 +92,81 @@ function validateLanguage(lang, translation, refKeys, refTranslation) {
   return { missing, extra, empty };
 }
 
+/**
+ * Detect potentially hardcoded UI strings in source files
+ * WARNING level only - does not cause build failure
+ */
+function detectHardcodedStrings() {
+  const srcDir = path.join(__dirname, '../src');
+  const patterns = [
+    /textContent\s*=\s*'([^']{3,})'/g,
+    /textContent\s*=\s*"([^"]{3,})"/g,
+    /\.label:\s*'([^']{3,})'/g,
+    /\.label:\s*"([^"]{3,})"/g,
+    /placeholder:\s*'([^']{3,})'/g,
+    /placeholder:\s*"([^"]{3,})"/g,
+  ];
+
+  // Strings to ignore (brand names, technical terms, CSS classes, etc.)
+  const ignorePatterns = [
+    /^(Slack|Notion|Gmail|Linear|Claude|Gemini|AI)/,
+    /^(console|import|require|export|return|const|let|var)/,
+    /^[a-z]+\.[a-z]/,  // dot notation like 'form.title'
+    /^#|^\./,  // CSS selectors
+    /^https?:/,  // URLs
+    /^\d/,  // starts with number
+    /^[A-Z_]+$/,  // ALL_CAPS constants
+    /^(XS|S|M|L|XL|XXL)$/,  // T-shirt sizes
+  ];
+
+  const warnings = [];
+
+  function scanFile(filePath) {
+    if (!filePath.endsWith('.ts') && !filePath.endsWith('.js')) return;
+    if (filePath.includes('node_modules')) return;
+    if (filePath.includes('.d.ts')) return;
+
+    const content = fs.readFileSync(filePath, 'utf8');
+    const lines = content.split('\n');
+
+    lines.forEach((line, lineNum) => {
+      // Skip comments and console.log
+      const trimmed = line.trim();
+      if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return;
+      if (trimmed.includes('console.') || trimmed.includes('logger.')) return;
+
+      for (const pattern of patterns) {
+        pattern.lastIndex = 0;
+        let match;
+        while ((match = pattern.exec(line)) !== null) {
+          const str = match[1];
+          if (ignorePatterns.some(p => p.test(str))) continue;
+          warnings.push({
+            file: path.relative(srcDir, filePath),
+            line: lineNum + 1,
+            string: str
+          });
+        }
+      }
+    });
+  }
+
+  function scanDir(dir) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory() && entry.name !== 'node_modules') {
+        scanDir(fullPath);
+      } else if (entry.isFile()) {
+        scanFile(fullPath);
+      }
+    }
+  }
+
+  scanDir(srcDir);
+  return warnings;
+}
+
 function main() {
   console.log('i18n Translation Validation');
   console.log('===========================\n');
@@ -142,6 +217,20 @@ function main() {
     }
     
     console.log('');
+  }
+
+  // Detect hardcoded strings (warning only)
+  console.log('Hardcoded String Detection (warnings)');
+  console.log('--------------------------------------\n');
+  const warnings = detectHardcodedStrings();
+  if (warnings.length > 0) {
+    console.log(`Found ${warnings.length} potentially hardcoded strings:\n`);
+    warnings.forEach(w => {
+      console.log(`  ⚠ ${w.file}:${w.line} - "${w.string}"`);
+    });
+    console.log(`\nThese are warnings only and do not cause build failure.\n`);
+  } else {
+    console.log('No hardcoded strings detected.\n');
   }
 
   if (hasErrors) {

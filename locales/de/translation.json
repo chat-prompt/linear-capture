@@ -29,7 +29,8 @@
     "settings": "Einstellungen",
     "status": "Status",
     "user": "Benutzer",
-    "version": "Version"
+    "version": "Version",
+    "resetToAuto": "Auf Automatik zurücksetzen"
   },
   "capture": {
     "title": "Linear Issue erstellen",
@@ -74,7 +75,13 @@
     "createIssue": "Issue erstellen",
     "creating": "Issue wird erstellt...",
     "userHintPlaceholder": "(Optional) Schreiben Sie, worauf die KI bei der Erstellung des Linear Issues achten soll",
-    "aiModel": "KI-Modell"
+    "aiModel": "KI-Modell",
+    "prompt": "Eingabeaufforderung",
+    "titleRequiredError": "Titel ist erforderlich",
+    "teamRequiredError": "Team ist erforderlich",
+    "createFailed": "Fehler beim Erstellen des Problems",
+    "unknownError": "Unbekannter Fehler",
+    "partialUpload": "({{uploaded}}/{{total}} Bilder hochgeladen)"
   },
   "context": {
     "title": "Kontextsuche",
@@ -246,7 +253,13 @@
     "filterLinear": "Linear",
     "tabAuto": "Automatisch",
     "tabSearch": "Suche",
-    "autoHint": "Geben Sie einen Titel ein, um automatische Vorschläge zu sehen"
+    "autoHint": "Geben Sie einen Titel ein, um automatische Vorschläge zu sehen",
+    "searchingFor": "Suche nach \"{{query}}\"...",
+    "autoSuggested": "{{count}} automatisch vorgeschlagen",
+    "resultsCount": "{{count}} Ergebnisse",
+    "enterTitleHint": "Geben Sie einen Titel ein, um Vorschläge zu sehen",
+    "enterSearchHint": "Geben Sie einen Suchbegriff ein",
+    "recommendation": "Empfehlung"
   },
   "sync": {
     "title": "Datensynchronisierung",
@@ -267,5 +280,33 @@
     "synced_emails": "E-Mails synchronisiert",
     "synced_issues": "Probleme synchronisiert",
     "notSyncedYet": "Noch nicht synchronisiert"
+  },
+  "tray": {
+    "captureScreen": "Bildschirm aufnehmen ({{shortcut}})",
+    "settings": "Einstellungen...",
+    "quit": "Beenden",
+    "tooltip": "Lineare Aufnahme"
+  },
+  "window": {
+    "settingsTitle": "Einstellungen - Lineare Aufnahme"
+  },
+  "dropdown": {
+    "noResults": "Keine Ergebnisse gefunden"
+  },
+  "estimate": {
+    "point": "Punkt",
+    "points": "Punkte"
+  },
+  "cycle": {
+    "current": "Aktuell",
+    "upcoming": "Bevorstehend",
+    "previous": "Vorherige"
+  },
+  "semanticSearch": {
+    "ipcError": "IPC nicht verfügbar. Bitte starten Sie die App neu.",
+    "notConnected": "{{service}} nicht verbunden. Stellen Sie zuerst eine Verbindung in den Einstellungen her.",
+    "noResults": "Keine verwandten Dokumente gefunden",
+    "matchPercent": "{{percent}}% Übereinstimmung",
+    "selectedCount": "{{count}} ausgewählt"
   }
 }

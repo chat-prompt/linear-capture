@@ -29,7 +29,8 @@
     "settings": "Paramètres",
     "status": "Statut",
     "user": "Utilisateur",
-    "version": "Version"
+    "version": "Version",
+    "resetToAuto": "Réinitialiser à auto"
   },
   "capture": {
     "title": "Créer un ticket Linear",
@@ -74,7 +75,13 @@
     "createIssue": "Créer le ticket",
     "creating": "Création du ticket...",
     "userHintPlaceholder": "(Optionnel) Écrivez ce sur quoi l'IA doit se concentrer lors de la création du ticket Linear",
-    "aiModel": "Modèle IA"
+    "aiModel": "Modèle IA",
+    "prompt": "Invite",
+    "titleRequiredError": "Le titre est obligatoire",
+    "teamRequiredError": "L'équipe est obligatoire",
+    "createFailed": "Échec de la création du problème",
+    "unknownError": "Erreur inconnue",
+    "partialUpload": "({{uploaded}}/{{total}} images téléchargées)"
   },
   "context": {
     "title": "Recherche de contexte",
@@ -246,7 +253,13 @@
     "filterLinear": "Linear",
     "tabAuto": "Automatique",
     "tabSearch": "Recherche",
-    "autoHint": "Saisissez un titre pour afficher des suggestions automatiques"
+    "autoHint": "Saisissez un titre pour afficher des suggestions automatiques",
+    "searchingFor": "Recherche de \"{{query}}\"...",
+    "autoSuggested": "{{count}} suggestions automatiques",
+    "resultsCount": "{{count}} résultats",
+    "enterTitleHint": "Saisissez un titre pour afficher des suggestions",
+    "enterSearchHint": "Saisissez un terme de recherche",
+    "recommendation": "Recommandation"
   },
   "sync": {
     "title": "Synchronisation des données",
@@ -267,5 +280,33 @@
     "synced_emails": "e-mails synchronisés",
     "synced_issues": "problèmes synchronisés",
     "notSyncedYet": "Pas encore synchronisé"
+  },
+  "tray": {
+    "captureScreen": "Capturer l'écran ({{shortcut}})",
+    "settings": "Paramètres...",
+    "quit": "Quitter",
+    "tooltip": "Capture Linéaire"
+  },
+  "window": {
+    "settingsTitle": "Paramètres - Capture Linéaire"
+  },
+  "dropdown": {
+    "noResults": "Aucun résultat trouvé"
+  },
+  "estimate": {
+    "point": "point",
+    "points": "points"
+  },
+  "cycle": {
+    "current": "Actuel",
+    "upcoming": "À venir",
+    "previous": "Précédent"
+  },
+  "semanticSearch": {
+    "ipcError": "IPC non disponible. Veuillez redémarrer l'application.",
+    "notConnected": "{{service}} non connecté. Veuillez d'abord vous connecter dans les paramètres.",
+    "noResults": "Aucun document connexe trouvé",
+    "matchPercent": "{{percent}}% de correspondance",
+    "selectedCount": "{{count}} sélectionné(s)"
   }
 }

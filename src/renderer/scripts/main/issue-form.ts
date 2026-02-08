@@ -71,6 +71,7 @@ export function initIssueForm() {
         hiddenInput: state.projectInput,
         items: state.allProjects,
         defaultLabel: 'None',
+        noResultsLabel: await t('dropdown.noResults'),
         getValue: (p: any) => p.id,
         getLabel: (p: any) => p.name,
         onSelect: (value: string, label: string, project: any) => {
@@ -96,6 +97,7 @@ export function initIssueForm() {
         hiddenInput: state.assigneeInput,
         items: state.allUsers,
         defaultLabel: 'Unassigned',
+        noResultsLabel: await t('dropdown.noResults'),
         getValue: (u: any) => u.id,
         getLabel: (u: any) => u.name
       });
@@ -213,12 +215,12 @@ export function initIssueForm() {
     const cycleId = state.cycleSelect.value;
 
     if (!title) {
-      state.errorDiv.textContent = 'Title is required';
+      state.errorDiv.textContent = await t('form.titleRequiredError');
       return;
     }
 
     if (!teamId) {
-      state.errorDiv.textContent = 'Team is required';
+      state.errorDiv.textContent = await t('form.teamRequiredError');
       return;
     }
 
@@ -262,10 +264,10 @@ export function initIssueForm() {
         state.submitBtn.disabled = false;
         state.cancelBtn.disabled = false;
         state.reanalyzeBtn.disabled = false;
-        state.errorDiv.textContent = result.error || 'Failed to create issue';
+        state.errorDiv.textContent = result.error || await t('form.createFailed');
         // Show partial upload warning if applicable
         if (result.uploadedCount !== undefined && result.uploadedCount < state.images.length) {
-          state.errorDiv.textContent += ` (${result.uploadedCount}/${state.images.length} images uploaded)`;
+          state.errorDiv.textContent += ` ${await t('form.partialUpload', { uploaded: result.uploadedCount, total: state.images.length })}`;
         }
         renderGallery();
       }
@@ -276,7 +278,7 @@ export function initIssueForm() {
       state.submitBtn.disabled = false;
       state.cancelBtn.disabled = false;
       state.reanalyzeBtn.disabled = false;
-      state.errorDiv.textContent = err.message || 'Unknown error';
+      state.errorDiv.textContent = err.message || await t('form.unknownError');
       renderGallery();
     }
   });

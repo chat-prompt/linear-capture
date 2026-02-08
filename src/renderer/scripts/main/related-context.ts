@@ -4,9 +4,43 @@
  * Search tab: manual search with source filter chips.
  */
 import { ipc } from '../shared/ipc';
-import { t } from '../shared/i18n';
+import { t, tBatch } from '../shared/i18n';
 import { escapeHtml } from '../shared/utils';
 import * as state from './state';
+
+let relatedStrings = {
+  autoSuggested: '{{count}} auto-suggested',
+  resultsCount: '{{count}} results',
+  enterTitleHint: 'Enter a title to see suggestions',
+  enterSearchHint: 'Enter a search term',
+  searchingFor: 'Searching for "{{query}}"...',
+  noResultsHint: 'Try different keywords',
+  recommendation: 'Recommendation'
+};
+let relatedLocale = 'en';
+const localeMap: Record<string, string> = { en: 'en-US', ko: 'ko-KR', de: 'de-DE', fr: 'fr-FR', es: 'es-ES' };
+
+async function preloadRelatedTexts() {
+  const results = await tBatch([
+    { key: 'relatedContext.autoSuggested', options: { count: '{{count}}' } },
+    { key: 'relatedContext.resultsCount', options: { count: '{{count}}' } },
+    { key: 'relatedContext.enterTitleHint' },
+    { key: 'relatedContext.enterSearchHint' },
+    { key: 'relatedContext.searchingFor', options: { query: '{{query}}' } },
+    { key: 'relatedContext.noResultsHint' },
+    { key: 'relatedContext.recommendation' }
+  ]);
+  relatedStrings = {
+    autoSuggested: results[0],
+    resultsCount: results[1],
+    enterTitleHint: results[2],
+    enterSearchHint: results[3],
+    searchingFor: results[4],
+    noResultsHint: results[5],
+    recommendation: results[6]
+  };
+  try { relatedLocale = await ipc.invoke('get-language'); } catch { /* keep default */ }
+}
 
 let relatedContextSelectedItems: any[] = [];
 let activeTab: 'auto' | 'search' = 'auto';
@@ -101,23 +135,23 @@ function switchTab(tab: 'auto' | 'search') {
   }
 }
 
-async function showStoredResults(items: any[], tab: 'auto' | 'search') {
+function showStoredResults(items: any[], tab: 'auto' | 'search') {
   relatedContextLoading.style.display = 'none';
 
   if (items.length > 0) {
     renderRelatedResults(items);
     relatedContextEmpty.style.display = 'none';
     const statusLabel = tab === 'auto'
-      ? `${items.length} auto-suggested`
-      : `${items.length} results`;
+      ? relatedStrings.autoSuggested.replace('{{count}}', String(items.length))
+      : relatedStrings.resultsCount.replace('{{count}}', String(items.length));
     relatedContextStatus.innerHTML = `<span>\u2728</span><span>${statusLabel}</span>`;
   } else {
     relatedContextResults.innerHTML = '';
     relatedContextResults.style.display = 'none';
     relatedContextEmpty.style.display = 'none';
     const msg = tab === 'auto'
-      ? ((await t('relatedContext.autoHint')) || 'Enter a title to see suggestions')
-      : ((await t('relatedContext.enterQuery')) || 'Enter a search term');
+      ? relatedStrings.enterTitleHint
+      : relatedStrings.enterSearchHint;
     relatedContextStatus.innerHTML = `<span>\uD83D\uDCA1</span><span>${msg}</span>`;
   }
 }
@@ -153,8 +187,8 @@ async function performSearch(query: string, sourceFilter: string, target: 'auto'
       relatedContextLoading.style.display = 'none';
       relatedContextEmpty.style.display = 'none';
       const msg = target === 'auto'
-        ? ((await t('relatedContext.autoHint')) || 'Enter a title to see suggestions')
-        : ((await t('relatedContext.enterQuery')) || 'Enter a search term');
+        ? relatedStrings.enterTitleHint
+        : relatedStrings.enterSearchHint;
       relatedContextStatus.innerHTML = `<span>\uD83D\uDCA1</span><span>${msg}</span>`;
     }
     return;
@@ -164,7 +198,7 @@ async function performSearch(query: string, sourceFilter: string, target: 'auto'
     relatedContextLoading.style.display = 'flex';
     relatedContextResults.style.display = 'none';
     relatedContextEmpty.style.display = 'none';
-    relatedContextStatus.innerHTML = `<span>\uD83D\uDD0D</span><span>Searching for \u201C${escapeHtml(query.substring(0, 30))}\u201D...</span>`;
+    relatedContextStatus.innerHTML = `<span>\uD83D\uDD0D</span><span>${relatedStrings.searchingFor.replace('{{query}}', escapeHtml(query.substring(0, 30)))}</span>`;
   }
 
   try {
@@ -188,14 +222,14 @@ async function performSearch(query: string, sourceFilter: string, target: 'auto'
     if (items.length === 0) {
       relatedContextEmpty.style.display = 'flex';
       relatedContextResults.style.display = 'none';
-      relatedContextStatus.innerHTML = `<span>\uD83E\uDD37</span><span>${(await t('relatedContext.noResultsHint')) || 'Try different keywords'}</span>`;
+      relatedContextStatus.innerHTML = `<span>\uD83E\uDD37</span><span>${relatedStrings.noResultsHint}</span>`;
       return;
     }
 
     renderRelatedResults(items);
     const statusLabel = target === 'auto'
-      ? `${items.length} auto-suggested`
-      : `${items.length} results`;
+      ? relatedStrings.autoSuggested.replace('{{count}}', String(items.length))
+      : relatedStrings.resultsCount.replace('{{count}}', String(items.length));
     relatedContextStatus.innerHTML = `<span>\u2728</span><span>${statusLabel}</span>`;
 
     // Auto-expand when results found
@@ -236,7 +270,7 @@ function renderRelatedResults(items: any[]) {
     const sourceLabelStr = sourceLabel[sourceClass] || sourceClass;
 
     const timeStr = item.timestamp
-      ? new Date(item.timestamp).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      ? new Date(item.timestamp).toLocaleString(localeMap[relatedLocale] || 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
       : '';
 
     div.innerHTML = `
@@ -398,7 +432,7 @@ export function initRelatedContext() {
         'notion': 'Notion',
         'gmail': 'Gmail',
         'linear': 'Linear',
-        'ai': 'Recommendation'
+        'ai': relatedStrings.recommendation
       };
       const sourceLabelStr = sourceLabel[item.source] || item.source;
 
@@ -424,4 +458,7 @@ export function initRelatedContext() {
       (el.querySelector('.related-context-result-checkbox') as HTMLInputElement).checked = false;
     });
   });
+
+  preloadRelatedTexts();
+  ipc.on('language-changed', () => { preloadRelatedTexts(); });
 }
