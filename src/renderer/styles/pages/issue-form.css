@@ -71,6 +71,46 @@ h1 {
   margin-bottom: var(--space-4);
 }
 
+/* AI Analysis Section */
+#aiAnalysisSection .form-group {
+  margin-bottom: var(--space-4);
+}
+
+#aiAnalysisSection .row {
+  margin-bottom: var(--space-4);
+}
+
+#userHint {
+  min-height: 60px;
+  height: 60px;
+  resize: none;
+  font-size: var(--font-size-base);
+  padding: var(--space-2) var(--space-3);
+}
+
+.ai-model-row {
+  align-items: flex-end;
+}
+
+.ai-model-row .form-group:first-child {
+  flex: 2;
+}
+
+.ai-model-row .form-group:last-child {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+}
+
+#reanalyzeBtn {
+  width: 100%;
+  padding: var(--space-3);
+}
+
+#loading .spinner {
+  margin: 0 auto var(--space-3);
+}
+
 /* Settings button in top-bar */
 .icon-btn {
   background: transparent;

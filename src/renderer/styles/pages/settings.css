@@ -154,6 +154,11 @@ h1 {
   border-top: 1px solid var(--border-subtle);
 }
 
+/* Language Section */
+.language-group {
+  margin-bottom: var(--space-2);
+}
+
 /* Hotkey Section */
 .hotkey-section {
   margin-top: 0;
