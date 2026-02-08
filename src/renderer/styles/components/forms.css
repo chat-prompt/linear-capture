@@ -1,0 +1,40 @@
+/* Form components */
+
+.form-group {
+  margin-bottom: var(--space-3);
+}
+
+label {
+  display: block;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-1_5);
+}
+
+input[type="text"],
+input[type="password"],
+textarea,
+select {
+  width: 100%;
+  padding: 10px var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-md);
+  font-family: inherit;
+  transition: border-color var(--transition-normal);
+  -webkit-app-region: no-drag;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--border-focus);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 144px;
+}
