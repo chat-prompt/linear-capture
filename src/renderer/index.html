@@ -92,19 +92,34 @@
             </div>
             <button type="button" class="not-connected-btn" id="relatedContextOpenSettings" data-i18n="relatedContext.openSettings">Open Settings</button>
           </div>
-          <!-- Search Row -->
-          <div class="related-context-search-row">
+          <!-- Mode Tabs -->
+          <div class="related-context-tabs" id="relatedContextTabs">
+            <button type="button" class="related-context-tab active" data-tab="auto" data-i18n="relatedContext.tabAuto">Auto</button>
+            <button type="button" class="related-context-tab" data-tab="search" data-i18n="relatedContext.tabSearch">Search</button>
+            <button type="button"
+                    class="related-context-refresh-btn"
+                    id="relatedContextRefreshBtn"
+                    title="Reset to auto">
+              &#128260;
+            </button>
+          </div>
+
+          <!-- Search Row (visible only in Search tab) -->
+          <div class="related-context-search-row" style="display: none;">
             <input type="text"
                    class="related-context-search-input"
                    id="relatedContextSearchInput"
                    data-i18n-placeholder="relatedContext.searchPlaceholder"
                    placeholder="Search related context...">
-            <button type="button"
-                    class="related-context-refresh-btn"
-                    id="relatedContextRefreshBtn"
-                    title="Reset to title">
-              &#128260;
-            </button>
+          </div>
+
+          <!-- Source Filters (visible only in Search tab) -->
+          <div class="related-context-source-filters" id="relatedContextSourceFilters" style="display: none;">
+            <button type="button" class="source-filter-chip active" data-source="all" data-i18n="relatedContext.filterAll">All</button>
+            <button type="button" class="source-filter-chip" data-source="slack" data-i18n="relatedContext.filterSlack">Slack</button>
+            <button type="button" class="source-filter-chip" data-source="notion" data-i18n="relatedContext.filterNotion">Notion</button>
+            <button type="button" class="source-filter-chip" data-source="gmail" data-i18n="relatedContext.filterGmail">Gmail</button>
+            <button type="button" class="source-filter-chip" data-source="linear" data-i18n="relatedContext.filterLinear">Linear</button>
           </div>
 
           <!-- Status Hint -->

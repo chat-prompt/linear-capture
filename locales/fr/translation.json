@@ -238,7 +238,15 @@
     "selected": "{{count}} sélectionné(s)",
     "findFrom": "Trouver du contenu connexe depuis Slack/Notion/Gmail",
     "notConnectedHint": "Connectez Slack, Notion ou Gmail pour rechercher du contenu connexe",
-    "openSettings": "Ouvrir les paramètres"
+    "openSettings": "Ouvrir les paramètres",
+    "filterAll": "Tout",
+    "filterSlack": "Slack",
+    "filterNotion": "Notion",
+    "filterGmail": "Gmail",
+    "filterLinear": "Linear",
+    "tabAuto": "Automatique",
+    "tabSearch": "Recherche",
+    "autoHint": "Saisissez un titre pour afficher des suggestions automatiques"
   },
   "sync": {
     "title": "Synchronisation des données",

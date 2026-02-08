@@ -36,34 +36,49 @@ export function registerSearchHandlers(): void {
     }
   });
 
-  ipcMain.handle('context.getRelated', async (_event, { query, limit = 20 }: { query: string; limit?: number }) => {
+  ipcMain.handle('context.getRelated', async (_event, { query, limit = 20, sourceFilter }: { query: string; limit?: number; sourceFilter?: string }) => {
     if (!query || query.length < 3) {
       return { success: true, results: [] };
     }
 
     try {
       const QUOTA_PER_SOURCE = 5;
+      const singleSource = sourceFilter && sourceFilter !== 'all' ? sourceFilter : null;
       const results: any[] = [];
 
       const localSearch = getLocalSearchService();
       const useLocalSearch = localSearch?.isInitialized() ?? false;
 
       if (useLocalSearch) {
-        const localResults = await localSearch!.search(query, [], QUOTA_PER_SOURCE * 4);
+        const localResults = await localSearch!.search(query, [], singleSource ? limit : QUOTA_PER_SOURCE * 4, singleSource || undefined);
 
-        for (const source of ['slack', 'notion', 'linear', 'gmail'] as const) {
+        if (singleSource) {
           results.push(...localResults
-            .filter(r => r.source === source)
-            .slice(0, QUOTA_PER_SOURCE)
+            .slice(0, limit)
             .map(r => ({
-              id: `${source}-${r.id}`,
-              source,
+              id: `${r.source}-${r.id}`,
+              source: r.source,
               title: r.title || '',
               snippet: r.content?.substring(0, 200) || '',
               url: r.url,
               timestamp: r.timestamp,
             }))
           );
+        } else {
+          for (const source of ['slack', 'notion', 'linear', 'gmail'] as const) {
+            results.push(...localResults
+              .filter(r => r.source === source)
+              .slice(0, QUOTA_PER_SOURCE)
+              .map(r => ({
+                id: `${source}-${r.id}`,
+                source,
+                title: r.title || '',
+                snippet: r.content?.substring(0, 200) || '',
+                url: r.url,
+                timestamp: r.timestamp,
+              }))
+            );
+          }
         }
 
       } else {
@@ -77,10 +92,13 @@ export function registerSearchHandlers(): void {
           Promise.resolve(linearService !== null),
         ]);
 
+        const sourceQuota = singleSource ? limit : QUOTA_PER_SOURCE;
+
         const [slackResult, notionResult, gmailResult, linearResult] = await Promise.allSettled([
           (async () => {
+            if (singleSource && singleSource !== 'slack') return [];
             if (!slackConnected) return [];
-            const result = await state.slackService!.searchMessages(query, undefined, QUOTA_PER_SOURCE);
+            const result = await state.slackService!.searchMessages(query, undefined, sourceQuota);
             return (result.messages || []).map(m => ({
               id: `slack-${m.ts}`,
               source: 'slack' as const,
@@ -92,9 +110,10 @@ export function registerSearchHandlers(): void {
           })(),
 
           (async () => {
+            if (singleSource && singleSource !== 'notion') return [];
             if (!notionConnected) return [];
             const adapter = getAdapter('notion');
-            const items = await adapter.fetchItems(query, QUOTA_PER_SOURCE);
+            const items = await adapter.fetchItems(query, sourceQuota);
             return items.map(item => ({
               id: `notion-${item.id}`,
               source: 'notion' as const,
@@ -106,9 +125,10 @@ export function registerSearchHandlers(): void {
           })(),
 
           (async () => {
+            if (singleSource && singleSource !== 'gmail') return [];
             if (!gmailConnected) return [];
             const adapter = getAdapter('gmail');
-            const items = await adapter.fetchItems(query, QUOTA_PER_SOURCE);
+            const items = await adapter.fetchItems(query, sourceQuota);
             return items.map(item => ({
               id: `gmail-${item.id}`,
               source: 'gmail' as const,
@@ -120,9 +140,10 @@ export function registerSearchHandlers(): void {
           })(),
 
           (async () => {
+            if (singleSource && singleSource !== 'linear') return [];
             if (!linearConnected) return [];
             const adapter = getAdapter('linear');
-            const items = await adapter.fetchItems(query, QUOTA_PER_SOURCE);
+            const items = await adapter.fetchItems(query, sourceQuota);
             return items.map(item => ({
               id: `linear-${item.id}`,
               source: 'linear' as const,
