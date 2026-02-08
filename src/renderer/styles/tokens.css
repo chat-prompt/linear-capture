@@ -1,0 +1,193 @@
+/* ================================================================
+   Design Tokens — Linear Capture Design System
+   Light mode only. Based on Linear's Orbiter design language.
+   ================================================================ */
+
+:root {
+  /* ── Primitive Colors ─────────────────────────────────────────── */
+
+  /* Gray scale */
+  --gray-50:  #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+
+  /* Indigo (accent) — desaturated to match Linear brand tone */
+  --indigo-50:  #f8f9fc;
+  --indigo-100: #eef0f7;
+  --indigo-200: #d8dced;
+  --indigo-300: #b4bada;
+  --indigo-400: #8b93c4;
+  --indigo-500: #5e6ad2;
+  --indigo-600: #4c5abd;
+  --indigo-700: #3f4aa8;
+
+  /* Green */
+  --green-50:  #f0fdf4;
+  --green-100: #dcfce7;
+  --green-500: #22c55e;
+  --green-600: #16a34a;
+  --green-700: #15803d;
+
+  /* Red */
+  --red-50:  #fef2f2;
+  --red-100: #fee2e2;
+  --red-200: #fecaca;
+  --red-500: #ef4444;
+  --red-600: #dc2626;
+  --red-700: #b91c1c;
+
+  /* Yellow / Warning */
+  --yellow-50:  #fffbeb;
+  --yellow-100: #fef3cd;
+  --yellow-200: #fde68a;
+  --yellow-400: #fbbf24;
+  --yellow-500: #f59e0b;
+  --yellow-600: #d97706;
+  --yellow-700: #92400e;
+
+  /* Blue / Info */
+  --blue-50:  #eff6ff;
+  --blue-100: #dbeafe;
+  --blue-200: #bfdbfe;
+  --blue-500: #3b82f6;
+  --blue-600: #2563eb;
+  --blue-700: #1d4ed8;
+
+  /* ── Semantic Tokens ──────────────────────────────────────────── */
+
+  /* Surfaces */
+  --surface-base:    #f9fafb;
+  --surface-raised:  #ffffff;
+  --surface-sunken:  #f3f4f6;
+  --surface-overlay: #ffffff;
+  --surface-inset:   #f3f4f6;
+
+  /* Text */
+  --text-primary:    #111827;
+  --text-secondary:  #374151;
+  --text-tertiary:   #6b7280;
+  --text-quaternary: #9ca3af;
+  --text-disabled:   #d1d5db;
+  --text-on-accent:  #ffffff;
+  --text-link:       #5e6ad2;
+
+  /* Borders */
+  --border-default:  #e5e7eb;
+  --border-subtle:   #f3f4f6;
+  --border-strong:   #d1d5db;
+  --border-focus:    #5e6ad2;
+
+  /* Accent */
+  --accent-primary:         #5e6ad2;
+  --accent-primary-hover:   #4c5abd;
+  --accent-primary-active:  #3f4aa8;
+  --accent-primary-subtle:  rgba(94, 106, 210, 0.08);
+  --accent-primary-bg:      #f8f9fc;
+
+  /* Status */
+  --status-success:      #22c55e;
+  --status-success-bg:   #f0fdf4;
+  --status-error:        #ef4444;
+  --status-error-bg:     #fef2f2;
+  --status-warning:      #f59e0b;
+  --status-warning-bg:   #fffbeb;
+  --status-info:         #3b82f6;
+  --status-info-bg:      #eff6ff;
+
+  /* Integration Colors */
+  --color-slack:   #4a154b;
+  --color-slack-bg: #f0f4f8;
+  --color-notion:  #000000;
+  --color-notion-bg: #f5f5f5;
+  --color-gmail:   #ea4335;
+  --color-gmail-bg: #fef3f2;
+  --color-linear:  #5e6ad2;
+  --color-linear-bg: #f8f9fc;
+  --color-ai:      #10b981;
+  --color-ai-bg:   #ecfdf5;
+
+  /* ── Typography ───────────────────────────────────────────────── */
+
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono:   'SF Mono', SFMono-Regular, ui-monospace, 'DejaVu Sans Mono', Menlo, Consolas, monospace;
+
+  /* Font sizes */
+  --font-size-2xs: 10px;
+  --font-size-xs:  11px;
+  --font-size-sm:  12px;
+  --font-size-base: 13px;
+  --font-size-md:  14px;
+  --font-size-lg:  16px;
+  --font-size-xl:  18px;
+  --font-size-2xl: 20px;
+
+  /* Font weights */
+  --font-weight-regular:  400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+
+  /* Line heights */
+  --line-height-tight:  1.2;
+  --line-height-normal: 1.4;
+  --line-height-relaxed: 1.5;
+  --line-height-loose:  1.6;
+
+  /* ── Spacing (8px grid) ───────────────────────────────────────── */
+
+  --space-0:  0;
+  --space-px: 1px;
+  --space-0_5: 2px;
+  --space-1:  4px;
+  --space-1_5: 6px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* ── Border Radius ────────────────────────────────────────────── */
+
+  --radius-sm:   4px;
+  --radius-md:   6px;
+  --radius-lg:   8px;
+  --radius-xl:   10px;
+  --radius-2xl:  12px;
+  --radius-full: 9999px;
+
+  /* ── Shadows ──────────────────────────────────────────────────── */
+
+  --shadow-xs:  0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm:  0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md:  0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-lg:  0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-xl:  0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-overlay: 0 4px 20px rgba(0, 0, 0, 0.15);
+
+  /* Focus ring */
+  --focus-ring: 0 0 0 3px var(--accent-primary-subtle);
+
+  /* ── Transitions ──────────────────────────────────────────────── */
+
+  --transition-fast:   120ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow:   300ms ease;
+
+  /* ── Z-index ──────────────────────────────────────────────────── */
+
+  --z-base:     0;
+  --z-dropdown: 100;
+  --z-sticky:   200;
+  --z-overlay:  500;
+  --z-modal:    1000;
+  --z-toast:    2000;
+}

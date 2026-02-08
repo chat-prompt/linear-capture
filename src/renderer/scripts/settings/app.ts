@@ -14,6 +14,7 @@ import { initSyncStatus, loadSyncStatus, invalidateSyncLabels } from './sync-sta
 import { initMenuDropdown } from './menu-dropdown';
 import { initLanguage } from './language';
 import { initVersion } from './version';
+import { initCustomSelects } from '../shared/custom-select';
 
 // i18n: react to language changes
 ipc.on('language-changed', async () => {
@@ -41,6 +42,7 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 });
 
 // Initialize all modules
+initCustomSelects();
 initToken();
 initHotkey();
 initSlack();

@@ -1,0 +1,91 @@
+/* Button components */
+
+button {
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  -webkit-app-region: no-drag;
+  line-height: var(--line-height-tight);
+}
+
+button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.buttons {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+}
+
+.btn-primary {
+  background: var(--accent-primary);
+  border: none;
+  color: var(--text-on-accent);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-primary-hover);
+}
+
+.btn-primary:active:not(:disabled) {
+  background: var(--accent-primary-active);
+}
+
+.btn-secondary {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-default);
+  color: var(--text-tertiary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--border-subtle);
+}
+
+.btn-cancel {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-default);
+  color: var(--text-tertiary);
+}
+
+.btn-cancel:hover {
+  background: var(--gray-200);
+}
+
+.btn-submit {
+  background: var(--accent-primary);
+  border: none;
+  color: var(--text-on-accent);
+}
+
+.btn-submit:hover {
+  background: var(--accent-primary-hover);
+}
+
+.btn-submit:active:not(:disabled) {
+  background: var(--accent-primary-active);
+}
+
+.btn-submit:disabled {
+  background: var(--gray-300);
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  background: var(--status-error-bg);
+  border: 1px solid var(--red-200);
+  color: var(--red-600);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--red-100);
+}

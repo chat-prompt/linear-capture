@@ -105,7 +105,7 @@ export function createMainWindow(): void {
 
   state.mainWindow = new BrowserWindow({
     width: 728,
-    height: 720,
+    height: 1000,
     show: false,
     frame: true,
     resizable: false,

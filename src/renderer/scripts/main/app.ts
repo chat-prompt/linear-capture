@@ -12,6 +12,7 @@ import { initLinearDropdowns, updateTeamDependentDropdowns, updateLabelsForTeam 
 import { initIssueForm } from './issue-form';
 import { initSemanticSearch } from './semantic-search';
 import { initRelatedContext } from './related-context';
+import { initCustomSelects, setSelectOptions } from '../shared/custom-select';
 
 // ==================== i18n Setup ====================
 
@@ -97,16 +98,14 @@ ipc.on('linear-data-updated', (data: any) => {
 
   // Repopulate team dropdown
   const currentTeamId = state.teamSelect.value;
-  state.teamSelect.innerHTML = '<option value="" data-i18n="form.teamPlaceholder">Select team...</option>';
+  const selectedTeamId = data.defaultTeamId || currentTeamId || '';
+  const teamOpts: Array<{ value: string; label: string }> = [
+    { value: '', label: 'Select team...' }
+  ];
   state.allTeams.forEach((team: any) => {
-    const option = document.createElement('option');
-    option.value = team.id;
-    option.textContent = `${team.name} (${team.key})`;
-    if (team.id === data.defaultTeamId || team.id === currentTeamId) {
-      option.selected = true;
-    }
-    state.teamSelect.appendChild(option);
+    teamOpts.push({ value: team.id, label: `${team.name} (${team.key})` });
   });
+  setSelectOptions('team', teamOpts, selectedTeamId);
 
   // Reinitialize searchable dropdowns
   if (state.projectSearchable) {
@@ -127,6 +126,7 @@ ipc.on('linear-data-updated', (data: any) => {
 
 // ==================== Init Modules ====================
 
+initCustomSelects();
 initCloseDropdownHandler();
 initImageGallery();
 initLinearDropdowns();

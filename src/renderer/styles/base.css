@@ -1,0 +1,37 @@
+/* Base shared styles */
+
+.row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.row .form-group {
+  flex: 1;
+}
+
+.error {
+  color: var(--status-error);
+  font-size: var(--font-size-base);
+  margin-top: var(--space-2);
+}
+
+.error-message {
+  color: var(--status-error);
+  font-size: var(--font-size-sm);
+  margin-top: var(--space-1_5);
+}
+
+.info-text {
+  font-size: var(--font-size-sm);
+  color: var(--text-quaternary);
+  margin-top: var(--space-2);
+}
+
+.info-text a {
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+
+.info-text a:hover {
+  text-decoration: underline;
+}

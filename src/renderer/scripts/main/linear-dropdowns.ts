@@ -3,6 +3,7 @@
  * Extracted from inline script lines 2065-2321 + 2500-2504.
  */
 import * as state from './state';
+import { setSelectOptions } from '../shared/custom-select';
 
 // Local DOM references for label elements
 let labelChipsContainer: HTMLElement;
@@ -174,50 +175,46 @@ export function getEstimateOptions(team: any) {
 // Update estimate dropdown based on team
 export function updateEstimateDropdown(teamId: string) {
   const team = state.allTeams.find((t: any) => t.id === teamId);
-  state.estimateSelect.innerHTML = '<option value="">None</option>';
+  const estOptions = getEstimateOptions(team);
 
-  const options = getEstimateOptions(team);
-  options.forEach(opt => {
-    const option = document.createElement('option');
-    option.value = String(opt.value);
-    option.textContent = opt.label + (opt.value !== 0 && typeof opt.value === 'number' && opt.label !== 'None' && !isNaN(Number(opt.label)) ? ' point' + (opt.value !== 1 ? 's' : '') : '');
-    state.estimateSelect.appendChild(option);
+  const selectOpts: Array<{ value: string; label: string }> = [
+    { value: '', label: 'None' }
+  ];
+  estOptions.forEach(opt => {
+    const suffix = (opt.value !== 0 && typeof opt.value === 'number' && opt.label !== 'None' && !isNaN(Number(opt.label)))
+      ? ' point' + (opt.value !== 1 ? 's' : '')
+      : '';
+    selectOpts.push({ value: String(opt.value), label: opt.label + suffix });
   });
+
+  setSelectOptions('estimate', selectOpts, '');
 }
 
 // Update status, cycle, and estimate dropdowns based on selected team
 export function updateTeamDependentDropdowns(teamId: string) {
   // Update status dropdown (default to Todo)
-  state.statusSelect.innerHTML = '';
   const teamStates = state.allStates.filter((s: any) => s.teamId === teamId);
   const todoState = teamStates.find((s: any) => s.name === 'Todo');
+  const defaultStatusId = todoState ? todoState.id : '';
 
-  teamStates.forEach((s: any) => {
-    const option = document.createElement('option');
-    option.value = s.id;
-    option.textContent = s.name;
-    // Set Todo as default selected
-    if (todoState && s.id === todoState.id) {
-      option.selected = true;
-    }
-    state.statusSelect.appendChild(option);
-  });
+  const statusOpts = teamStates.map((s: any) => ({
+    value: s.id,
+    label: s.name
+  }));
+  setSelectOptions('status', statusOpts, defaultStatusId);
 
   // Update cycle dropdown
-  state.cycleSelect.innerHTML = '<option value="">None</option>';
   const now = new Date();
+  const cycleOpts: Array<{ value: string; label: string }> = [
+    { value: '', label: 'None' }
+  ];
   state.allCycles
     .filter((cycle: any) => cycle.teamId === teamId)
     .forEach((cycle: any) => {
-      const option = document.createElement('option');
-      option.value = cycle.id;
-
-      // Format dates (M월 D일)
       const startDate = new Date(cycle.startsAt);
       const endDate = new Date(cycle.endsAt);
-      const formatDate = (d: Date) => `${d.getMonth() + 1}월 ${d.getDate()}일`;
+      const formatDate = (d: Date) => `${d.getMonth() + 1}\u{C6D4} ${d.getDate()}\u{C77C}`;
 
-      // Determine cycle status
       let status = '';
       if (now >= startDate && now <= endDate) {
         status = 'Current';
@@ -227,9 +224,12 @@ export function updateTeamDependentDropdowns(teamId: string) {
         status = 'Previous';
       }
 
-      option.textContent = `Cycle ${cycle.number} (${formatDate(startDate)} - ${formatDate(endDate)}) · ${status}`;
-      state.cycleSelect.appendChild(option);
+      cycleOpts.push({
+        value: cycle.id,
+        label: `Cycle ${cycle.number} (${formatDate(startDate)} - ${formatDate(endDate)}) \u{B7} ${status}`
+      });
     });
+  setSelectOptions('cycle', cycleOpts, '');
 
   // Update estimate dropdown
   updateEstimateDropdown(teamId);

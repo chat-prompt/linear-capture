@@ -8,6 +8,7 @@ import * as state from './state';
 import { createSearchableSelect } from './searchable-dropdown';
 import { updateTeamDependentDropdowns, updateLabelsForTeam, renderLabelChips } from './linear-dropdowns';
 import { renderGallery, hideImageModal } from './image-gallery';
+import { setSelectOptions, setSelectValue } from '../shared/custom-select';
 
 export function initIssueForm() {
   // Searchable select DOM elements
@@ -53,16 +54,13 @@ export function initIssueForm() {
       state.setImageUrl(data.imageUrl || '');
 
       // Populate teams
-      state.teamSelect.innerHTML = '<option value="" data-i18n="form.teamPlaceholder">Select team...</option>';
+      const teamOpts: Array<{ value: string; label: string }> = [
+        { value: '', label: 'Select team...' }
+      ];
       data.teams.forEach((team: any) => {
-        const option = document.createElement('option');
-        option.value = team.id;
-        option.textContent = `${team.name} (${team.key})`;
-        if (team.id === data.defaultTeamId) {
-          option.selected = true;
-        }
-        state.teamSelect.appendChild(option);
+        teamOpts.push({ value: team.id, label: `${team.name} (${team.key})` });
       });
+      setSelectOptions('team', teamOpts, data.defaultTeamId || '');
 
       // Initialize searchable project dropdown
       const ps = createSearchableSelect({
@@ -80,7 +78,7 @@ export function initIssueForm() {
 
           const teamIds = project.teamIds || [];
           if (teamIds.length > 0) {
-            state.teamSelect.value = teamIds[0];
+            setSelectValue('team', teamIds[0]);
             updateTeamDependentDropdowns(teamIds[0]);
             updateLabelsForTeam();
           }
@@ -126,8 +124,8 @@ export function initIssueForm() {
       state.titleInput.value = '';
       state.descInput.value = '';
       (document.getElementById('userHint') as HTMLInputElement).value = '';
-      state.prioritySelect.value = '';
-      state.estimateSelect.value = '';
+      setSelectValue('priority', '');
+      setSelectValue('estimate', '');
       state.setSelectedLabelIds([]);
       renderLabelChips();
       state.errorDiv.textContent = '';
@@ -193,10 +191,10 @@ export function initIssueForm() {
       }
     }
     if (data.suggestedPriority) {
-      state.prioritySelect.value = data.suggestedPriority.toString();
+      setSelectValue('priority', data.suggestedPriority.toString());
     }
     if (data.suggestedEstimate) {
-      state.estimateSelect.value = data.suggestedEstimate.toString();
+      setSelectValue('estimate', data.suggestedEstimate.toString());
     }
   });
 

@@ -74,7 +74,8 @@
     "createIssue": "Create Issue",
     "creating": "Creating issue...",
     "userHintPlaceholder": "(Optional) Write what the AI should focus on when creating the Linear issue",
-    "aiModel": "AI Model"
+    "aiModel": "AI Model",
+    "prompt": "Prompt"
   },
   "context": {
     "title": "Context Search",
