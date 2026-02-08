@@ -11,7 +11,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px var(--space-3);
+  padding: var(--space-3);
   background: var(--surface-inset);
   cursor: pointer;
   user-select: none;
@@ -41,7 +41,7 @@
   background: var(--accent-primary);
   color: var(--text-on-accent);
   font-size: var(--font-size-xs);
-  padding: 2px var(--space-1_5);
+  padding: var(--space-0_5) var(--space-1_5);
   border-radius: var(--radius-xl);
   margin-left: var(--space-1);
 }
@@ -151,8 +151,8 @@
 .context-result-item {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 10px var(--space-3);
+  gap: var(--space-3);
+  padding: var(--space-3);
   border-bottom: 1px solid var(--border-subtle);
   cursor: pointer;
 }
@@ -170,7 +170,7 @@
 }
 
 .context-result-checkbox {
-  margin-top: 2px;
+  margin-top: var(--space-0_5);
 }
 
 .context-result-content {
@@ -189,7 +189,7 @@
 
 .context-result-channel {
   background: var(--gray-100);
-  padding: 2px var(--space-1_5);
+  padding: var(--space-0_5) var(--space-1_5);
   border-radius: var(--radius-sm);
 }
 
@@ -212,7 +212,7 @@
 
 .search-source-badge {
   display: inline-block;
-  padding: 2px var(--space-2);
+  padding: var(--space-0_5) var(--space-2);
   border-radius: var(--radius-xl);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
@@ -231,7 +231,7 @@
 .content-match-badge {
   background: var(--blue-100);
   color: var(--blue-700);
-  padding: 1px var(--space-1_5);
+  padding: var(--space-px) var(--space-1_5);
   border-radius: var(--radius-lg);
   font-size: var(--font-size-2xs);
 }
@@ -322,7 +322,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px var(--space-3);
+  padding: var(--space-3);
   background: var(--surface-inset);
   cursor: pointer;
   user-select: none;
@@ -352,7 +352,7 @@
   background: var(--accent-primary);
   color: var(--text-on-accent);
   font-size: var(--font-size-xs);
-  padding: 2px var(--space-1_5);
+  padding: var(--space-0_5) var(--space-1_5);
   border-radius: var(--radius-xl);
 }
 
@@ -417,7 +417,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-1_5);
-  padding: var(--space-1_5) 10px;
+  padding: var(--space-1_5) var(--space-3);
   background: var(--status-info-bg);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
@@ -446,8 +446,8 @@
 .related-context-result-item {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 10px var(--space-3);
+  gap: var(--space-3);
+  padding: var(--space-3);
   border-bottom: 1px solid var(--border-subtle);
   cursor: pointer;
   transition: background var(--transition-fast);
@@ -466,7 +466,7 @@
 }
 
 .related-context-result-checkbox {
-  margin-top: 2px;
+  margin-top: var(--space-0_5);
   width: 16px;
   height: 16px;
   cursor: pointer;
@@ -490,7 +490,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 2px var(--space-1_5);
+  padding: var(--space-0_5) var(--space-1_5);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-2xs);
   font-weight: var(--font-weight-medium);
@@ -525,7 +525,7 @@
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
   color: var(--text-primary);
-  margin-bottom: 2px;
+  margin-bottom: var(--space-0_5);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -557,7 +557,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-3) 14px;
+  padding: var(--space-3) var(--space-4);
   background: var(--status-warning-bg);
   border: 1px solid var(--yellow-200);
   border-radius: var(--radius-lg);
@@ -613,7 +613,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1_5);
-  padding: var(--space-2) 14px;
+  padding: var(--space-2) var(--space-4);
   background: var(--accent-primary);
   color: var(--text-on-accent);
   border: none;
@@ -645,7 +645,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px var(--space-3);
+  padding: var(--space-3);
   background: var(--surface-inset);
   cursor: pointer;
   user-select: none;
@@ -675,7 +675,7 @@
   background: var(--accent-primary);
   color: var(--text-on-accent);
   font-size: var(--font-size-xs);
-  padding: 2px var(--space-1_5);
+  padding: var(--space-0_5) var(--space-1_5);
   border-radius: var(--radius-xl);
   margin-left: var(--space-1);
 }
@@ -704,7 +704,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-1_5);
-  padding: var(--space-2) 10px;
+  padding: var(--space-2) var(--space-3);
   background: var(--status-info-bg);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
@@ -771,8 +771,8 @@
 .semantic-result-item {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 10px var(--space-3);
+  gap: var(--space-3);
+  padding: var(--space-3);
   border-bottom: 1px solid var(--border-subtle);
   cursor: pointer;
   transition: background var(--transition-fast);
@@ -791,7 +791,7 @@
 }
 
 .semantic-result-checkbox {
-  margin-top: 2px;
+  margin-top: var(--space-0_5);
   width: 16px;
   height: 16px;
   cursor: pointer;
@@ -815,7 +815,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 2px var(--space-1_5);
+  padding: var(--space-0_5) var(--space-1_5);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-2xs);
   font-weight: var(--font-weight-medium);
@@ -846,7 +846,7 @@
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
   color: var(--text-primary);
-  margin-bottom: 2px;
+  margin-bottom: var(--space-0_5);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -887,7 +887,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1_5);
-  padding: var(--space-2) 14px;
+  padding: var(--space-2) var(--space-4);
   background: var(--accent-primary);
   color: var(--text-on-accent);
   border: none;

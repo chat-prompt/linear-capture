@@ -17,7 +17,7 @@ input[type="password"],
 textarea,
 select {
   width: 100%;
-  padding: 10px var(--space-3);
+  padding: var(--space-3);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   font-size: var(--font-size-md);

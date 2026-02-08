@@ -17,8 +17,8 @@
   display: grid;
   grid-template-columns: 24px 1fr auto;
   grid-template-rows: auto auto;
-  gap: 2px var(--space-3);
-  padding: 14px var(--space-4);
+  gap: var(--space-0_5) var(--space-3);
+  padding: var(--space-4);
   background: var(--surface-inset);
   border-radius: var(--radius-xl);
   margin-bottom: var(--space-2);
@@ -101,7 +101,7 @@
 }
 
 .btn-integration {
-  padding: var(--space-2) 18px;
+  padding: var(--space-2) var(--space-5);
   border-radius: var(--radius-lg);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
@@ -175,7 +175,7 @@
 
 .sync-api-key input {
   flex: 1;
-  padding: 10px var(--space-3);
+  padding: var(--space-3);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   font-size: var(--font-size-md);
@@ -188,7 +188,7 @@
 }
 
 .sync-api-key button {
-  padding: 10px var(--space-4);
+  padding: var(--space-3) var(--space-4);
   background: var(--accent-primary);
   border: none;
   border-radius: var(--radius-lg);
@@ -217,7 +217,7 @@
 .sync-source-row {
   display: flex;
   align-items: center;
-  padding: 10px var(--space-3);
+  padding: var(--space-3);
   background: var(--surface-inset);
   border-radius: var(--radius-lg);
 }
@@ -229,7 +229,7 @@
 .sync-source-icon {
   width: 18px;
   height: 18px;
-  margin-right: 10px;
+  margin-right: var(--space-3);
   flex-shrink: 0;
 }
 
@@ -264,7 +264,7 @@
 }
 
 .btn-sync {
-  padding: var(--space-2) 18px;
+  padding: var(--space-2) var(--space-5);
   border-radius: var(--radius-lg);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);

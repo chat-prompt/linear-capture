@@ -44,8 +44,8 @@
 
 .gallery-remove {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: var(--space-1);
+  right: var(--space-1);
   width: 20px;
   height: 20px;
   border-radius: var(--radius-full);
@@ -68,12 +68,12 @@
 
 .gallery-index {
   position: absolute;
-  bottom: 4px;
-  left: 4px;
+  bottom: var(--space-1);
+  left: var(--space-1);
   background: rgba(0,0,0,0.6);
   color: var(--text-on-accent);
   font-size: var(--font-size-2xs);
-  padding: 2px 6px;
+  padding: var(--space-0_5) var(--space-1_5);
   border-radius: var(--radius-sm);
 }
 
@@ -106,5 +106,5 @@
 .gallery-add-text {
   font-size: var(--font-size-xs);
   color: var(--text-tertiary);
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }

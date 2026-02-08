@@ -175,7 +175,7 @@ h1 {
 
 .hotkey-input {
   flex: 1;
-  padding: 10px 14px;
+  padding: var(--space-3) var(--space-4);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   font-size: var(--font-size-md);
@@ -214,7 +214,7 @@ h1 {
 }
 
 .btn-reset {
-  padding: 10px 14px;
+  padding: var(--space-3) var(--space-4);
   background: var(--surface-sunken);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);

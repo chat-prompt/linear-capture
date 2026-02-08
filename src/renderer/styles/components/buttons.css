@@ -1,7 +1,7 @@
 /* Button components */
 
 button {
-  padding: 10px var(--space-5);
+  padding: var(--space-3) var(--space-5);
   border-radius: var(--radius-lg);
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-medium);
@@ -17,7 +17,7 @@ button:disabled {
 
 .buttons {
   display: flex;
-  gap: 10px;
+  gap: var(--space-3);
   justify-content: flex-end;
 }
 

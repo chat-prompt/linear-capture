@@ -6,7 +6,7 @@
 
 .searchable-select .select-trigger {
   width: 100%;
-  padding: 10px var(--space-3);
+  padding: var(--space-3);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   font-size: var(--font-size-md);
@@ -53,7 +53,7 @@
 
 .searchable-select .search-input {
   width: 100%;
-  padding: 10px var(--space-3);
+  padding: var(--space-3);
   border: none;
   border-bottom: 1px solid var(--border-subtle);
   font-size: var(--font-size-md);
@@ -66,7 +66,7 @@
 }
 
 .searchable-select .option {
-  padding: 10px var(--space-3);
+  padding: var(--space-3);
   cursor: pointer;
   font-size: var(--font-size-md);
 }
@@ -85,7 +85,7 @@
 }
 
 .searchable-select .no-results {
-  padding: 10px var(--space-3);
+  padding: var(--space-3);
   color: var(--text-quaternary);
   font-size: var(--font-size-base);
 }
@@ -99,7 +99,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1_5);
-  padding: var(--space-2) 10px;
+  padding: var(--space-2) var(--space-3);
   min-height: 42px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
@@ -121,7 +121,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 3px var(--space-2);
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-2xl);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
@@ -139,7 +139,7 @@
   background: none;
   border: none;
   padding: 0;
-  margin-left: 2px;
+  margin-left: var(--space-0_5);
   cursor: pointer;
   font-size: var(--font-size-md);
   line-height: 1;
@@ -154,7 +154,7 @@
 .label-add-btn {
   background: none;
   border: none;
-  padding: 3px var(--space-2);
+  padding: var(--space-1) var(--space-2);
   font-size: var(--font-size-sm);
   color: var(--text-quaternary);
   cursor: pointer;
@@ -186,7 +186,7 @@
 
 .label-search-input {
   width: 100%;
-  padding: 10px var(--space-3);
+  padding: var(--space-3);
   border: none;
   border-bottom: 1px solid var(--border-subtle);
   font-size: var(--font-size-md);
@@ -202,7 +202,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 10px var(--space-3);
+  padding: var(--space-3);
   cursor: pointer;
   font-size: var(--font-size-md);
 }
