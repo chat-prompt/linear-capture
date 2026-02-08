@@ -1,9 +1,16 @@
 # Linear Capture - Windows 크로스 플랫폼 지원 계획
 
-> **목표**: macOS 전용 앱을 Windows에서도 동작하도록 확장  
-> **버전**: v2.0.0  
-> **예상 작업량**: ~13시간  
-> **작성일**: 2025-01-25  
+> ⚠️ **현재 상태: On Hold** (2026-02-08 업데이트)
+> - Phase 1-4: 코드 작성 완료 (빌드 설정, 캡처 추상화, UI 분기)
+> - Phase 5: **빌드 검증만 완료** — 실제 Windows PC/VM 테스트 미수행
+> - capture.win32.ts: macOS 크로스 컴파일로 NSIS 생성 확인됨 (83MB)
+> - GitHub Releases에 Windows 빌드 미발행
+> - **재개 시**: Windows VM에서 설치/캡처/단축키 실제 테스트 필요
+
+> **목표**: macOS 전용 앱을 Windows에서도 동작하도록 확장
+> **버전**: v2.0.0
+> **예상 작업량**: ~13시간
+> **작성일**: 2025-01-25
 > **브랜치**: `feature/windows-support`
 
 ---

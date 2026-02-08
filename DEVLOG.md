@@ -626,6 +626,114 @@ Notion 검색이 제목만 검색되는데, 본문 내용으로도 검색할 수
 
 ---
 
+## 2026-02-07 (Day 10)
+
+> **배경**: Linear Capture가 v1.2.10까지 기능을 빠르게 쌓아왔지만, 코드베이스가 21,265줄로 비대해졌다. index.html 3,247줄, settings.html 2,483줄짜리 모놀리스, 중복 코드 18건, IPC 에러 처리율 22% 등 기술 부채가 누적된 상태. Gmail 동기화에서 "806개만 싱크되는" 치명적 버그까지 발견되어, 버그 수정 + 대규모 리팩토링을 하루 만에 진행했다.
+
+### 31. Gmail Sync 806 버그 수정
+
+```
+Gmail 동기화가 806개에서 멈추는 버그 수정해줘. Worker + Client 양쪽 다 문제야.
+```
+
+**Claude Code 작업:**
+- **3가지 버그가 겹쳐있던 복합 이슈 분석**:
+  1. Worker: Gmail API `nextPageToken` 무시 → 첫 페이지 ID만 반환
+  2. Client: RFC 2822 날짜 STRING 비교 (`"Fri, 30 Jan" < "Wed, 28 Jan"` → 알파벳순!) → 커서 무한루프
+  3. Client: `messages.length < BATCH_SIZE` 조기 종료 → 더 많은 이메일이 있어도 루프 탈출
+- Worker: `nextPageToken` 루프로 전체 ID 수집
+- Client: `new Date(email.date).getTime()` 타임스탬프 비교로 전환
+- Client: `=== 0` 종료 조건만 사용 + stuck cursor 감지 추가
+- **결과**: 806개 → 4,200+ 이메일 정상 동기화
+
+---
+
+### 32. 대규모 리팩토링 Phase 1~6.1 + 3.1~3.2
+
+```
+리팩토링 6개 Phase 전부 실행해줘.
+Phase 1: 레거시 제거, Phase 2: 중복 제거, Phase 3: 파일 분할,
+Phase 4: 타입 강화, Phase 5: 로깅/에러, Phase 6: 보안/테스트
+```
+
+**Claude Code 작업:**
+
+#### Phase 1: 레거시 제거
+- sql.js 기반 검색 스택 제거 (PGlite로 통합 완료 상태)
+- 데드 코드 정리
+
+#### Phase 2: 중복 제거
+- `BaseSyncAdapter` 추출 → 4개 어댑터(Notion/Slack/Gmail/Linear) 공통 로직 상속
+- AI Analyzer 통합: `anthropic-analyzer.ts` + `gemini-analyzer.ts` (95% 동일) → `ai-analyzer.ts` 단일 파일
+- Worker URL 하드코딩 12파일 26곳 → `config.ts` 1곳
+- Gmail `sync()/syncIncremental()` 80% 동일 → `paginatedSync()` 공통화
+- Slack `syncMessage/syncThreadReply` 70% 동일 → `upsertSlackContent()` 공통화
+
+#### Phase 3: 파일 분할 + esbuild 도입
+- `index.html` 3,247줄 → 271줄 HTML + CSS 4파일 + JS 8모듈
+- `settings.html` 2,483줄 → 236줄 HTML + CSS 1파일 + JS 11모듈
+- esbuild IIFE 번들러 도입 (12ms 빌드)
+- `ipc-handlers.ts` 894줄 → 9개 도메인별 파일로 분리
+- `notion-local-reader.ts` 805줄 → facade + 4모듈
+- `local-search.ts` 517줄 → facade + orchestrator + service
+
+#### Phase 4: 타입 강화
+- `src/main/types.ts` 중복 삭제, Document.source_type에 `'gmail'` 추가
+- IPC 타입맵 미등록 채널 등록
+
+#### Phase 5: 로깅/에러 처리
+- 10개 서비스 `console.*` → `logger.*` 전환 (193→~50개)
+- OAuth 미처리 Promise 3개 → `async/await + try/catch/finally`
+- IPC 핸들러 에러 처리 22% → 45%
+
+#### Phase 6: 보안 + 테스트
+- **Electron 보안 강화**: `contextIsolation: true`, `nodeIntegration: false` 전체 적용
+- `preload.ts` 생성: 화이트리스트 기반 IPC 브릿지 (52채널)
+- 렌더러 `require('electron')` → `window.electronAPI` 전환
+
+---
+
+### 33. Phase 5.3 + 6.2: Claude Code Agents Team으로 마무리
+
+```
+CTO팀 구성해서 에이전트들에게 잘 시켜서 이 업무 해줘.
+- Phase 5.3: IPC 에러 처리 보완 (나머지 핸들러)
+- Phase 6.2: 테스트 실패 14건 수정
+```
+
+**Claude Code (Team/Agents 기능) 작업:**
+- **팀 구성**: TeamCreate로 `refactor-phase-5-6` 팀 생성
+  - team-lead (CTO): 태스크 생성, 의존성 설정, 최종 검증
+  - ipc-engineer: IPC 에러 처리 전담
+  - test-engineer: 테스트 수정 전담
+- **병렬 작업**: 두 에이전트가 동시에 독립 파일 수정
+  - ipc-engineer: 4개 파일, 16개 핸들러에 try/catch 추가
+  - test-engineer: 3개 테스트 파일 mock 업데이트 (14건 실패 → 0건)
+- **직렬 검증**: 둘 다 완료 후 team-lead가 통합 검증
+  - `npx vitest run` → 160/160 통과
+  - `npm run build` → TypeScript + esbuild 성공
+  - REFACTORING.md 업데이트 + 커밋/푸시
+- **결과**:
+  - IPC 에러 처리: 45% → 81% (39/48)
+  - 테스트: 148/162 (91%) → 160/160 (100%)
+
+---
+
+### Day 10 최종 결과
+
+| 지표 | Before (아침) | After (저녁) | 변화 |
+|------|-------------|-------------|------|
+| 코드 라인 (.ts) | 21,265줄 | ~9,500줄 | **-55%** |
+| 400줄+ 파일 | 9개 | 4개 | -56% |
+| 레거시/중복 | 18건 | 0건 | -100% |
+| IPC 에러 처리 | 22% | 81% | +59%p |
+| 테스트 | 148/162 (91%) | 160/160 (100%) | 전체 통과 |
+| Gmail 동기화 | 806개 한계 | 4,200+ 정상 | 해결 |
+| contextIsolation | 미적용 | 전체 적용 | 보안 강화 |
+| HTML 모놀리스 | 5,730줄 (2파일) | 507줄 + 모듈 분할 | -91% |
+
+---
+
 ## 커밋 히스토리
 
 | 날짜 | 커밋 | 설명 |
@@ -684,6 +792,15 @@ Notion 검색이 제목만 검색되는데, 본문 내용으로도 검색할 수
 | 01/31 | `12822d9` | Merge branch 'feature/i18n' into master |
 | 01/31 | `799b424` | feat(settings): improve UI with compact integrations (#5) |
 | 02/01 | `bec2f5e` | feat(notion): add full-text search via local SQLite cache (#6) |
+| 02/07 | `07fb52f` | fix(gmail-sync): resolve three critical sync pagination bugs |
+| 02/07 | `c7fd8db` | refactor(phase-1): remove legacy sql.js search stack and dead code |
+| 02/07 | `db6c3ed` | refactor(phase-2): consolidate duplicate code across sync adapters and services |
+| 02/07 | `cc2820b` | refactor(phase-2.5-3.5): consolidate sync logic and modularize handlers/services |
+| 02/07 | `3afb633` | refactor(phase-4-5): type safety and error handling improvements |
+| 02/07 | `08a336f` | refactor(phase-5-6): complete security hardening and service improvements |
+| 02/07 | `4121e1b` | docs: update REFACTORING.md with Phase 5.1 + 6.1 completion |
+| 02/07 | `c16b2a4` | refactor(phase-3.1-3.2): HTML monolith split with esbuild bundler introduction |
+| 02/07 | `7c42b03` | refactor(phase-5.3-6.2): IPC error handling enhancement & test fixes |
 
 ---
 

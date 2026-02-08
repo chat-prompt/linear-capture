@@ -1,5 +1,16 @@
 # UI Improvement - 연동/동기화 통합 및 컨텍스트 UX 개선
 
+> ⚠️ **주의: Line 참조 전면 무효** (2026-02-08)
+> Phase 3 리팩토링으로 HTML 파일이 모듈 분리되었습니다:
+> - `settings.html`: 2,483줄 → **248줄** (JS/CSS가 scripts/settings/ 모듈로 이동)
+> - `index.html`: 3,247줄 → **309줄** (JS가 scripts/main/ 모듈로 이동)
+>
+> **이 문서의 모든 line 참조(예: settings.html:602-641)는 무효입니다.**
+> 실행 전 반드시 현재 파일 구조를 재확인하세요:
+> - Settings JS: `src/renderer/scripts/settings/` (11개 모듈)
+> - Main JS: `src/renderer/scripts/main/` (8개 모듈)
+> - 특히 참고: `sync-status.ts`, `slack.ts`, `notion.ts`, `gmail.ts`
+
 ## TL;DR
 
 > **Quick Summary**: Settings UI의 연동(Integrations)과 동기화(Data Sync) 섹션을 하나의 "연동" 섹션으로 통합하고, 메인 UI의 "관련 컨텍스트" 섹션 표현을 개선하여 사용자가 기능의 가치를 직관적으로 이해할 수 있게 함.
