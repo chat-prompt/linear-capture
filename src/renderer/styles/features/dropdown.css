@@ -27,9 +27,12 @@
 }
 
 .searchable-select .select-trigger::after {
-  content: '▼';
-  font-size: var(--font-size-2xs);
-  color: var(--text-quaternary);
+  content: '';
+  display: block;
+  width: 10px;
+  height: 6px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center;
+  flex-shrink: 0;
 }
 
 .searchable-select .dropdown {
@@ -109,6 +112,16 @@
   cursor: pointer;
   transition: border-color var(--transition-normal);
   align-items: center;
+}
+
+.label-chips-container::after {
+  content: '';
+  display: block;
+  width: 10px;
+  height: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center;
 }
 
 .label-chips-container:hover {

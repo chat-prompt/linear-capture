@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="styles/features/gallery.css">
   <link rel="stylesheet" href="styles/features/dropdown.css">
   <link rel="stylesheet" href="styles/features/context.css">
+  <link rel="stylesheet" href="styles/components/dialog.css">
 </head>
 <body>
   <!-- Top bar with Settings button (aligned with traffic lights) -->
@@ -43,6 +44,7 @@
     <div id="aiAnalysisSection">
       <!-- User Hint Input -->
       <div class="form-group">
+        <label for="userHint" data-i18n="form.prompt">Prompt</label>
         <textarea id="userHint" data-i18n-placeholder="form.userHintPlaceholder" placeholder="(Optional) Write what the AI should focus on when creating the Linear issue"></textarea>
       </div>
 
@@ -52,10 +54,14 @@
       <div class="row ai-model-row">
         <div class="form-group">
           <label for="aiModel" data-i18n="form.aiModel">AI Model</label>
-          <select id="aiModel" name="aiModel">
-            <option value="gemini" selected>Gemini 3 Flash (Default)</option>
-            <option value="haiku">Claude Haiku 4.5</option>
-          </select>
+          <div class="custom-select" data-name="aiModel">
+            <button type="button" class="select-display" id="aiModel-display">Gemini 3 Flash (Default)</button>
+            <div class="select-options" id="aiModel-options">
+              <div class="select-option selected" data-value="gemini">Gemini 3 Flash (Default)</div>
+              <div class="select-option" data-value="haiku">Claude Haiku 4.5</div>
+            </div>
+            <input type="hidden" name="aiModel" id="aiModel" value="gemini">
+          </div>
         </div>
         <div class="form-group">
           <button type="button" id="reanalyzeBtn" class="btn-submit">Start Analysis</button>
@@ -150,9 +156,11 @@
       <div class="row">
         <div class="form-group">
           <label for="team">Team *</label>
-          <select id="team" name="team" required>
-<option value="">Select team...</option>
-          </select>
+          <div class="custom-select" data-name="team">
+            <button type="button" class="select-display placeholder" id="team-display">Select team...</button>
+            <div class="select-options" id="team-options"></div>
+            <input type="hidden" name="team" id="team" value="" required>
+          </div>
         </div>
 
         <div class="form-group">
@@ -173,20 +181,26 @@
       <div class="row">
         <div class="form-group">
           <label for="status">Status</label>
-          <select id="status" name="status">
-            <option value="">Default</option>
-          </select>
+          <div class="custom-select" data-name="status">
+            <button type="button" class="select-display placeholder" id="status-display">Default</button>
+            <div class="select-options" id="status-options"></div>
+            <input type="hidden" name="status" id="status" value="">
+          </div>
         </div>
 
         <div class="form-group">
           <label for="priority">Priority</label>
-          <select id="priority" name="priority">
-            <option value="">No priority</option>
-            <option value="1">&#128308; Urgent</option>
-            <option value="2">&#128992; High</option>
-            <option value="3">&#128993; Medium</option>
-            <option value="4">&#128994; Low</option>
-          </select>
+          <div class="custom-select" data-name="priority">
+            <button type="button" class="select-display placeholder" id="priority-display">No priority</button>
+            <div class="select-options" id="priority-options">
+              <div class="select-option selected" data-value="">No priority</div>
+              <div class="select-option" data-value="1">&#128308; Urgent</div>
+              <div class="select-option" data-value="2">&#128992; High</div>
+              <div class="select-option" data-value="3">&#128993; Medium</div>
+              <div class="select-option" data-value="4">&#128994; Low</div>
+            </div>
+            <input type="hidden" name="priority" id="priority" value="">
+          </div>
         </div>
       </div>
 
@@ -207,18 +221,22 @@
 
         <div class="form-group">
           <label for="estimate">Estimate</label>
-          <select id="estimate" name="estimate">
-            <option value="">None</option>
-          </select>
+          <div class="custom-select" data-name="estimate">
+            <button type="button" class="select-display placeholder" id="estimate-display">None</button>
+            <div class="select-options" id="estimate-options"></div>
+            <input type="hidden" name="estimate" id="estimate" value="">
+          </div>
         </div>
       </div>
 
       <div class="row">
         <div class="form-group">
           <label for="cycle">Cycle</label>
-          <select id="cycle" name="cycle">
-            <option value="">None</option>
-          </select>
+          <div class="custom-select" data-name="cycle">
+            <button type="button" class="select-display placeholder" id="cycle-display">None</button>
+            <div class="select-options" id="cycle-options"></div>
+            <input type="hidden" name="cycle" id="cycle" value="">
+          </div>
         </div>
 
         <div class="form-group">

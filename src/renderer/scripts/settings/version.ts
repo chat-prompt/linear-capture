@@ -3,6 +3,7 @@
  */
 import { ipc } from '../shared/ipc';
 import { t } from '../shared/i18n';
+import { showAlert } from '../shared/dialog';
 
 async function loadVersion(): Promise<void> {
   try {
@@ -25,11 +26,11 @@ export function initVersion(): void {
     try {
       const result = await ipc.invoke('check-for-updates');
       if (!result.success && result.error) {
-        alert(result.error);
+        await showAlert({ message: result.error });
       }
     } catch (error) {
       console.error('Update check failed:', error);
-      alert(await t('settings.updateCheckFailed'));
+      await showAlert({ message: await t('settings.updateCheckFailed') });
     } finally {
       checkUpdateBtn.disabled = false;
       checkUpdateBtn.textContent = await t('settings.checkUpdate');

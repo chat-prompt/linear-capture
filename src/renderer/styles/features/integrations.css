@@ -184,7 +184,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   font-size: var(--font-size-md);
-  font-family: monospace;
+  font-family: var(--font-mono);
 }
 
 .sync-api-key input:focus {
@@ -275,14 +275,15 @@
   font-weight: var(--font-weight-medium);
   cursor: pointer;
   transition: all var(--transition-normal);
-  border: 1px solid var(--border-default);
-  background: var(--surface-sunken);
-  color: var(--text-tertiary);
+  border: 1px solid var(--indigo-200);
+  background: var(--indigo-50);
+  color: var(--accent-primary);
   min-width: 80px;
 }
 
 .btn-sync:hover:not(:disabled) {
-  background: var(--border-subtle);
+  background: var(--indigo-100);
+  border-color: var(--indigo-300);
 }
 
 .btn-sync:disabled {

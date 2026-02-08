@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="styles/pages/settings.css">
   <link rel="stylesheet" href="styles/features/integrations.css">
   <link rel="stylesheet" href="styles/features/channel-selector.css">
+  <link rel="stylesheet" href="styles/components/dialog.css">
 </head>
 <body>
   <div class="container">
@@ -191,13 +192,17 @@
       <div class="hotkey-section">
         <h2 data-i18n="settings.language">Language</h2>
         <div class="form-group language-group">
-          <select id="languageSelect">
-            <option value="en">English</option>
-            <option value="ko">&#54620;&#44397;&#50612;</option>
-            <option value="de">Deutsch</option>
-            <option value="fr">Fran&#231;ais</option>
-            <option value="es">Espa&#241;ol</option>
-          </select>
+          <div class="custom-select" data-name="languageSelect">
+            <button type="button" class="select-display" id="languageSelect-display">English</button>
+            <div class="select-options" id="languageSelect-options">
+              <div class="select-option selected" data-value="en">English</div>
+              <div class="select-option" data-value="ko">&#54620;&#44397;&#50612;</div>
+              <div class="select-option" data-value="de">Deutsch</div>
+              <div class="select-option" data-value="fr">Fran&#231;ais</div>
+              <div class="select-option" data-value="es">Espa&#241;ol</div>
+            </div>
+            <input type="hidden" name="languageSelect" id="languageSelect" value="en">
+          </div>
         </div>
         <div class="hotkey-hint" data-i18n="settings.languageHint">Select app display language</div>
       </div>

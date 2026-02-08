@@ -6,13 +6,13 @@
 // DOM Elements (initialized in initDomElements)
 export let titleInput: HTMLInputElement;
 export let descInput: HTMLTextAreaElement;
-export let teamSelect: HTMLSelectElement;
+export let teamSelect: HTMLInputElement;
 export let projectInput: HTMLInputElement;
-export let statusSelect: HTMLSelectElement;
-export let prioritySelect: HTMLSelectElement;
+export let statusSelect: HTMLInputElement;
+export let prioritySelect: HTMLInputElement;
 export let assigneeInput: HTMLInputElement;
-export let estimateSelect: HTMLSelectElement;
-export let cycleSelect: HTMLSelectElement;
+export let estimateSelect: HTMLInputElement;
+export let cycleSelect: HTMLInputElement;
 export let form: HTMLFormElement;
 export let preview: HTMLImageElement;
 export let cancelBtn: HTMLButtonElement;
@@ -21,7 +21,7 @@ export let errorDiv: HTMLDivElement;
 export let loadingDiv: HTMLDivElement;
 export let aiLoadingDiv: HTMLDivElement;
 export let aiLoadingText: HTMLSpanElement;
-export let aiModelSelect: HTMLSelectElement;
+export let aiModelSelect: HTMLInputElement;
 export let reanalyzeBtn: HTMLButtonElement;
 export let loadingText: HTMLSpanElement;
 export let aiAnalysisSection: HTMLDivElement;
@@ -73,13 +73,13 @@ export function setAssigneeSearchable(v: any) { assigneeSearchable = v; }
 export function initDomElements() {
   titleInput = document.getElementById('title') as HTMLInputElement;
   descInput = document.getElementById('description') as HTMLTextAreaElement;
-  teamSelect = document.getElementById('team') as HTMLSelectElement;
+  teamSelect = document.getElementById('team') as HTMLInputElement;
   projectInput = document.getElementById('project') as HTMLInputElement;
-  statusSelect = document.getElementById('status') as HTMLSelectElement;
-  prioritySelect = document.getElementById('priority') as HTMLSelectElement;
+  statusSelect = document.getElementById('status') as HTMLInputElement;
+  prioritySelect = document.getElementById('priority') as HTMLInputElement;
   assigneeInput = document.getElementById('assignee') as HTMLInputElement;
-  estimateSelect = document.getElementById('estimate') as HTMLSelectElement;
-  cycleSelect = document.getElementById('cycle') as HTMLSelectElement;
+  estimateSelect = document.getElementById('estimate') as HTMLInputElement;
+  cycleSelect = document.getElementById('cycle') as HTMLInputElement;
   form = document.getElementById('issueForm') as HTMLFormElement;
   preview = document.getElementById('preview') as HTMLImageElement;
   cancelBtn = document.getElementById('cancelBtn') as HTMLButtonElement;
@@ -88,7 +88,7 @@ export function initDomElements() {
   loadingDiv = document.getElementById('loading') as HTMLDivElement;
   aiLoadingDiv = document.getElementById('aiLoading') as HTMLDivElement;
   aiLoadingText = document.getElementById('aiLoadingText') as HTMLSpanElement;
-  aiModelSelect = document.getElementById('aiModel') as HTMLSelectElement;
+  aiModelSelect = document.getElementById('aiModel') as HTMLInputElement;
   reanalyzeBtn = document.getElementById('reanalyzeBtn') as HTMLButtonElement;
   loadingText = document.getElementById('loadingText') as HTMLSpanElement;
   aiAnalysisSection = document.getElementById('aiAnalysisSection') as HTMLDivElement;

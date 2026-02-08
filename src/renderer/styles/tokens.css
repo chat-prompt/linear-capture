@@ -18,12 +18,12 @@
   --gray-800: #1f2937;
   --gray-900: #111827;
 
-  /* Indigo (accent) */
-  --indigo-50:  #eef0ff;
-  --indigo-100: #e0e2ff;
-  --indigo-200: #c7c9fe;
-  --indigo-300: #a5a7fc;
-  --indigo-400: #8183f7;
+  /* Indigo (accent) — desaturated to match Linear brand tone */
+  --indigo-50:  #f8f9fc;
+  --indigo-100: #eef0f7;
+  --indigo-200: #d8dced;
+  --indigo-300: #b4bada;
+  --indigo-400: #8b93c4;
   --indigo-500: #5e6ad2;
   --indigo-600: #4c5abd;
   --indigo-700: #3f4aa8;
@@ -88,8 +88,8 @@
   --accent-primary:         #5e6ad2;
   --accent-primary-hover:   #4c5abd;
   --accent-primary-active:  #3f4aa8;
-  --accent-primary-subtle:  rgba(94, 106, 210, 0.12);
-  --accent-primary-bg:      #eef0ff;
+  --accent-primary-subtle:  rgba(94, 106, 210, 0.08);
+  --accent-primary-bg:      #f8f9fc;
 
   /* Status */
   --status-success:      #22c55e;
@@ -109,7 +109,7 @@
   --color-gmail:   #ea4335;
   --color-gmail-bg: #fef3f2;
   --color-linear:  #5e6ad2;
-  --color-linear-bg: #eef0ff;
+  --color-linear-bg: #f8f9fc;
   --color-ai:      #10b981;
   --color-ai-bg:   #ecfdf5;
 

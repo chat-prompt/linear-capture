@@ -3,6 +3,7 @@
  */
 import { ipc } from '../shared/ipc';
 import { t } from '../shared/i18n';
+import { showConfirm } from '../shared/dialog';
 import { loadSyncStatus } from './sync-status';
 
 // Elements
@@ -159,7 +160,8 @@ export function initToken(): void {
   // Clear button
   clearBtn.addEventListener('click', async () => {
     const confirmMsg = await t('settings.deleteConfirm');
-    if (confirm(confirmMsg)) {
+    const confirmed = await showConfirm({ message: confirmMsg, type: 'danger', confirmText: 'Delete', cancelText: 'Cancel' });
+    if (confirmed) {
       try {
         await ipc.invoke('clear-settings');
         tokenInput.value = '';
