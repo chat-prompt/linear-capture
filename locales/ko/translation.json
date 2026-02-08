@@ -228,7 +228,7 @@
   },
   "relatedContext": {
     "title": "관련 컨텍스트",
-    "findFrom": "Slack/Notion/Gmail에서 관련 내용 찾기",
+    "findFrom": "Slack · Notion · Gmail에서 관련 내용 찾기",
     "searchPlaceholder": "관련 컨텍스트 검색...",
     "hint": "검색어를 수정하여 결과를 구체화하세요.",
     "searching": "Slack, Notion 검색 중...",

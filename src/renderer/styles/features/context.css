@@ -424,6 +424,9 @@
 }
 
 .source-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   padding: var(--space-1) var(--space-3);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-full);
@@ -432,6 +435,12 @@
   color: var(--text-tertiary);
   cursor: pointer;
   transition: all var(--transition-fast);
+}
+
+.filter-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
 }
 
 .source-filter-chip:hover {

@@ -236,7 +236,7 @@
     "enterQuery": "Geben Sie einen Titel oder Suchbegriff ein",
     "insertToDescription": "In Beschreibung einfügen",
     "selected": "{{count}} ausgewählt",
-    "findFrom": "Verwandte Inhalte von Slack/Notion/Gmail suchen",
+    "findFrom": "Verwandte Inhalte von Slack · Notion · Gmail suchen",
     "notConnectedHint": "Verbinde Slack, Notion oder Gmail, um verwandte Inhalte zu suchen",
     "openSettings": "Einstellungen öffnen",
     "filterAll": "Alle",

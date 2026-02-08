@@ -229,7 +229,7 @@
   },
   "relatedContext": {
     "title": "Related Context",
-    "findFrom": "Find related content from Slack/Notion/Gmail",
+    "findFrom": "Find related content from Slack · Notion · Gmail",
     "searchPlaceholder": "Search related context...",
     "hint": "Edit search to refine results",
     "searching": "Searching Slack, Notion...",
