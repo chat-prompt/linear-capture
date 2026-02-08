@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
 import { logger } from '../../services/utils/logger';
+import { clearSelectedSlackChannels } from '../../services/settings-store';
 import { getState } from '../state';
 
 export function registerOAuthHandlers(): void {
@@ -23,7 +24,10 @@ export function registerOAuthHandlers(): void {
       return { success: false, error: 'Slack service not initialized' };
     }
     try {
-      return await state.slackService.disconnect();
+      const result = await state.slackService.disconnect();
+      clearSelectedSlackChannels();
+      logger.log('[OAuth] Cleared selectedSlackChannels on disconnect');
+      return result;
     } catch (error) {
       logger.error('slack-disconnect error:', error);
       return { success: false, error: String(error) };
