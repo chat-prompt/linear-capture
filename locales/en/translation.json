@@ -238,7 +238,15 @@
     "insertToDescription": "Insert to Description",
     "selected": "{{count}} selected",
     "notConnectedHint": "Connect Slack, Notion, or Gmail to search related content",
-    "openSettings": "Open Settings"
+    "openSettings": "Open Settings",
+    "filterAll": "All",
+    "filterSlack": "Slack",
+    "filterNotion": "Notion",
+    "filterGmail": "Gmail",
+    "filterLinear": "Linear",
+    "tabAuto": "Auto",
+    "tabSearch": "Search",
+    "autoHint": "Enter a title to see auto-suggestions"
   },
   "sync": {
     "title": "Data Sync",

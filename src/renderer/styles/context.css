@@ -413,6 +413,114 @@
   cursor: not-allowed;
 }
 
+/* Related Context Tabs */
+.related-context-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.related-context-tab {
+  padding: 5px 12px;
+  border: 1px solid #ddd;
+  border-radius: 14px;
+  background: white;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  color: #555;
+  transition: all 0.15s;
+}
+
+.related-context-tab:hover {
+  background: #f5f5f5;
+  border-color: #bbb;
+}
+
+.related-context-tab.active {
+  background: #5e6ad2;
+  color: white;
+  border-color: #5e6ad2;
+}
+
+.related-context-tabs .related-context-refresh-btn {
+  margin-left: auto;
+}
+
+/* Source Filter Chips */
+.related-context-source-filters {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  overflow-x: auto;
+  padding: 2px 0;
+}
+
+.source-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid #ddd;
+  border-radius: 14px;
+  background: white;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  color: #555;
+}
+
+.source-filter-chip:hover:not(:disabled) {
+  background: #f5f5f5;
+  border-color: #bbb;
+}
+
+.source-filter-chip.active {
+  background: #5e6ad2;
+  color: white;
+  border-color: #5e6ad2;
+}
+
+.source-filter-chip.active[data-source="slack"] {
+  background: #4a154b;
+  border-color: #4a154b;
+}
+
+.source-filter-chip.active[data-source="notion"] {
+  background: #000;
+  border-color: #000;
+}
+
+.source-filter-chip.active[data-source="gmail"] {
+  background: #ea4335;
+  border-color: #ea4335;
+}
+
+.source-filter-chip.active[data-source="linear"] {
+  background: #5e6ad2;
+  border-color: #5e6ad2;
+}
+
+.source-filter-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.source-filter-chip .source-icon {
+  display: inline-flex;
+  align-items: center;
+  width: 12px;
+  height: 12px;
+}
+
+.source-filter-chip .source-icon svg {
+  width: 12px;
+  height: 12px;
+}
+
 .related-context-status {
   display: flex;
   align-items: center;
