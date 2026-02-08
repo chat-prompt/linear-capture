@@ -2,10 +2,10 @@
 
 .image-gallery {
   display: flex;
-  gap: 12px;
+  gap: var(--space-3);
   overflow-x: auto;
-  padding: 12px 0;
-  margin-bottom: 16px;
+  padding: var(--space-3) 0;
+  margin-bottom: var(--space-4);
   min-height: 100px;
   scrollbar-width: thin;
 }
@@ -15,13 +15,13 @@
 }
 
 .image-gallery::-webkit-scrollbar-track {
-  background: #f0f0f0;
-  border-radius: 3px;
+  background: var(--gray-100);
+  border-radius: var(--radius-sm);
 }
 
 .image-gallery::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 3px;
+  background: var(--gray-300);
+  border-radius: var(--radius-sm);
 }
 
 .gallery-item {
@@ -29,10 +29,10 @@
   flex-shrink: 0;
   width: 120px;
   height: 90px;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  border: 1px solid #e0e0e0;
-  background: #fafafa;
+  border: 1px solid var(--border-default);
+  background: var(--gray-50);
 }
 
 .gallery-thumb {
@@ -48,18 +48,18 @@
   right: 4px;
   width: 20px;
   height: 20px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: rgba(0,0,0,0.6);
-  color: white;
+  color: var(--text-on-accent);
   border: none;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
   padding: 0;
-  transition: background 0.2s;
+  transition: background var(--transition-normal);
 }
 
 .gallery-remove:hover {
@@ -71,10 +71,10 @@
   bottom: 4px;
   left: 4px;
   background: rgba(0,0,0,0.6);
-  color: white;
-  font-size: 10px;
+  color: var(--text-on-accent);
+  font-size: var(--font-size-2xs);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .gallery-add {
@@ -82,15 +82,15 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #f8f8f8;
-  border: 2px dashed #ccc;
+  background: var(--gray-50);
+  border: 2px dashed var(--gray-300);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-normal);
 }
 
 .gallery-add:hover {
-  background: #e8e9f3;
-  border-color: #5e6ad2;
+  background: var(--accent-primary-bg);
+  border-color: var(--accent-primary);
 }
 
 .gallery-add.disabled {
@@ -100,11 +100,11 @@
 
 .gallery-add-icon {
   font-size: 24px;
-  color: #666;
+  color: var(--text-tertiary);
 }
 
 .gallery-add-text {
-  font-size: 11px;
-  color: #666;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
   margin-top: 4px;
 }
