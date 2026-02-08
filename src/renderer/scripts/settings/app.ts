@@ -10,18 +10,23 @@ import { initSlack, loadSlackStatus } from './slack';
 import { initChannelModal } from './channel-modal';
 import { initNotion, loadNotionStatus } from './notion';
 import { initGmail, loadGmailStatus } from './gmail';
-import { initSyncStatus } from './sync-status';
+import { initSyncStatus, loadSyncStatus, invalidateSyncLabels } from './sync-status';
 import { initMenuDropdown } from './menu-dropdown';
 import { initLanguage } from './language';
 import { initVersion } from './version';
 
 // i18n: react to language changes
 ipc.on('language-changed', async () => {
+  invalidateSyncLabels(); // Clear cached i18n labels
   await translatePage();
   await autoTranslate();
-  await loadSlackStatus();
-  await loadNotionStatus();
-  await loadGmailStatus();
+  // Reload all statuses (sync-status now handles all source statuses)
+  await Promise.all([
+    loadSlackStatus(),
+    loadNotionStatus(),
+    loadGmailStatus(),
+    loadSyncStatus(),
+  ]);
 });
 
 // Initial translation

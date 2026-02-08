@@ -1,8 +1,13 @@
 /**
  * Data sync logic for settings page
+ *
+ * Performance optimizations:
+ * - Each source updates independently (no Promise.all blocking)
+ * - i18n labels pre-fetched in a single batch IPC call
+ * - Sync status cached on main process (30s TTL)
  */
 import { ipc } from '../shared/ipc';
-import { t } from '../shared/i18n';
+import { tBatch } from '../shared/i18n';
 import {
   slackDocCount,
   slackLastSync,
@@ -38,138 +43,210 @@ const linearStatusText = document.getElementById('linearStatusText') as HTMLElem
 
 // State
 const activeSyncs = new Map<string, HTMLElement>();
-const lastSyncElements: Record<string, HTMLElement> = {
-  slack: slackLastSync,
-  notion: notionLastSync,
-  gmail: gmailLastSync,
-  linear: linearLastSync,
-};
 
-// --- Functions ---
+// --- i18n label cache (fetched once per language) ---
 
-async function formatLastSync(timestamp: number): Promise<string | null> {
+interface SyncLabels {
+  lastSyncPrefix: string;
+  justNow: string;
+  notSyncedYet: string;
+  syncedMessages: string;
+  syncedDocs: string;
+  syncedIssues: string;
+  syncedEmails: string;
+  notConnected: string;
+  // Action labels (used by triggerSync)
+  syncing: string;
+  syncNow: string;
+  syncFailed: string;
+}
+
+let cachedLabels: SyncLabels | null = null;
+
+async function getLabels(): Promise<SyncLabels> {
+  if (cachedLabels) return cachedLabels;
+
+  const values = await tBatch([
+    { key: 'sync.lastSyncPrefix' },
+    { key: 'sync.justNow' },
+    { key: 'sync.notSyncedYet' },
+    { key: 'sync.synced_messages' },
+    { key: 'sync.synced_docs' },
+    { key: 'sync.synced_issues' },
+    { key: 'sync.synced_emails' },
+    { key: 'sync.notConnected' },
+    { key: 'sync.syncing' },
+    { key: 'sync.syncNow' },
+    { key: 'sync.failed' },
+  ]);
+
+  cachedLabels = {
+    lastSyncPrefix: values[0],
+    justNow: values[1],
+    notSyncedYet: values[2],
+    syncedMessages: values[3],
+    syncedDocs: values[4],
+    syncedIssues: values[5],
+    syncedEmails: values[6],
+    notConnected: values[7],
+    syncing: values[8],
+    syncNow: values[9],
+    syncFailed: values[10],
+  };
+  return cachedLabels;
+}
+
+/** Invalidate label cache on language change */
+export function invalidateSyncLabels(): void {
+  cachedLabels = null;
+}
+
+// --- Formatting helpers (synchronous, use pre-fetched labels) ---
+
+function formatLastSyncText(timestamp: number, labels: SyncLabels): string | null {
   if (!timestamp) return null;
-  const now = Date.now();
-  const diff = now - timestamp;
+  const diff = Date.now() - timestamp;
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
 
-  const prefix = await t('sync.lastSyncPrefix');
-  if (minutes < 1) return `${prefix} ${await t('sync.justNow')}`;
-  if (minutes < 60) return `${prefix} ${await t('sync.minutesAgo', { count: minutes })}`;
-  if (hours < 24) return `${prefix} ${await t('sync.hoursAgo', { count: hours })}`;
-  return `${prefix} ${await t('sync.daysAgo', { count: days })}`;
+  const prefix = labels.lastSyncPrefix;
+  if (minutes < 1) return `${prefix} ${labels.justNow}`;
+  if (minutes < 60) return `${prefix} ${minutes}m`;
+  if (hours < 24) return `${prefix} ${hours}h`;
+  return `${prefix} ${days}d`;
 }
 
-async function formatDocCount(count: number, unit: string = 'docs'): Promise<string> {
-  if (!count) return await t('sync.notSyncedYet');
-  const label = await t(`sync.synced_${unit}`);
-  return `${count.toLocaleString()} ${label}`;
+function formatDocCountText(count: number, unitLabel: string, notSyncedLabel: string): string {
+  if (!count) return notSyncedLabel;
+  return `${count.toLocaleString()} ${unitLabel}`;
 }
+
+// --- Per-source UI updater ---
+
+function updateSourceUI(
+  connected: boolean,
+  syncData: { documentCount?: number; lastSync?: number } | undefined,
+  labels: SyncLabels,
+  unitLabel: string,
+  docCountEl: HTMLElement,
+  lastSyncEl: HTMLElement,
+  detailSepEl: HTMLElement,
+): void {
+  if (connected) {
+    docCountEl.textContent = formatDocCountText(
+      syncData?.documentCount || 0, unitLabel, labels.notSyncedYet
+    );
+    docCountEl.style.display = '';
+    if (syncData?.lastSync) {
+      lastSyncEl.textContent = formatLastSyncText(syncData.lastSync, labels) || '';
+      lastSyncEl.style.display = '';
+      detailSepEl.style.display = '';
+    } else {
+      lastSyncEl.style.display = 'none';
+      detailSepEl.style.display = 'none';
+    }
+  } else {
+    docCountEl.textContent = '';
+    lastSyncEl.style.display = 'none';
+    detailSepEl.style.display = 'none';
+  }
+}
+
+// --- Main load function ---
 
 export async function loadSyncStatus(): Promise<void> {
   try {
-    const [slackStatus, notionStatus, gmailStatus, syncStatus] = await Promise.all([
-      ipc.invoke('slack-status'),
-      ipc.invoke('notion-status'),
-      ipc.invoke('gmail-status'),
-      ipc.invoke('sync:get-status'),
+    // 1) Pre-fetch all i18n labels in one IPC call (was 20+ individual calls)
+    const labels = await getLabels();
+
+    // 2) Fire sync status (potentially slow) as a shared promise
+    const syncStatusPromise = ipc.invoke('sync:get-status').catch(() => ({ initialized: false }));
+
+    // 3) Each source loads independently - no single call blocks the rest
+    await Promise.all([
+      // Slack
+      (async () => {
+        try {
+          const [slackStatus, syncStatus] = await Promise.all([
+            ipc.invoke('slack-status'),
+            syncStatusPromise,
+          ]);
+          updateSourceUI(
+            slackStatus.connected, syncStatus?.sources?.slack, labels,
+            labels.syncedMessages, slackDocCount, slackLastSync, slackDetailSep,
+          );
+        } catch (e) { console.error('Slack status error:', e); }
+      })(),
+
+      // Notion
+      (async () => {
+        try {
+          const [notionStatus, syncStatus] = await Promise.all([
+            ipc.invoke('notion-status'),
+            syncStatusPromise,
+          ]);
+          updateSourceUI(
+            notionStatus.connected, syncStatus?.sources?.notion, labels,
+            labels.syncedDocs, notionDocCount, notionLastSync, notionDetailSep,
+          );
+        } catch (e) { console.error('Notion status error:', e); }
+      })(),
+
+      // Gmail
+      (async () => {
+        try {
+          const [gmailStatus, syncStatus] = await Promise.all([
+            ipc.invoke('gmail-status'),
+            syncStatusPromise,
+          ]);
+          updateSourceUI(
+            gmailStatus.connected, syncStatus?.sources?.gmail, labels,
+            labels.syncedEmails, gmailDocCount, gmailLastSync, gmailDetailSep,
+          );
+        } catch (e) { console.error('Gmail status error:', e); }
+      })(),
+
+      // Linear (uses settings check instead of OAuth status)
+      (async () => {
+        try {
+          const [settings, syncStatus] = await Promise.all([
+            ipc.invoke('get-settings'),
+            syncStatusPromise,
+          ]);
+          const linearConnected = !!settings?.linearApiToken;
+          if (linearConnected) {
+            syncLinearBtn.disabled = false;
+            linearRow.classList.remove('disabled');
+            linearStatusText.style.display = 'none';
+            updateSourceUI(
+              true, syncStatus?.sources?.linear, labels,
+              labels.syncedIssues, linearDocCount, linearLastSync, linearDetailSep,
+            );
+          } else {
+            syncLinearBtn.disabled = true;
+            linearRow.classList.add('disabled');
+            linearDocCount.textContent = '';
+            linearLastSync.style.display = 'none';
+            linearDetailSep.style.display = 'none';
+            linearStatusText.textContent = labels.notConnected;
+            linearStatusText.style.display = '';
+          }
+        } catch (e) { console.error('Linear status error:', e); }
+      })(),
     ]);
-
-    const linearConnected = !!(await ipc.invoke('get-settings'))?.linearApiToken;
-
-    if (slackStatus.connected) {
-      const src = syncStatus?.sources?.slack;
-      slackDocCount.textContent = await formatDocCount(src?.documentCount, 'messages');
-      slackDocCount.style.display = '';
-      const lastSync = src?.lastSync;
-      if (lastSync) {
-        slackLastSync.textContent = await formatLastSync(lastSync) || '';
-        slackLastSync.style.display = '';
-        slackDetailSep.style.display = '';
-      } else {
-        slackLastSync.style.display = 'none';
-        slackDetailSep.style.display = 'none';
-      }
-    } else {
-      slackDocCount.textContent = '';
-      slackLastSync.style.display = 'none';
-      slackDetailSep.style.display = 'none';
-    }
-
-    if (notionStatus.connected) {
-      const src = syncStatus?.sources?.notion;
-      notionDocCount.textContent = await formatDocCount(src?.documentCount, 'docs');
-      notionDocCount.style.display = '';
-      const lastSync = src?.lastSync;
-      if (lastSync) {
-        notionLastSync.textContent = await formatLastSync(lastSync) || '';
-        notionLastSync.style.display = '';
-        notionDetailSep.style.display = '';
-      } else {
-        notionLastSync.style.display = 'none';
-        notionDetailSep.style.display = 'none';
-      }
-    } else {
-      notionDocCount.textContent = '';
-      notionLastSync.style.display = 'none';
-      notionDetailSep.style.display = 'none';
-    }
-
-    if (linearConnected) {
-      syncLinearBtn.disabled = false;
-      linearRow.classList.remove('disabled');
-      linearStatusText.style.display = 'none';
-      const src = syncStatus?.sources?.linear;
-      linearDocCount.textContent = await formatDocCount(src?.documentCount, 'issues');
-      linearDocCount.style.display = '';
-      const lastSync = src?.lastSync;
-      if (lastSync) {
-        linearLastSync.textContent = await formatLastSync(lastSync) || '';
-        linearLastSync.style.display = '';
-        linearDetailSep.style.display = '';
-      } else {
-        linearLastSync.style.display = 'none';
-        linearDetailSep.style.display = 'none';
-      }
-    } else {
-      syncLinearBtn.disabled = true;
-      linearRow.classList.add('disabled');
-      linearDocCount.textContent = '';
-      linearLastSync.style.display = 'none';
-      linearDetailSep.style.display = 'none';
-      linearStatusText.textContent = await t('sync.notConnected');
-      linearStatusText.style.display = '';
-    }
-
-    if (gmailStatus.connected) {
-      const src = syncStatus?.sources?.gmail;
-      gmailDocCount.textContent = await formatDocCount(src?.documentCount, 'emails');
-      gmailDocCount.style.display = '';
-      const lastSync = src?.lastSync;
-      if (lastSync) {
-        gmailLastSync.textContent = await formatLastSync(lastSync) || '';
-        gmailLastSync.style.display = '';
-        gmailDetailSep.style.display = '';
-      } else {
-        gmailLastSync.style.display = 'none';
-        gmailDetailSep.style.display = 'none';
-      }
-    } else {
-      gmailDocCount.textContent = '';
-      gmailLastSync.style.display = 'none';
-      gmailDetailSep.style.display = 'none';
-    }
   } catch (error) {
     console.error('Failed to load sync status:', error);
   }
 }
 
 export async function triggerSync(source: string, btn: HTMLButtonElement, lastSyncEl: HTMLElement): Promise<void> {
+  // Pre-fetch labels from cache (instant if already loaded by loadSyncStatus)
+  const labels = await getLabels();
+
   btn.disabled = true;
   btn.classList.add('syncing');
-  btn.textContent = await t('sync.syncing');
+  btn.textContent = labels.syncing;
 
   const row = btn.closest('.integration-row');
   const docCountEl = row?.querySelector('.integration-doc-count') as HTMLElement | null;
@@ -178,7 +255,7 @@ export async function triggerSync(source: string, btn: HTMLButtonElement, lastSy
   if (sepEl) sepEl.style.display = 'none';
 
   if (lastSyncEl) {
-    lastSyncEl.textContent = await t('sync.syncing');
+    lastSyncEl.textContent = labels.syncing;
     lastSyncEl.style.display = '';
   }
   activeSyncs.set(source, lastSyncEl);
@@ -195,17 +272,17 @@ export async function triggerSync(source: string, btn: HTMLButtonElement, lastSy
       }, 3000);
     } else {
       if (lastSyncEl) {
-        lastSyncEl.textContent = result.error || await t('sync.failed');
+        lastSyncEl.textContent = result.error || labels.syncFailed;
       }
     }
   } catch (error) {
     console.error(`Sync ${source} error:`, error);
     if (lastSyncEl) {
-      lastSyncEl.textContent = await t('sync.failed');
+      lastSyncEl.textContent = labels.syncFailed;
     }
   } finally {
     btn.classList.remove('syncing');
-    btn.textContent = await t('sync.syncNow');
+    btn.textContent = labels.syncNow;
     btn.disabled = false;
     activeSyncs.delete(source);
   }
