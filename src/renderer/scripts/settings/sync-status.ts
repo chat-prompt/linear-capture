@@ -7,7 +7,7 @@
  * - Sync status cached on main process (30s TTL)
  */
 import { ipc } from '../shared/ipc';
-import { t, tBatch } from '../shared/i18n';
+import { tBatch } from '../shared/i18n';
 import {
   slackDocCount,
   slackLastSync,
@@ -55,6 +55,10 @@ interface SyncLabels {
   syncedIssues: string;
   syncedEmails: string;
   notConnected: string;
+  // Action labels (used by triggerSync)
+  syncing: string;
+  syncNow: string;
+  syncFailed: string;
 }
 
 let cachedLabels: SyncLabels | null = null;
@@ -71,6 +75,9 @@ async function getLabels(): Promise<SyncLabels> {
     { key: 'sync.synced_issues' },
     { key: 'sync.synced_emails' },
     { key: 'sync.notConnected' },
+    { key: 'sync.syncing' },
+    { key: 'sync.syncNow' },
+    { key: 'sync.failed' },
   ]);
 
   cachedLabels = {
@@ -82,6 +89,9 @@ async function getLabels(): Promise<SyncLabels> {
     syncedIssues: values[5],
     syncedEmails: values[6],
     notConnected: values[7],
+    syncing: values[8],
+    syncNow: values[9],
+    syncFailed: values[10],
   };
   return cachedLabels;
 }
@@ -231,9 +241,12 @@ export async function loadSyncStatus(): Promise<void> {
 }
 
 export async function triggerSync(source: string, btn: HTMLButtonElement, lastSyncEl: HTMLElement): Promise<void> {
+  // Pre-fetch labels from cache (instant if already loaded by loadSyncStatus)
+  const labels = await getLabels();
+
   btn.disabled = true;
   btn.classList.add('syncing');
-  btn.textContent = await t('sync.syncing');
+  btn.textContent = labels.syncing;
 
   const row = btn.closest('.integration-row');
   const docCountEl = row?.querySelector('.integration-doc-count') as HTMLElement | null;
@@ -242,7 +255,7 @@ export async function triggerSync(source: string, btn: HTMLButtonElement, lastSy
   if (sepEl) sepEl.style.display = 'none';
 
   if (lastSyncEl) {
-    lastSyncEl.textContent = await t('sync.syncing');
+    lastSyncEl.textContent = labels.syncing;
     lastSyncEl.style.display = '';
   }
   activeSyncs.set(source, lastSyncEl);
@@ -259,17 +272,17 @@ export async function triggerSync(source: string, btn: HTMLButtonElement, lastSy
       }, 3000);
     } else {
       if (lastSyncEl) {
-        lastSyncEl.textContent = result.error || await t('sync.failed');
+        lastSyncEl.textContent = result.error || labels.syncFailed;
       }
     }
   } catch (error) {
     console.error(`Sync ${source} error:`, error);
     if (lastSyncEl) {
-      lastSyncEl.textContent = await t('sync.failed');
+      lastSyncEl.textContent = labels.syncFailed;
     }
   } finally {
     btn.classList.remove('syncing');
-    btn.textContent = await t('sync.syncNow');
+    btn.textContent = labels.syncNow;
     btn.disabled = false;
     activeSyncs.delete(source);
   }
