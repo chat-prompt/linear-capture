@@ -26,8 +26,9 @@ await build({
   logLevel: 'info',
 });
 
-// Copy static files (HTML, CSS)
+// Copy static files (HTML, CSS, fonts)
 cpSync('src/renderer/styles', join(outdir, 'styles'), { recursive: true });
+cpSync('src/renderer/fonts', join(outdir, 'fonts'), { recursive: true });
 cpSync('src/renderer/index.html', join(outdir, 'index.html'));
 cpSync('src/renderer/settings.html', join(outdir, 'settings.html'));
 cpSync('src/renderer/onboarding.html', join(outdir, 'onboarding.html'));
