@@ -11,6 +11,7 @@ export function createSearchableSelect(config: {
   hiddenInput: HTMLInputElement;
   items: any[];
   defaultLabel: string;
+  noResultsLabel?: string;
   getValue: (item: any) => string;
   getLabel: (item: any) => string;
   onSelect?: (value: string, label: string, item: any) => void;
@@ -32,7 +33,7 @@ export function createSearchableSelect(config: {
     if (filteredItems.length === 0 && searchInput.value) {
       const noResults = document.createElement('div');
       noResults.className = 'no-results';
-      noResults.textContent = 'No results found';
+      noResults.textContent = config.noResultsLabel || 'No results found';
       optionsContainer.appendChild(noResults);
     } else {
       filteredItems.forEach(item => {

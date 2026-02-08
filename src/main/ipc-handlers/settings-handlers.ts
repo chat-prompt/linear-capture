@@ -22,6 +22,7 @@ import { updateHotkey, validateHotkey, formatHotkeyForDisplay } from '../hotkey'
 import { changeLanguage, t, i18next } from '../i18n';
 import { getState } from '../state';
 import { createSettingsWindow } from '../window-manager';
+import { rebuildTrayMenu } from '../tray';
 import { loadLinearData } from './linear-handlers';
 
 export function registerSettingsHandlers(): void {
@@ -234,6 +235,7 @@ export function registerSettingsHandlers(): void {
     try {
       setLanguage(lang);
       await changeLanguage(lang);
+      rebuildTrayMenu();
       const allWindows = BrowserWindow.getAllWindows();
       allWindows.forEach(win => {
         win.webContents.send('language-changed', lang);

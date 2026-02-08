@@ -3,6 +3,20 @@
  * Extracted from inline script lines 2685-2980.
  */
 import { ipc } from '../shared/ipc';
+import { t, tBatch } from '../shared/i18n';
+
+let strings = { matchPercent: '{{percent}}% match', selectedCount: '{{count}} selected' };
+
+async function preloadSemanticTexts() {
+  const results = await tBatch([
+    { key: 'semanticSearch.matchPercent', options: { percent: '{{percent}}' } },
+    { key: 'semanticSearch.selectedCount', options: { count: '{{count}}' } }
+  ]);
+  strings = {
+    matchPercent: results[0],
+    selectedCount: results[1]
+  };
+}
 
 let semantic_selectedResults = new Set<number>();
 let semantic_currentResults: any[] = [];
@@ -62,6 +76,9 @@ export function initSemanticSearch() {
   if (insertBtn) {
     insertBtn.addEventListener('click', insertSelectedToDescription);
   }
+
+  preloadSemanticTexts();
+  ipc.on('language-changed', () => { preloadSemanticTexts(); });
 }
 
 export function toggleSemanticSection(section?: HTMLElement | null) {
@@ -103,7 +120,7 @@ export async function performSemanticSearch(query: string) {
       console.error('[SemanticSearch:JS] electronAPI not available');
       if (loadingEl) loadingEl.style.display = 'none';
       if (emptyEl) {
-        emptyEl.textContent = 'IPC not available. Please restart the app.';
+        emptyEl.textContent = await t('semanticSearch.ipcError');
         emptyEl.style.display = 'block';
       }
       return;
@@ -120,7 +137,7 @@ export async function performSemanticSearch(query: string) {
 
     if (result.notConnected) {
       if (emptyEl) {
-        emptyEl.textContent = 'Slack not connected. Connect in Settings first.';
+        emptyEl.textContent = await t('semanticSearch.notConnected', { service: 'Slack' });
         emptyEl.style.display = 'block';
       }
       if (badgeEl) badgeEl.style.display = 'none';
@@ -135,7 +152,7 @@ export async function performSemanticSearch(query: string) {
       }
     } else {
       if (emptyEl) {
-        emptyEl.textContent = 'No related documents found';
+        emptyEl.textContent = await t('semanticSearch.noResults');
         emptyEl.style.display = 'block';
       }
       if (badgeEl) badgeEl.style.display = 'none';
@@ -170,7 +187,7 @@ export function renderSemanticResults(results: any[]) {
       <div class="semantic-result-content">
         <div class="semantic-result-meta">
           <span class="semantic-result-source ${item.source}">${sourceIcon} ${capitalizeFirstSemantic(item.source)}</span>
-          <span class="semantic-result-score">${scorePercent}% match</span>
+          <span class="semantic-result-score">${strings.matchPercent.replace('{{percent}}', String(scorePercent))}</span>
         </div>
         ${title ? `<div class="semantic-result-title">${escapeHtmlSemantic(title)}</div>` : ''}
         <div class="semantic-result-text">${escapeHtmlSemantic(content)}</div>
@@ -214,7 +231,7 @@ export function updateSemanticSelectedCount() {
   const count = semantic_selectedResults.size;
 
   if (countEl) {
-    countEl.textContent = `${count} selected`;
+    countEl.textContent = strings.selectedCount.replace('{{count}}', String(count));
   }
   if (insertBtn) {
     insertBtn.disabled = count === 0;

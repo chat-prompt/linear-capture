@@ -4,6 +4,44 @@
  */
 import * as state from './state';
 import { setSelectOptions } from '../shared/custom-select';
+import { ipc } from '../shared/ipc';
+import { tBatch } from '../shared/i18n';
+
+let strings = {
+  noLabels: 'No labels found',
+  addLabels: '+ Add labels...',
+  point: 'point',
+  points: 'points',
+  current: 'Current',
+  upcoming: 'Upcoming',
+  previous: 'Previous',
+  noResults: 'No results found'
+};
+let currentLocale = 'en';
+const localeMap: Record<string, string> = { en: 'en-US', ko: 'ko-KR', de: 'de-DE', fr: 'fr-FR', es: 'es-ES' };
+
+export async function preloadDropdownTexts() {
+  const results = await tBatch([
+    { key: 'dropdown.noResults' },
+    { key: 'form.labelsAdd' },
+    { key: 'estimate.point' },
+    { key: 'estimate.points' },
+    { key: 'cycle.current' },
+    { key: 'cycle.upcoming' },
+    { key: 'cycle.previous' }
+  ]);
+  strings = {
+    noLabels: results[0],
+    addLabels: results[1],
+    point: results[2],
+    points: results[3],
+    current: results[4],
+    upcoming: results[5],
+    previous: results[6],
+    noResults: results[0]
+  };
+  try { currentLocale = await ipc.invoke('get-language'); } catch { /* keep default */ }
+}
 
 // Local DOM references for label elements
 let labelChipsContainer: HTMLElement;
@@ -27,7 +65,7 @@ export function renderLabelOptions() {
   labelOptions.innerHTML = '';
 
   if (filteredLabels.length === 0) {
-    labelOptions.innerHTML = '<div class="label-no-results">No labels found</div>';
+    labelOptions.innerHTML = `<div class="label-no-results">${strings.noLabels}</div>`;
     return;
   }
 
@@ -64,7 +102,7 @@ export function renderLabelChips() {
   labelChipsContainer.innerHTML = '';
 
   if (state.selectedLabelIds.length === 0) {
-    labelChipsContainer.innerHTML = '<span class="label-empty-hint">+ Add labels...</span>';
+    labelChipsContainer.innerHTML = `<span class="label-empty-hint">${strings.addLabels}</span>`;
     return;
   }
 
@@ -182,7 +220,7 @@ export function updateEstimateDropdown(teamId: string) {
   ];
   estOptions.forEach(opt => {
     const suffix = (opt.value !== 0 && typeof opt.value === 'number' && opt.label !== 'None' && !isNaN(Number(opt.label)))
-      ? ' point' + (opt.value !== 1 ? 's' : '')
+      ? ` ${opt.value !== 1 ? strings.points : strings.point}`
       : '';
     selectOpts.push({ value: String(opt.value), label: opt.label + suffix });
   });
@@ -213,15 +251,15 @@ export function updateTeamDependentDropdowns(teamId: string) {
     .forEach((cycle: any) => {
       const startDate = new Date(cycle.startsAt);
       const endDate = new Date(cycle.endsAt);
-      const formatDate = (d: Date) => `${d.getMonth() + 1}\u{C6D4} ${d.getDate()}\u{C77C}`;
+      const formatDate = (d: Date) => new Intl.DateTimeFormat(localeMap[currentLocale] || currentLocale, { month: 'short', day: 'numeric' }).format(d);
 
       let status = '';
       if (now >= startDate && now <= endDate) {
-        status = 'Current';
+        status = strings.current;
       } else if (startDate > now) {
-        status = 'Upcoming';
+        status = strings.upcoming;
       } else {
-        status = 'Previous';
+        status = strings.previous;
       }
 
       cycleOpts.push({
@@ -276,5 +314,8 @@ export function initLinearDropdowns() {
     updateTeamDependentDropdowns(state.teamSelect.value);
     updateLabelsForTeam();
   });
+
+  preloadDropdownTexts();
+  ipc.on('language-changed', () => { preloadDropdownTexts(); });
 }
 

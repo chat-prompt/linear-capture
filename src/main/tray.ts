@@ -1,7 +1,9 @@
 import { Tray, Menu, nativeImage, app } from 'electron';
 import * as path from 'path';
+import { t } from './i18n';
 
 let tray: Tray | null = null;
+let storedCallbacks: TrayCallbacks | null = null;
 
 interface TrayCallbacks {
   onCapture: () => void;
@@ -13,6 +15,8 @@ interface TrayCallbacks {
  * Create menu bar tray icon
  */
 export function createTray(callbacks: TrayCallbacks): Tray {
+  storedCallbacks = callbacks;
+
   // Load tray icon from PNG files
   // In production (asar), use app.getAppPath(), in dev use __dirname
   const appPath = app.getAppPath();
@@ -35,22 +39,22 @@ export function createTray(callbacks: TrayCallbacks): Tray {
   }
 
   tray = new Tray(icon);
-  tray.setToolTip('Linear Capture');
+  tray.setToolTip(t('tray.tooltip'));
 
   const shortcutLabel = process.platform === 'darwin' ? '⌘+Shift+L' : 'Ctrl+Shift+L';
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: `Capture Screen (${shortcutLabel})`,
+      label: t('tray.captureScreen', { shortcut: shortcutLabel }),
       click: callbacks.onCapture,
     },
     { type: 'separator' },
     {
-      label: 'Settings...',
+      label: t('tray.settings'),
       click: callbacks.onSettings,
     },
     { type: 'separator' },
     {
-      label: 'Quit',
+      label: t('tray.quit'),
       click: callbacks.onQuit,
     },
   ]);
@@ -74,6 +78,35 @@ export function destroyTray(): void {
     tray.destroy();
     tray = null;
   }
+}
+
+/**
+ * Rebuild tray context menu (e.g., after language change)
+ */
+export function rebuildTrayMenu(): void {
+  if (!tray || !storedCallbacks) return;
+
+  tray.setToolTip(t('tray.tooltip'));
+
+  const shortcutLabel = process.platform === 'darwin' ? '⌘+Shift+L' : 'Ctrl+Shift+L';
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: t('tray.captureScreen', { shortcut: shortcutLabel }),
+      click: storedCallbacks.onCapture,
+    },
+    { type: 'separator' },
+    {
+      label: t('tray.settings'),
+      click: storedCallbacks.onSettings,
+    },
+    { type: 'separator' },
+    {
+      label: t('tray.quit'),
+      click: storedCallbacks.onQuit,
+    },
+  ]);
+
+  tray.setContextMenu(contextMenu);
 }
 
 /**
